@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(0 0% 7%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(0 0% 7%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(0 0% 7%);
+  --primary: hsl(206 100% 40%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(0 0% 26%);
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(0 0% 96%);
+  --muted-foreground: hsl(0 0% 45%);
+  --accent: hsl(15 100% 56%);
+  --accent-foreground: hsl(0 0% 100%);
+  --success: hsl(122 45% 50%);
+  --success-foreground: hsl(0 0% 100%);
+  --warning: hsl(36 100% 50%);
+  --warning-foreground: hsl(0 0% 100%);
+  --error: hsl(4 90% 58%);
+  --error-foreground: hsl(0 0% 100%);
+  --destructive: hsl(4 90% 58%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(240 5.9% 90%);
+  --input: hsl(240 5.9% 90%);
+  --ring: hsl(206 100% 40%);
+  --chart-1: hsl(206 100% 40%);
+  --chart-2: hsl(122 45% 50%);
+  --chart-3: hsl(36 100% 50%);
+  --chart-4: hsl(15 100% 56%);
+  --chart-5: hsl(4 90% 58%);
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(0 0% 7%);
+  --sidebar-primary: hsl(206 100% 40%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(206 100% 40%);
+  --sidebar-border: hsl(240 5.9% 90%);
+  --sidebar-ring: hsl(206 100% 40%);
+  --font-sans: 'Roboto', sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: 'Roboto Mono', monospace;
+  --radius: 0.5rem;
+  --shadow-material: 0 2px 4px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.24);
+  --shadow-material-lg: 0 4px 8px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.24);
+}
+
+.dark {
+  --background: hsl(0 0% 0%);
+  --foreground: hsl(0 0% 91%);
+  --card: hsl(228 10% 10%);
+  --card-foreground: hsl(0 0% 85%);
+  --popover: hsl(0 0% 0%);
+  --popover-foreground: hsl(0 0% 91%);
+  --primary: hsl(206 100% 53%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(195 15% 95%);
+  --secondary-foreground: hsl(0 0% 7%);
+  --muted: hsl(0 0% 9%);
+  --muted-foreground: hsl(0 0% 46%);
+  --accent: hsl(205 70% 8%);
+  --accent-foreground: hsl(206 100% 53%);
+  --destructive: hsl(4 90% 58%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(210 5% 15%);
+  --input: hsl(207 28% 18%);
+  --ring: hsl(206 100% 40%);
+  --chart-1: hsl(206 100% 40%);
+  --chart-2: hsl(122 45% 50%);
+  --chart-3: hsl(36 100% 50%);
+  --chart-4: hsl(15 100% 56%);
+  --chart-5: hsl(4 90% 58%);
+  --sidebar: hsl(228 10% 10%);
+  --sidebar-foreground: hsl(0 0% 85%);
+  --sidebar-primary: hsl(206 100% 40%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(205 70% 8%);
+  --sidebar-accent-foreground: hsl(206 100% 53%);
+  --sidebar-border: hsl(205 16% 26%);
+  --sidebar-ring: hsl(206 100% 40%);
+  --font-sans: 'Roboto', sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: 'Roboto Mono', monospace;
+  --radius: 0.5rem;
+  --shadow-material: 0 2px 4px rgba(255,255,255,0.05), 0 2px 4px rgba(255,255,255,0.1);
+  --shadow-material-lg: 0 4px 8px rgba(255,255,255,0.05), 0 4px 8px rgba(255,255,255,0.1);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .shadow-material {
+    box-shadow: var(--shadow-material);
+  }
+  
+  .shadow-material-lg {
+    box-shadow: var(--shadow-material-lg);
+  }
+  
+  .text-primary {
+    color: var(--primary);
+  }
+  
+  .text-success {
+    color: var(--success);
+  }
+  
+  .text-warning {
+    color: var(--warning);
+  }
+  
+  .text-error {
+    color: var(--error);
+  }
+  
+  .bg-surface {
+    background-color: var(--card);
+  }
+  
+  .bg-background-alt {
+    background-color: var(--muted);
+  }
+}

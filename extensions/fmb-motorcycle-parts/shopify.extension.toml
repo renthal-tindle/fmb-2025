@@ -1,0 +1,11 @@
+# Learn more about configuring your extension at https://shopify.dev/docs/apps/app-extensions/configuration
+
+api_version = "2024-01"
+
+[[extensions]]
+name = "FMB Motorcycle Parts Extension"
+handle = "fmb-motorcycle-parts"
+type = "theme_app_extension"
+
+[extensions.development]
+root_url = "https://your-repl-name.replit.app"

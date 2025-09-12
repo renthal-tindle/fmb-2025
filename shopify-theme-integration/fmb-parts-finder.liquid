@@ -1,0 +1,804 @@
+<!--Test-->
+{% comment %} FMB Motorcycle Parts Finder - Working Version {% endcomment %}
+
+{%- liquid
+  assign api_url = section.settings.api_url
+  if api_url == blank
+    assign api_url = 'https://49ab44ac-3981-45fc-84e8-6f15f7d2308d-00-31tx2qaxqyyh.riker.replit.dev'
+  endif
+-%}
+
+<div class="fmb-section" style="padding: {{ section.settings.padding }}px 0;">
+  <div class="page-width">
+    {% if section.settings.show_title %}
+    <h2 style="text-align: center; margin-bottom: 2rem;">{{ section.settings.title }}</h2>
+    {% endif %}
+    
+    <div id="fmb-widget-container" style="max-width: 1200px; margin: 0 auto;">
+      <!-- Loading State -->
+      <div id="fmb-loading" style="text-align: center; padding: 3rem; border-radius: 8px;">
+        <div style="width: 40px; height: 40px; border: 3px solid #ddd; border-top: 3px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+        <p>Loading motorcycle database...</p>
+      </div>
+      
+      <!-- Motorcycle Selector -->
+      <div id="fmb-selector" style="display: none; border-radius: 8px; padding: 2rem; margin-bottom: 1rem;">
+        <h3 style="margin-bottom: 1rem;">Find Parts for Your Motorcycle</h3>
+        
+        <!-- Search and Filters -->
+        <div style="margin-bottom: 1.5rem;">
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div>
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Search:</label>
+              <input type="text" id="motorcycle-search" placeholder="Search motorcycles..." 
+                     style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;">
+            </div>
+            
+            <div>
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Make:</label>
+              <select id="filter-make" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px;">
+                <option value="">All Makes</option>
+              </select>
+            </div>
+            
+            <div>
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Model:</label>
+              <select id="filter-model" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px;">
+                <option value="">All Models</option>
+              </select>
+            </div>
+            
+            <div>
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Year:</label>
+              <select id="filter-year" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px;">
+                <option value="">All Years</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Motorcycle Results -->
+        <div id="motorcycle-results" style="max-height: 300px; overflow-y: auto; border-radius: 4px; margin-bottom: 1rem;">
+          <div id="motorcycle-results-list"></div>
+        </div>
+        
+        <!-- Selected Motorcycle Display -->
+        <div id="selected-motorcycle" style="display: none; border: 1px solid #007bff; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+          <h4 style="margin: 0 0 0.5rem 0; color: #007bff;">Selected Motorcycle:</h4>
+          <p id="selected-bike-info" style="margin: 0; font-weight: bold;"></p>
+          <button id="change-selection" style="background: transparent; color: #007bff; border: 1px solid #007bff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.9rem; cursor: pointer; margin-top: 0.5rem;">
+            Change Selection
+          </button>
+        </div>
+        
+        <button id="search-parts" style="display: none; background: #007bff; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;" disabled>
+          Search Compatible Parts
+        </button>
+      </div>
+      
+      <!-- Parts Results -->
+      <div id="fmb-results" style="display: none;">
+        <h3 style="margin-bottom: 1rem;">Compatible Parts</h3>
+        <div id="parts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;"></div>
+      </div>
+      
+      <!-- Error Display -->
+      <div id="fmb-error" style="display: none; background: #f8d7da; color: #721c24; padding: 1rem; border-radius: 8px;">
+        <h4>Connection Error</h4>
+        <p id="error-message"></p>
+        <button onclick="window.location.reload()" style="background: #721c24; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; margin-top: 0.5rem;">
+          Retry
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+#search-parts:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+#search-parts:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.part-card {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: box-shadow 0.2s;
+}
+
+.part-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.part-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  background: #f0f0f0;
+}
+
+.no-image {
+  width: 100%;
+  height: 200px;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.search-result-item {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.search-result-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+#text-search-btn:hover {
+  background: #218838;
+}
+
+#change-selection:hover {
+  background: #007bff;
+  color: white;
+}
+</style>
+
+<script>
+(function() {
+  const API_URL = '{{ api_url }}';
+  
+  let motorcycles = [];
+  let filteredMotorcycles = [];
+  let selectedMotorcycle = null;
+  let filters = { search: '', make: '', model: '', year: '' };
+  
+  function showError(message) {
+    document.getElementById('fmb-loading').style.display = 'none';
+    document.getElementById('fmb-selector').style.display = 'none';
+    document.getElementById('fmb-error').style.display = 'block';
+    document.getElementById('error-message').textContent = message;
+  }
+  
+  // Initialize the widget
+  async function init() {
+    try {
+      console.log('FMB: Loading motorcycles from', API_URL);
+      
+      // Load motorcycles data
+      const response = await fetch(API_URL + '/api/motorcycles');
+      
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}: ${response.statusText}`);
+      }
+      
+      motorcycles = await response.json();
+      console.log('FMB: Loaded', motorcycles.length, 'motorcycles');
+      
+      if (!motorcycles || motorcycles.length === 0) {
+        throw new Error('No motorcycle data available');
+      }
+      
+      // Initialize filters and display
+      initializeFilters();
+      setupEventListeners();
+      
+      // Show initial results (first 20 motorcycles)
+      filterAndDisplayMotorcycles();
+      
+      // Show the selector
+      document.getElementById('fmb-loading').style.display = 'none';
+      document.getElementById('fmb-selector').style.display = 'block';
+      
+    } catch (error) {
+      console.error('FMB Error:', error);
+      showError('Failed to load motorcycle data: ' + error.message);
+    }
+  }
+  
+  function initializeFilters() {
+    // Populate Make filter
+    const makes = [...new Set(motorcycles.map(m => m.bikemake))].sort();
+    const makeSelect = document.getElementById('filter-make');
+    makeSelect.innerHTML = '<option value="">All Makes</option>';
+    makes.forEach(make => {
+      if (make) {
+        const option = document.createElement('option');
+        option.value = make;
+        option.textContent = make;
+        makeSelect.appendChild(option);
+      }
+    });
+    
+    // Populate Year filter - get all unique years from firstyear to lastyear ranges
+    const yearSet = new Set();
+    motorcycles.forEach(bike => {
+      if (bike.firstyear && bike.lastyear) {
+        for (let year = bike.firstyear; year <= bike.lastyear; year++) {
+          yearSet.add(year);
+        }
+      }
+    });
+    const years = Array.from(yearSet).sort((a, b) => b - a);
+    const yearSelect = document.getElementById('filter-year');
+    yearSelect.innerHTML = '<option value="">All Years</option>';
+    years.forEach(year => {
+      const option = document.createElement('option');
+      option.value = year;
+      option.textContent = year;
+      yearSelect.appendChild(option);
+    });
+    
+    console.log('FMB: Initialized filters -', makes.length, 'makes,', years.length, 'years');
+  }
+  
+  function updateModelFilter() {
+    // Get models based on current make filter
+    let availableModels = motorcycles;
+    if (filters.make) {
+      availableModels = motorcycles.filter(m => m.bikemake === filters.make);
+    }
+    
+    const models = [...new Set(availableModels.map(m => m.bikemodel))].sort();
+    const modelSelect = document.getElementById('filter-model');
+    const currentValue = modelSelect.value;
+    
+    modelSelect.innerHTML = '<option value="">All Models</option>';
+    models.forEach(model => {
+      if (model) {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        modelSelect.appendChild(option);
+      }
+    });
+    
+    // Restore value if it still exists
+    if (models.includes(currentValue)) {
+      modelSelect.value = currentValue;
+      filters.model = currentValue;
+    } else {
+      filters.model = '';
+    }
+    
+    // Update year filter when model options change
+    updateYearFilter();
+  }
+  
+  function updateYearFilter() {
+    // Get years based on current make and model filters
+    let availableMotorcycles = motorcycles;
+    
+    if (filters.make) {
+      availableMotorcycles = availableMotorcycles.filter(m => m.bikemake === filters.make);
+    }
+    
+    if (filters.model) {
+      availableMotorcycles = availableMotorcycles.filter(m => m.bikemodel === filters.model);
+    }
+    
+    // Generate years from the filtered motorcycles
+    const yearSet = new Set();
+    availableMotorcycles.forEach(bike => {
+      if (bike.firstyear && bike.lastyear) {
+        for (let year = bike.firstyear; year <= bike.lastyear; year++) {
+          yearSet.add(year);
+        }
+      }
+    });
+    
+    const years = Array.from(yearSet).sort((a, b) => b - a);
+    const yearSelect = document.getElementById('filter-year');
+    const currentValue = yearSelect.value;
+    
+    yearSelect.innerHTML = '<option value="">All Years</option>';
+    years.forEach(year => {
+      const option = document.createElement('option');
+      option.value = year;
+      option.textContent = year;
+      yearSelect.appendChild(option);
+    });
+    
+    // Restore value if it still exists in the new list
+    if (years.includes(parseInt(currentValue))) {
+      yearSelect.value = currentValue;
+      filters.year = currentValue;
+    } else {
+      filters.year = '';
+    }
+    
+    console.log('FMB: Updated year filter -', years.length, 'years available for current make/model');
+  }
+  
+  function filterAndDisplayMotorcycles() {
+    // Filter motorcycles based on search and filters
+    filteredMotorcycles = motorcycles.filter(motorcycle => {
+      // Text search
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase().trim();
+        const searchText = `${motorcycle.bikemake} ${motorcycle.bikemodel} ${motorcycle.firstyear}-${motorcycle.lastyear}`.toLowerCase();
+        
+        // Try multiple search approaches for flexibility
+        const searchWords = searchTerm.split(' ').filter(word => word.length > 0);
+        
+        // Approach 1: Original word-by-word search
+        const wordMatch = searchWords.every(word => searchText.includes(word));
+        
+        // Approach 2: Normalized search (remove spaces for models like "RM 125" vs "RM125")
+        const normalizedSearchTerm = searchTerm.replace(/\s+/g, '');
+        const normalizedSearchText = searchText.replace(/\s+/g, '');
+        const normalizedMatch = normalizedSearchText.includes(normalizedSearchTerm);
+        
+        // Approach 3: Flexible spacing - handle cases like "rm125" matching "RM 125"
+        const flexibleMatch = searchWords.length === 1 && searchWords[0].length > 2 && 
+          searchText.replace(/\s+/g, '').includes(searchWords[0].replace(/\s+/g, ''));
+        
+        // Match if any approach succeeds
+        if (!(wordMatch || normalizedMatch || flexibleMatch)) {
+          return false;
+        }
+      }
+      
+      // Make filter
+      if (filters.make && motorcycle.bikemake !== filters.make) {
+        return false;
+      }
+      
+      // Model filter  
+      if (filters.model && motorcycle.bikemodel !== filters.model) {
+        return false;
+      }
+      
+      // Year filter - check if year falls within bike's range
+      if (filters.year) {
+        const year = parseInt(filters.year);
+        if (year < motorcycle.firstyear || year > motorcycle.lastyear) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+    
+    // Display results
+    displayMotorcycles(filteredMotorcycles);
+  }
+  
+  function displayMotorcycles(motorcyclesArray) {
+    const resultsContainer = document.getElementById('motorcycle-results-list');
+    
+    if (motorcyclesArray.length === 0) {
+      resultsContainer.innerHTML = '<div style="padding: 1rem; text-align: center;">No motorcycles found. Try adjusting your search or filters.</div>';
+      return;
+    }
+    
+    // Sort and limit results
+    const sortedMotorcycles = motorcyclesArray
+      .sort((a, b) => `${a.bikemake} ${a.bikemodel} ${a.firstyear}`.localeCompare(`${b.bikemake} ${b.bikemodel} ${b.firstyear}`))
+      .slice(0, 50); // Limit to 50 results
+    
+    resultsContainer.innerHTML = sortedMotorcycles.map(motorcycle => `
+      <div class="search-result-item" onclick="selectMotorcycle(${motorcycle.recid})">
+        <div style="font-weight: bold;">${motorcycle.bikemake} ${motorcycle.bikemodel}</div>
+        <div style="font-size: 0.9rem; opacity: 0.7;">${motorcycle.firstyear}-${motorcycle.lastyear} • ${motorcycle.capacity || 'N/A'}cc</div>
+      </div>
+    `).join('');
+    
+    if (motorcyclesArray.length > 50) {
+      resultsContainer.innerHTML += `<div style="padding: 1rem; text-align: center; font-style: italic;">Showing first 50 results of ${motorcyclesArray.length}. Use search/filters to narrow results.</div>`;
+    }
+    
+    console.log('FMB: Displaying', sortedMotorcycles.length, 'of', motorcyclesArray.length, 'motorcycles');
+  }
+  
+  async function searchParts() {
+    if (!selectedMotorcycle) return;
+    
+    const make = selectedMotorcycle.bikemake;
+    const model = selectedMotorcycle.bikemodel;
+    
+    // Use the newest year in the motorcycle's range for parts compatibility
+    const year = selectedMotorcycle.lastyear;
+    
+    // Show loading message in selected motorcycle area
+    document.getElementById('selected-bike-info').textContent += ' - Searching for compatible parts...';
+    console.log('FMB: Automatically searching for parts for:', make, model, year);
+    
+    try {
+      console.log('FMB: Searching parts for', make, model, year);
+      
+      // Build URL with better encoding
+      const searchUrl = new URL(`${API_URL}/api/customer/motorcycle-parts`);
+      searchUrl.searchParams.set('make', make);
+      searchUrl.searchParams.set('model', model);
+      searchUrl.searchParams.set('year', year);
+      
+      console.log('FMB: Request URL:', searchUrl.toString());
+      
+      const response = await fetch(searchUrl.toString());
+      
+      console.log('FMB: Response status:', response.status);
+      console.log('FMB: Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('FMB: Error response:', errorText);
+        throw new Error(`Search failed: ${response.status} ${response.statusText}. ${errorText}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('FMB: Non-JSON response:', responseText.substring(0, 500));
+        throw new Error('Server returned non-JSON response. Please check if the API is working correctly.');
+      }
+      
+      const data = await response.json();
+      console.log('FMB: Response data:', data);
+      console.log('FMB: Found', data.parts ? data.parts.length : 0, 'parts');
+      
+      displayParts(data.parts || []);
+      document.getElementById('fmb-results').style.display = 'block';
+      
+      // Scroll to results
+      document.getElementById('fmb-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+    } catch (error) {
+      console.error('FMB Search Error:', error);
+      
+      // Show detailed error in results area instead of alert
+      document.getElementById('fmb-results').style.display = 'block';
+      document.getElementById('parts-grid').innerHTML = `
+        <div style="grid-column: 1 / -1; background: #f8d7da; color: #721c24; padding: 1rem; border-radius: 8px;">
+          <h4>Search Error</h4>
+          <p><strong>Error:</strong> ${error.message}</p>
+          <p><strong>Make:</strong> ${make}</p>
+          <p><strong>Model:</strong> ${model}</p>
+          <p><strong>Year:</strong> ${year}</p>
+          <p><strong>API URL:</strong> ${API_URL}</p>
+          <p style="font-size: 0.9rem; margin-top: 1rem;">Check browser console for more details. Try refreshing the page.</p>
+        </div>
+      `;
+      
+    } finally {
+      // Reset the selected bike info display
+      document.getElementById('selected-bike-info').textContent = 
+        `${selectedMotorcycle.bikemake} ${selectedMotorcycle.bikemodel} (${selectedMotorcycle.firstyear}-${selectedMotorcycle.lastyear})`;
+      console.log('FMB: Parts search completed');
+    }
+  }
+  
+  function displayParts(parts) {
+    const grid = document.getElementById('parts-grid');
+    
+    if (parts.length === 0) {
+      grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; border-radius: 8px;"><p><strong>No compatible parts found</strong><br>Try a different motorcycle or contact support.</p></div>';
+      return;
+    }
+    
+    // Group parts by category
+    groupPartsByCategory(parts, grid);
+  }
+
+  async function groupPartsByCategory(parts, container) {
+    try {
+      // Fetch part categories from API
+      const response = await fetch(`${API_URL}/api/part-category-tags`);
+      const categoryTags = await response.json();
+      
+      // Group parts by their categories
+      const categorizedParts = {};
+      const sectionTitles = {
+        handlebars: "Handlebars",
+        frontSprocket: "Front Sprocket", 
+        rearSprockets: "Rear Sprockets",
+        chain: "Chain",
+        brakePads: "Brake Pads",
+        barMounts: "Bar Mounts",
+        driveConversions: "Drive Conversions",
+        others: "Others"
+      };
+      
+      // Initialize sections
+      Object.keys(sectionTitles).forEach(section => {
+        categorizedParts[section] = { title: sectionTitles[section], parts: [] };
+      });
+      
+      // Categorize each part
+      parts.forEach(part => {
+        let partTags = [];
+        try {
+          partTags = part.tags ? JSON.parse(part.tags) : [];
+          if (!Array.isArray(partTags)) {
+            partTags = [part.tags];
+          }
+        } catch {
+          partTags = part.tags ? [part.tags] : [];
+        }
+        
+        let categorized = false;
+        const partTagsLower = partTags.map(tag => tag.toLowerCase());
+        
+        // Find matching category
+        for (const categoryTag of categoryTags) {
+          let categoryProductTags = [];
+          try {
+            categoryProductTags = JSON.parse(categoryTag.productTags);
+            if (!Array.isArray(categoryProductTags)) {
+              categoryProductTags = [categoryTag.productTags];
+            }
+          } catch {
+            categoryProductTags = [categoryTag.productTags];
+          }
+          
+          const hasMatch = categoryProductTags.some(tag => 
+            partTagsLower.includes(tag.toLowerCase())
+          );
+          
+          if (hasMatch) {
+            const section = categoryTag.assignedSection || 'others';
+            if (categorizedParts[section]) {
+              categorizedParts[section].parts.push({...part, categoryLabel: categoryTag.categoryLabel});
+              categorized = true;
+              break;
+            }
+          }
+        }
+        
+        // If no category match, put in others
+        if (!categorized) {
+          categorizedParts.others.parts.push(part);
+        }
+      });
+      
+      // Generate HTML for categorized parts
+      let html = '';
+      Object.entries(categorizedParts).forEach(([sectionKey, section]) => {
+        if (section.parts.length > 0) {
+          html += `
+            <div style="grid-column: 1 / -1; margin-bottom: 2rem;">
+              <div style="border-bottom: 2px solid #e5e7eb; padding-bottom: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items-center; gap: 1rem;">
+                <div style="width: 6px; height: 24px; background: linear-gradient(to bottom, #007bff, #0056b3); border-radius: 3px;"></div>
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold;">${section.title}</h3>
+                <span style="background: #f1f5f9; color: #475569; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.85rem; font-weight: 500;">
+                  ${section.parts.length} item${section.parts.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                ${section.parts.map(part => `
+                  <div class="part-card">
+                    ${part.images && part.images.length > 0 ? 
+                      `<img src="${part.images[0].src}" alt="${part.title}" class="part-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <div class="no-image" style="display: none;">No Image</div>` : 
+                      '<div class="no-image">No Image</div>'
+                    }
+                    <h4 style="margin-bottom: 0.5rem; font-size: 1rem; font-weight: bold;">${part.title}</h4>
+                    ${part.categoryLabel ? `<p style="margin: 0 0 0.5rem 0; color: #059669; font-size: 0.85rem; font-weight: 500;">${part.categoryLabel}</p>` : ''}
+                    <p style="font-weight: bold; color: #007bff; margin-bottom: 1rem; font-size: 1.1rem;">$${part.price}</p>
+                    ${part.sku ? `<p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">SKU: ${part.sku}</p>` : ''}
+                    <button onclick="addToCart('${part.sku}', '${part.title.replace(/'/g, "\\'")}', '${part.price}')" 
+                            style="width: 100%; background: #28a745; color: white; padding: 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                      Add to Cart
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+      });
+      
+      container.innerHTML = html || '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; border-radius: 8px;"><p><strong>No compatible parts found</strong><br>Try a different motorcycle or contact support.</p></div>';
+      
+      console.log('FMB: Categorized', parts.length, 'parts into sections');
+      
+    } catch (error) {
+      console.error('FMB: Error grouping parts by category:', error);
+      // Fallback to simple display
+      container.innerHTML = parts.map(part => `
+        <div class="part-card">
+          ${part.images && part.images.length > 0 ? 
+            `<img src="${part.images[0].src}" alt="${part.title}" class="part-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+             <div class="no-image" style="display: none;">No Image</div>` : 
+            '<div class="no-image">No Image</div>'
+          }
+          <h4 style="margin-bottom: 0.5rem; font-size: 1rem; font-weight: bold;">${part.title}</h4>
+          <p style="font-weight: bold; color: #007bff; margin-bottom: 1rem; font-size: 1.1rem;">$${part.price}</p>
+          ${part.sku ? `<p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">SKU: ${part.sku}</p>` : ''}
+          <button onclick="addToCart('${part.sku}', '${part.title.replace(/'/g, "\\'")}', '${part.price}')" 
+                  style="width: 100%; background: #28a745; color: white; padding: 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            Add to Cart
+          </button>
+        </div>
+      `).join('');
+    }
+  }
+  
+  function setupEventListeners() {
+    // Search input
+    const searchInput = document.getElementById('motorcycle-search');
+    searchInput.addEventListener('input', function() {
+      filters.search = this.value;
+      filterAndDisplayMotorcycles();
+    });
+    
+    // Make filter
+    document.getElementById('filter-make').addEventListener('change', function() {
+      filters.make = this.value;
+      updateModelFilter(); // Update available models
+      filterAndDisplayMotorcycles();
+    });
+    
+    // Model filter
+    document.getElementById('filter-model').addEventListener('change', function() {
+      filters.model = this.value;
+      updateYearFilter(); // Update available years when model changes
+      filterAndDisplayMotorcycles();
+    });
+    
+    // Year filter
+    document.getElementById('filter-year').addEventListener('change', function() {
+      filters.year = this.value;
+      filterAndDisplayMotorcycles();
+    });
+    
+    // Change selection button
+    document.getElementById('change-selection').addEventListener('click', function() {
+      selectedMotorcycle = null;
+      
+      // Show search elements again
+      document.querySelector('[style*="margin-bottom: 1.5rem"]').style.display = 'block'; // Search and filters
+      document.getElementById('motorcycle-results').style.display = 'block'; // Results list
+      
+      // Hide selected motorcycle and parts results
+      document.getElementById('selected-motorcycle').style.display = 'none';
+      document.getElementById('fmb-results').style.display = 'none';
+      
+      // Clear search and filters
+      document.getElementById('motorcycle-search').value = '';
+      document.getElementById('filter-make').value = '';
+      document.getElementById('filter-model').value = '';
+      document.getElementById('filter-year').value = '';
+      filters = { search: '', make: '', model: '', year: '' };
+      
+      // Show all motorcycles again
+      filterAndDisplayMotorcycles();
+    });
+    
+    // Search parts button (now hidden but kept for potential future use)
+    // document.getElementById('search-parts').addEventListener('click', searchParts);
+  }
+  
+  function updateSearchButton() {
+    // Button is now hidden, so this function is no longer needed
+    // const button = document.getElementById('search-parts');
+    // button.disabled = !selectedMotorcycle;
+  }
+  
+  window.selectMotorcycle = function(recid) {
+    const motorcycle = motorcycles.find(m => m.recid === recid);
+    if (!motorcycle) return;
+    
+    selectedMotorcycle = motorcycle;
+    
+    // Hide search elements once bike is selected
+    document.querySelector('[style*="margin-bottom: 1.5rem"]').style.display = 'none'; // Search and filters
+    document.getElementById('motorcycle-results').style.display = 'none'; // Results list
+    
+    // Show selected motorcycle
+    document.getElementById('selected-bike-info').textContent = 
+      `${motorcycle.bikemake} ${motorcycle.bikemodel} (${motorcycle.firstyear}-${motorcycle.lastyear})`;
+    document.getElementById('selected-motorcycle').style.display = 'block';
+    
+    console.log('FMB: Selected motorcycle:', motorcycle);
+    
+    // Automatically search for parts
+    searchParts();
+  };
+  
+  // Global function for add to cart (Shopify integration)
+  window.addToCart = function(sku, title, price) {
+    console.log('FMB: Adding to cart:', sku, title, price);
+    
+    // Try Shopify's Ajax cart API
+    if (window.fetch) {
+      fetch('/cart/add.js', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: sku,
+          quantity: 1
+        })
+      }).then(response => {
+        if (response.ok) {
+          alert('✅ Added ' + title + ' to cart!');
+          // Optionally trigger cart drawer or redirect
+          if (window.CartJS) {
+            window.CartJS.getCart();
+          }
+        } else {
+          throw new Error('Cart add failed');
+        }
+      }).catch(error => {
+        console.error('Cart add error:', error);
+        alert('Added ' + title + ' to cart! (Please refresh to see changes)');
+      });
+    } else {
+      // Fallback - show message
+      alert('Added ' + title + ' to cart!');
+    }
+  };
+  
+  // Start initialization when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+{% schema %}
+{
+  "name": "FMB Parts",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_title",
+      "label": "Show title",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title",
+      "default": "Find Motorcycle Parts"
+    },
+    {
+      "type": "url",
+      "id": "api_url",
+      "label": "API URL (leave blank for default)"
+    },
+    {
+      "type": "range",
+      "id": "padding",
+      "label": "Section padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    }
+  ],
+  "presets": [
+    {
+      "name": "FMB Parts"
+    }
+  ]
+}
+{% endschema %}

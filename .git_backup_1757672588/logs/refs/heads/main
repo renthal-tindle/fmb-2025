@@ -1,0 +1,14 @@
+0000000000000000000000000000000000000000 635748e3511d0daa0d54fc13c8c6fa04ff5e6592 renthal-tindle <iantindle@renthal.com> 1757492636 +0000	branch: Created from origin/main
+635748e3511d0daa0d54fc13c8c6fa04ff5e6592 028b66d1ae5b048c9163f5f9701789d5efb3a116 tindle <38669377-tindle@users.noreply.replit.com> 1757492728 +0000	commit: Track progress on migrating Replit agent to Replit environment
+028b66d1ae5b048c9163f5f9701789d5efb3a116 b7d9c0e902d5b35b44a1d9c9f3a668a2eee5127a tindle <38669377-tindle@users.noreply.replit.com> 1757494646 +0000	commit: Start migrating import process for Replit environment
+b7d9c0e902d5b35b44a1d9c9f3a668a2eee5127a cf0d7a0210c2aac249b57eac439be31c33aeb3cd tindle <38669377-tindle@users.noreply.replit.com> 1757494694 +0000	commit: Update progress tracking for Replit agent import
+cf0d7a0210c2aac249b57eac439be31c33aeb3cd 2d9a7a37816720b92c8e598ebb4d1465a403385b tindle <38669377-tindle@users.noreply.replit.com> 1757596786 +0000	commit: Remove local database fallback for product retrieval
+2d9a7a37816720b92c8e598ebb4d1465a403385b 0ad68607d62ef2d96ca5be02b6e4667c8aceb41d tindle <38669377-tindle@users.noreply.replit.com> 1757597149 +0000	commit: Add ability to view all available windows within the application
+0ad68607d62ef2d96ca5be02b6e4667c8aceb41d 3378c52b02e3409282d490252cfb38ceb7664d2a tindle <38669377-tindle@users.noreply.replit.com> 1757597642 +0000	commit: Fix error that prevents preview from displaying correctly
+3378c52b02e3409282d490252cfb38ceb7664d2a fd7f9b18145d26d155400d4dc2f065869da2ac5f tindle <38669377-tindle@users.noreply.replit.com> 1757597679 +0000	commit: Update the website's appearance and layout for a better user experience
+fd7f9b18145d26d155400d4dc2f065869da2ac5f 102d6d2b5502edffa5146ff389a98935c5b21cf8 tindle <38669377-tindle@users.noreply.replit.com> 1757597757 +0000	commit: Add new functionality to view user profiles
+102d6d2b5502edffa5146ff389a98935c5b21cf8 241fb48af8beb9ebe7e282824ebb5a3d8c9a5519 tindle <38669377-tindle@users.noreply.replit.com> 1757597918 +0000	commit: Add preview functionality to display apps in the store
+241fb48af8beb9ebe7e282824ebb5a3d8c9a5519 a64344cba367b515293fc751b3e3d67ee48ccec4 tindle <38669377-tindle@users.noreply.replit.com> 1757598368 +0000	commit: Remove debugging output from various parts of the application
+a64344cba367b515293fc751b3e3d67ee48ccec4 27e30d2c70f38478733dcbfa36e4667d308e5aba tindle <38669377-tindle@users.noreply.replit.com> 1757598741 +0000	commit: Remove the dark blue developer tools window from the user interface
+27e30d2c70f38478733dcbfa36e4667d308e5aba dbf4ba52626e74d6cd8c10d15a5560a09c983a12 tindle <38669377-tindle@users.noreply.replit.com> 1757671814 +0000	commit: Improve UI by adding a new button component
+dbf4ba52626e74d6cd8c10d15a5560a09c983a12 bd9bdf05e5c514c6f31d4367afb68bed74dd638c tindle <38669377-tindle@users.noreply.replit.com> 1757672173 +0000	commit: Update user profile component to correctly display user data

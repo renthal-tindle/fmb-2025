@@ -1,0 +1,292 @@
+{% comment %}
+  Motorcycle Parts Finder App Block
+  
+  This block can be added to any page via the Shopify theme customizer.
+  It provides customers with a motorcycle part compatibility finder.
+{% endcomment %}
+
+{%- liquid
+  assign block_id = block.id
+  assign api_base_url = block.settings.api_base_url | default: 'https://your-app-domain.replit.app'
+  assign compact_mode = block.settings.compact_mode | default: false
+  assign max_results = block.settings.max_results | default: 12
+  assign theme_style = block.settings.theme_style | default: 'light'
+  assign widget_title = block.settings.widget_title | default: 'Find Compatible Parts'
+  assign show_header = block.settings.show_header | default: true
+-%}
+
+<div class="motorcycle-parts-finder-block" id="motorcycle-parts-finder-{{ block_id }}" {{ block.shopify_attributes }}>
+  {% if show_header %}
+    <div class="motorcycle-parts-finder-header">
+      {% if widget_title != blank %}
+        <h2 class="motorcycle-parts-finder-title">{{ widget_title }}</h2>
+      {% endif %}
+      {% if block.settings.widget_description != blank %}
+        <p class="motorcycle-parts-finder-description">{{ block.settings.widget_description }}</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="motorcycle-parts-finder-content">
+    <div id="motorcycle-widget-{{ block_id }}" class="motorcycle-widget-container">
+      <!-- Widget will be loaded here via JavaScript -->
+      <div class="motorcycle-widget-loading">
+        <div class="loading-spinner"></div>
+        <p>Loading motorcycle parts finder...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .motorcycle-parts-finder-block {
+    margin: 2rem 0;
+    padding: 0;
+  }
+
+  .motorcycle-parts-finder-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .motorcycle-parts-finder-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: {{ settings.colors_text | default: '#000000' }};
+  }
+
+  .motorcycle-parts-finder-description {
+    font-size: 1rem;
+    color: {{ settings.colors_text | default: '#666666' }};
+    margin-bottom: 0;
+  }
+
+  .motorcycle-widget-container {
+    width: 100%;
+    min-height: {% if compact_mode %}200px{% else %}400px{% endif %};
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .motorcycle-widget-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    color: #6c757d;
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Responsive styles */
+  @media (max-width: 768px) {
+    .motorcycle-parts-finder-block {
+      margin: 1rem 0;
+    }
+    
+    .motorcycle-parts-finder-title {
+      font-size: 1.25rem;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const blockId = '{{ block_id }}';
+    const containerId = 'motorcycle-widget-' + blockId;
+    const container = document.getElementById(containerId);
+    
+    if (!container) return;
+
+    const config = {
+      apiBaseUrl: '{{ api_base_url }}',
+      compact: {{ compact_mode }},
+      maxResults: {{ max_results }},
+      theme: '{{ theme_style }}',
+      shopDomain: window.Shopify?.shop || '{{ shop.permanent_domain }}'
+    };
+
+    // Create iframe for the motorcycle parts widget
+    const iframe = document.createElement('iframe');
+    const params = new URLSearchParams({
+      compact: config.compact,
+      maxResults: config.maxResults,
+      theme: config.theme,
+      shopDomain: config.shopDomain
+    });
+
+    iframe.src = config.apiBaseUrl + '/shopify-widget?' + params.toString();
+    iframe.style.width = '100%';
+    iframe.style.height = config.compact ? '400px' : '600px';
+    iframe.style.border = 'none';
+    iframe.style.borderRadius = '8px';
+    iframe.setAttribute('loading', 'lazy');
+    iframe.setAttribute('title', 'Motorcycle Parts Finder');
+
+    // Handle iframe loading
+    iframe.onload = function() {
+      container.innerHTML = '';
+      container.appendChild(iframe);
+    };
+
+    iframe.onerror = function() {
+      container.innerHTML = `
+        <div class="motorcycle-widget-error">
+          <p>Unable to load motorcycle parts finder. Please try again later.</p>
+        </div>
+      `;
+    };
+
+    // Listen for messages from the widget iframe
+    window.addEventListener('message', function(event) {
+      if (event.origin !== config.apiBaseUrl) return;
+      
+      if (event.data.type === 'motorcycle-widget-ready') {
+        console.log('Motorcycle widget ready', event.data);
+      }
+      
+      if (event.data.type === 'cart-item-added') {
+        // Refresh Shopify cart when item is added
+        if (window.Shopify && window.Shopify.onItemAdded) {
+          window.Shopify.onItemAdded();
+        }
+        
+        // Trigger cart drawer refresh if available
+        if (window.theme && window.theme.cartDrawer && window.theme.cartDrawer.refresh) {
+          window.theme.cartDrawer.refresh();
+        }
+        
+        // Dispatch custom event for other integrations
+        window.dispatchEvent(new CustomEvent('cart:item-added', {
+          detail: event.data.data
+        }));
+      }
+    });
+
+    // Start loading the widget
+    container.appendChild(iframe);
+  });
+</script>
+
+{% schema %}
+{
+  "name": "FMB-REPLIT-V2",
+  "target": "section",
+  "stylesheet": "motorcycle-parts-finder.css",
+  "javascript": "motorcycle-parts-finder.js",
+  "settings": [
+    {
+      "type": "text",
+      "id": "widget_title",
+      "label": "Widget Title",
+      "default": "Find Compatible Parts"
+    },
+    {
+      "type": "textarea",
+      "id": "widget_description",
+      "label": "Widget Description",
+      "default": "Select your motorcycle to see compatible parts"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_header",
+      "label": "Show Header",
+      "default": true
+    },
+    {
+      "type": "url",
+      "id": "api_base_url",
+      "label": "API Base URL",
+      "info": "The URL where your motorcycle parts service is hosted",
+      "default": "https://your-app-domain.replit.app"
+    },
+    {
+      "type": "checkbox",
+      "id": "compact_mode",
+      "label": "Compact Mode",
+      "info": "Show widget in compact mode initially",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "max_results",
+      "label": "Maximum Parts to Show",
+      "min": 6,
+      "max": 24,
+      "step": 6,
+      "default": 12
+    },
+    {
+      "type": "select",
+      "id": "theme_style",
+      "label": "Theme Style",
+      "options": [
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "dark",
+          "label": "Dark"
+        }
+      ],
+      "default": "light"
+    },
+    {
+      "type": "header",
+      "content": "Appearance"
+    },
+    {
+      "type": "range",
+      "id": "margin_top",
+      "label": "Top Margin",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom", 
+      "label": "Bottom Margin",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    }
+  ],
+  "presets": [
+    {
+      "name": "Motorcycle Parts Finder",
+      "settings": {
+        "widget_title": "Find Compatible Parts",
+        "widget_description": "Select your motorcycle to see compatible parts",
+        "show_header": true,
+        "compact_mode": false,
+        "max_results": 12,
+        "theme_style": "light"
+      }
+    }
+  ]
+}
+{% endschema %}
