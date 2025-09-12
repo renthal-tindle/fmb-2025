@@ -34,7 +34,11 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
   const queryClient = useQueryClient();
 
   const form = useForm<InsertMotorcycle>({
-    resolver: zodResolver(insertMotorcycleSchema),
+    resolver: zodResolver(
+      motorcycle 
+        ? insertMotorcycleSchema  // For updates, require all fields including recid
+        : insertMotorcycleSchema.omit({ recid: true })  // For creates, omit recid requirement
+    ),
     defaultValues: {
       recid: motorcycle?.recid || undefined,
       biketype: motorcycle?.biketype || 1,
@@ -88,8 +92,6 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
   });
 
   const onSubmit = (data: InsertMotorcycle) => {
-    console.log("Form submitted with data:", data);
-    console.log("Form errors:", form.formState.errors);
     if (motorcycle) {
       updateMotorcycleMutation.mutate(data);
     } else {
@@ -109,11 +111,7 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={(e) => {
-            console.log("Form onSubmit event triggered");
-            e.preventDefault();
-            form.handleSubmit(onSubmit)(e);
-          }} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="bikemake"
@@ -253,12 +251,6 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
                 type="submit" 
                 disabled={isLoading}
                 data-testid="button-save-motorcycle"
-                onClick={(e) => {
-                  console.log("Submit button clicked!");
-                  console.log("Form valid:", form.formState.isValid);
-                  console.log("Form errors:", form.formState.errors);
-                  console.log("Form values:", form.getValues());
-                }}
               >
                 {isLoading ? "Saving..." : motorcycle ? "Update" : "Create"}
               </Button>
