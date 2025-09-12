@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { eq, like, ilike, and, or, gte, lte, sql } from "drizzle-orm";
 import {
   motorcycles,
@@ -26,7 +26,11 @@ import {
 } from "@shared/schema";
 import { IStorage } from "./storage";
 
-const sqlConnection = neon(process.env.DATABASE_URL!);
+const sqlConnection = postgres(process.env.DATABASE_URL!, {
+  prepare: false,
+  max: 10,
+  connect_timeout: 30,
+});
 const db = drizzle(sqlConnection);
 
 export class DatabaseStorage implements IStorage {
@@ -55,7 +59,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMotorcycle(recid: number): Promise<boolean> {
     const result = await db.delete(motorcycles).where(eq(motorcycles.recid, recid));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   async searchMotorcycles(query: string): Promise<Motorcycle[]> {
@@ -249,7 +253,7 @@ export class DatabaseStorage implements IStorage {
 
   async deletePartMapping(id: string): Promise<boolean> {
     const result = await db.delete(partMappings).where(eq(partMappings.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // Compatible Parts
@@ -263,6 +267,8 @@ export class DatabaseStorage implements IStorage {
         sku: shopifyProducts.sku,
         imageUrl: shopifyProducts.imageUrl,
         category: shopifyProducts.category,
+        tags: shopifyProducts.tags,
+        variants: shopifyProducts.variants,
       })
       .from(partMappings)
       .innerJoin(shopifyProducts, eq(partMappings.shopifyProductId, shopifyProducts.id))
@@ -322,7 +328,7 @@ export class DatabaseStorage implements IStorage {
 
   async deletePartCategoryTag(categoryValue: string): Promise<boolean> {
     const result = await db.delete(partCategoryTags).where(eq(partCategoryTags.categoryValue, categoryValue));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // Shopify Sessions
@@ -374,7 +380,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteShopifySession(id: string): Promise<boolean> {
     const result = await db.delete(shopifySessions).where(eq(shopifySessions.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   async getAllShopifySessions(): Promise<any[]> {
