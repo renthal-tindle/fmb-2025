@@ -1483,6 +1483,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to check Shopify authentication status
+  app.get("/api/debug/shopify-status", async (req, res) => {
+    try {
+      const sessions = Array.from(sessionStorage.values());
+      const activeSession = sessions.find((session: any) => session?.accessToken);
+      
+      res.json({
+        hasGlobalToken: !!global.LATEST_SHOPIFY_ACCESS_TOKEN,
+        globalTokenLength: global.LATEST_SHOPIFY_ACCESS_TOKEN?.length || 0,
+        activeSessions: sessions.length,
+        hasActiveSession: !!activeSession,
+        sessionShop: activeSession?.shop || null,
+        needsReauth: !activeSession && !global.LATEST_SHOPIFY_ACCESS_TOKEN
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check status" });
+    }
+  });
+
   // Top searches endpoint for analytics
   app.get("/api/analytics/top-searches", async (req, res) => {
     try {
