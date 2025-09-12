@@ -2,7 +2,7 @@
 
 name = "FMB Motorcycle Parts Finder"
 client_id = "ed278de87bd3887db9649723139a0517"
-application_url = "https://your-repl-name.replit.app"
+application_url = "https://56e00a98-ad08-48da-8c00-1d8f49a92d07-00-32mevip0hcwqx.spock.replit.dev"
 embedded = true
 
 [access_scopes]
@@ -10,7 +10,7 @@ scopes = "read_products,write_products,read_orders,write_orders,read_customers"
 
 [auth]
 redirect_urls = [
-  "https://your-repl-name.replit.app/api/auth/callback"
+  "https://56e00a98-ad08-48da-8c00-1d8f49a92d07-00-32mevip0hcwqx.spock.replit.dev/api/auth/callback"
 ]
 
 [webhooks]
