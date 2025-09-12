@@ -88,6 +88,8 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
   });
 
   const onSubmit = (data: InsertMotorcycle) => {
+    console.log("Form submitted with data:", data);
+    console.log("Form errors:", form.formState.errors);
     if (motorcycle) {
       updateMotorcycleMutation.mutate(data);
     } else {

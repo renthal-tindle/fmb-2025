@@ -123,10 +123,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/motorcycles", async (req, res) => {
     try {
+      console.log("POST /api/motorcycles received data:", req.body);
+      
+      // If no recid provided, get the next available one
+      if (!req.body.recid) {
+        const nextRecid = await storage.getNextMotorcycleRecid();
+        req.body.recid = nextRecid;
+        console.log("Generated recid:", nextRecid);
+      }
+      
       const validatedData = insertMotorcycleSchema.parse(req.body);
+      console.log("Validated data:", validatedData);
+      
       const motorcycle = await storage.createMotorcycle(validatedData);
       res.status(201).json(motorcycle);
     } catch (error) {
+      console.error("Error creating motorcycle:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid motorcycle data", errors: error.errors });
       }
