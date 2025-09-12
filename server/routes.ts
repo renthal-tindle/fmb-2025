@@ -57,6 +57,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         motorcycles = await storage.getMotorcycles();
       }
       
+      // Prevent caching to ensure fresh data
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
       res.json(motorcycles);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch motorcycles" });
@@ -66,6 +72,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/motorcycles/makes", async (req, res) => {
     try {
       const makes = await storage.getDistinctMotorcycleMakes();
+      // Prevent caching to ensure fresh data
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
       res.json(makes);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch motorcycle makes" });
@@ -75,6 +87,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/motorcycles/years", async (req, res) => {
     try {
       const years = await storage.getDistinctMotorcycleYears();
+      // Prevent caching to ensure fresh data
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
       res.json(years);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch motorcycle years" });
@@ -91,6 +109,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(motorcycle);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch motorcycle" });
+    }
+  });
+
+  app.get("/api/motorcycles/next-recid", async (req, res) => {
+    try {
+      const nextRecid = await storage.getNextMotorcycleRecid();
+      res.json({ nextRecid });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get next RECID" });
     }
   });
 
