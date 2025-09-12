@@ -426,4 +426,15 @@ export class DatabaseStorage implements IStorage {
     const result = await query;
     return result;
   }
+
+  async getNextMotorcycleRecid(): Promise<number> {
+    const rows = await db
+      .select({ 
+        maxRecid: sql<number>`max(${motorcycles.recid})` 
+      })
+      .from(motorcycles);
+    
+    const max = rows[0]?.maxRecid == null ? 9999 : Number(rows[0].maxRecid);
+    return max + 1;
+  }
 }

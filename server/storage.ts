@@ -25,6 +25,7 @@ export interface IStorage {
   filterMotorcycles(filters: { bikemake?: string; firstyear?: number; lastyear?: number; biketype?: number }): Promise<Motorcycle[]>;
   getDistinctMotorcycleMakes(): Promise<string[]>;
   getDistinctMotorcycleYears(): Promise<number[]>;
+  getNextMotorcycleRecid(): Promise<number>;
 
   // Shopify Products
   getShopifyProducts(): Promise<ShopifyProduct[]>;
@@ -275,6 +276,14 @@ export class MemStorage implements IStorage {
     
     // Convert to array and sort in descending order (newest first)
     return Array.from(allYears).sort((a, b) => b - a);
+  }
+
+  async getNextMotorcycleRecid(): Promise<number> {
+    if (this.motorcycles.size === 0) {
+      return 10000; // Default starting point
+    }
+    const maxRecid = Math.max(...Array.from(this.motorcycles.keys()));
+    return maxRecid + 1;
   }
 
   // Shopify Products

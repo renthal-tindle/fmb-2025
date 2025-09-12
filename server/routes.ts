@@ -99,7 +99,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/motorcycles/:recid", async (req, res) => {
+  app.get("/api/motorcycles/next-recid", async (req, res) => {
+    try {
+      const nextRecid = await storage.getNextMotorcycleRecid();
+      res.json({ nextRecid });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get next RECID" });
+    }
+  });
+
+  app.get("/api/motorcycles/:recid(\\d+)", async (req, res) => {
     try {
       const recid = parseInt(req.params.recid);
       const motorcycle = await storage.getMotorcycle(recid);
@@ -109,15 +118,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(motorcycle);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch motorcycle" });
-    }
-  });
-
-  app.get("/api/motorcycles/next-recid", async (req, res) => {
-    try {
-      const nextRecid = await storage.getNextMotorcycleRecid();
-      res.json({ nextRecid });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to get next RECID" });
     }
   });
 
