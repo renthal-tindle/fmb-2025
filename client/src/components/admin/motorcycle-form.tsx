@@ -109,7 +109,11 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={(e) => {
+            console.log("Form onSubmit event triggered");
+            e.preventDefault();
+            form.handleSubmit(onSubmit)(e);
+          }} className="space-y-4">
             <FormField
               control={form.control}
               name="bikemake"
@@ -249,6 +253,12 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
                 type="submit" 
                 disabled={isLoading}
                 data-testid="button-save-motorcycle"
+                onClick={(e) => {
+                  console.log("Submit button clicked!");
+                  console.log("Form valid:", form.formState.isValid);
+                  console.log("Form errors:", form.formState.errors);
+                  console.log("Form values:", form.getValues());
+                }}
               >
                 {isLoading ? "Saving..." : motorcycle ? "Update" : "Create"}
               </Button>
