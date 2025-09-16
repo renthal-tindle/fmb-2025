@@ -928,16 +928,32 @@ function generateSearchPage(shop: string): string {
       }, 300);
     }
 
+    function normalizeMotorcycleQuery(query) {
+      let normalized = query;
+      
+      // Handle common motorcycle model patterns with missing spaces
+      // Pattern: Letters followed by numbers (e.g., "RM100" → "RM 100", "CRF450R" → "CRF 450R")
+      normalized = normalized.replace(/([A-Z]+)(\\d+)([A-Z]*)/g, '$1 $2$3');
+      
+      // Handle patterns like "450R" or "250F" (number followed by letter)
+      normalized = normalized.replace(/\\b(\\d+)([A-Z]{1,2})\\b/g, '$1$2');
+      
+      // Clean up multiple spaces
+      normalized = normalized.replace(/\\s+/g, ' ').trim();
+      
+      return normalized;
+    }
+
     function parseYearFromQuery(query) {
       // Extract 4-digit years from the search query (between 1900-2050)
       const yearMatch = query.match(/\\b(19\\d{2}|20[0-4]\\d|2050)\\b/);
       if (yearMatch) {
         return {
           year: parseInt(yearMatch[1]),
-          cleanQuery: query.replace(yearMatch[0], '').replace(/\\s+/g, ' ').trim()
+          cleanQuery: normalizeMotorcycleQuery(query.replace(yearMatch[0], '').replace(/\\s+/g, ' ').trim())
         };
       }
-      return { year: null, cleanQuery: query };
+      return { year: null, cleanQuery: normalizeMotorcycleQuery(query) };
     }
 
     async function performAutoSearch(query) {
@@ -957,7 +973,7 @@ function generateSearchPage(shop: string): string {
 
         console.log('🔍 Auto search:', { 
           originalQuery: query, 
-          cleanQuery, 
+          normalizedQuery: cleanQuery,
           parsedYear, 
           finalYear,
           make,
