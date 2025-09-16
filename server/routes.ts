@@ -692,19 +692,19 @@ function generateSearchPage(shop: string): string {
         <div class="form-group">
           <label for="make-select">🏭 Make</label>
           <select id="make-select">
-            <option value="">Choose your bike's make</option>
+            <option value="">Choose your bike make</option>
           </select>
         </div>
         <div class="form-group">
           <label for="model-select">🏍️ Model</label>
           <select id="model-select" disabled>
-            <option value="">Choose your bike's model</option>
+            <option value="">Choose your bike model</option>
           </select>
         </div>
         <div class="form-group">
           <label for="year-select">📅 Year (Optional)</label>
           <select id="year-select" disabled>
-            <option value="">Choose your bike's year</option>
+            <option value="">Choose your bike year</option>
           </select>
         </div>
         <div class="form-group">
@@ -759,7 +759,7 @@ function generateSearchPage(shop: string): string {
         document.getElementById('model-select').disabled = false;
         
         // Reset and disable year dropdown
-        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike\'s year</option>';
+        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
         document.getElementById('year-select').disabled = true;
       } catch (error) {
         console.error('Failed to load models:', error);
@@ -799,9 +799,9 @@ function generateSearchPage(shop: string): string {
         loadModelsForMake(make);
       } else {
         // Reset model and year dropdowns
-        document.getElementById('model-select').innerHTML = '<option value="">Choose your bike\'s model</option>';
+        document.getElementById('model-select').innerHTML = '<option value="">Choose your bike model</option>';
         document.getElementById('model-select').disabled = true;
-        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike\'s year</option>';
+        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
         document.getElementById('year-select').disabled = true;
       }
     });
@@ -813,7 +813,7 @@ function generateSearchPage(shop: string): string {
         loadYearsForMakeModel(make, model);
       } else {
         // Reset year dropdown
-        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike\'s year</option>';
+        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
         document.getElementById('year-select').disabled = true;
       }
     });
@@ -940,9 +940,9 @@ function generateSearchPage(shop: string): string {
           loadModelsForMake(make);
         } else {
           // Reset model and year dropdowns
-          document.getElementById('model-select').innerHTML = '<option value="">Choose your bike\'s model</option>';
+          document.getElementById('model-select').innerHTML = '<option value="">Choose your bike model</option>';
           document.getElementById('model-select').disabled = true;
-          document.getElementById('year-select').innerHTML = '<option value="">Choose your bike\'s year</option>';
+          document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
           document.getElementById('year-select').disabled = true;
         }
       });
@@ -954,7 +954,7 @@ function generateSearchPage(shop: string): string {
           loadYearsForMakeModel(make, model);
         } else {
           // Reset year dropdown
-          document.getElementById('year-select').innerHTML = '<option value="">Choose your bike\'s year</option>';
+          document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
           document.getElementById('year-select').disabled = true;
         }
       });
