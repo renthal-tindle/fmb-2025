@@ -4,22 +4,11 @@ import { storage } from "./storage";
 import { insertMotorcycleSchema, insertPartMappingSchema, insertImportHistorySchema, insertPartCategoryTagsSchema } from "@shared/schema";
 import { z } from "zod";
 import { getAuthUrl, validateAuthCallback, verifyShop, fetchShopifyProducts, inMemorySessionStorage } from "./shopify-auth";
-import { shopify } from "./shopify-auth";
 import multer from 'multer';
 import { parse as parseCsv } from 'csv-parse';
 import { Readable } from 'stream';
 import { promisify } from 'util';
 import crypto from 'crypto';
-
-// Augment Express Request type
-declare global {
-  namespace Express {
-    interface Request {
-      shopifyShop?: string;
-      shopifySession?: any;
-    }
-  }
-}
 
 // ==========================================
 // SECURITY UTILITIES
@@ -113,8 +102,7 @@ function createAppProxySecurityMiddleware() {
 // CUSTOMER-FACING PAGE TEMPLATES
 // ==========================================
 
-// BACKUP: Original full HTML page generators (for rollback)
-function generateMotorcyclePageOriginal(motorcycle: any, compatibleParts: any[], shop: string): string {
+function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: string): string {
   const baseUrl = `/apps/fit-my-bike`;
   const bikeMake = escapeHtml(motorcycle.bikemake || '');
   const bikeModel = escapeHtml(motorcycle.bikemodel || '');
@@ -239,490 +227,297 @@ function generateMotorcyclePageOriginal(motorcycle: any, compatibleParts: any[],
     }
   </style>
 </head>
-<body>/* original body content would continue here but keeping backup short */</body>
-</html>`;
-}
-
-// NEW: Theme-integrated fragment generators (with rollback capability)
-function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: string, useFragment: boolean = true): string {
-  const baseUrl = `/apps/fit-my-bike`;
-  const bikeMake = escapeHtml(motorcycle.bikemake || '');
-  const bikeModel = escapeHtml(motorcycle.bikemodel || '');
-  const bikeYear = motorcycle.bikeyear || 'Unknown Year';
-  const bikeEngine = escapeHtml(motorcycle.bikeengine || 'All Engines');
-  
-  // ROLLBACK CAPABILITY: Use original if requested
-  if (!useFragment) {
-    return generateMotorcyclePageOriginal(motorcycle, compatibleParts, shop);
-  }
-  
-  // Return theme-friendly fragment (ONLY content, no document structure)
-  return `
-<div id="fmb-motorcycle-parts" class="motorcycle-parts-finder" data-base-url="${baseUrl}" data-bike-make="${escapeHtml(bikeMake)}" data-bike-model="${escapeHtml(bikeModel)}" data-bike-year="${bikeYear}" data-bike-engine="${escapeHtml(bikeEngine)}">
-<style>
-  .motorcycle-parts-finder {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1rem;
-  }
-  .finder-breadcrumb {
-    margin-bottom: 1rem;
-    color: inherit;
-  }
-  .finder-breadcrumb a {
-    color: var(--color-link, #007bff);
-    text-decoration: none;
-  }
-  .finder-header {
-    text-align: center;
-    padding: 2rem 1rem;
-    margin-bottom: 2rem;
-    border-radius: 8px;
-    background: var(--color-accent, #f8f9fa);
-  }
-  .finder-header h1 {
-    font-size: 2rem;
-    margin: 0 0 0.5rem 0;
-    color: var(--color-foreground, #333);
-  }
-  .finder-header p {
-    margin: 0;
-    color: var(--color-foreground-subtle, #666);
-    font-size: 1.1rem;
-  }
-  .finder-search-widget {
-    background: var(--color-background, white);
-    padding: 1.5rem;
-    border-radius: 8px;
-    margin-bottom: 2rem;
-    border: 1px solid var(--color-border, #ddd);
-  }
-  .finder-search-form {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    align-items: end;
-  }
-  .finder-form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: var(--color-foreground, #333);
-  }
-  .finder-form-group select,
-  .finder-form-group input,
-  .finder-form-group button {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--color-border, #ccc);
-    border-radius: 4px;
-    font-size: 1rem;
-    color: var(--color-foreground, #333);
-    background: var(--color-background, white);
-  }
-  .finder-search-btn {
-    background: var(--color-button, #007bff);
-    color: var(--color-button-text, white);
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s;
-  }
-  .finder-search-btn:hover {
-    opacity: 0.9;
-  }
-  .finder-parts-section h2 {
-    color: var(--color-foreground, #333);
-    margin-bottom: 1.5rem;
-    font-size: 1.8rem;
-  }
-  .finder-parts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-  }
-  .finder-part-card {
-    background: var(--color-background, white);
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 8px;
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  .finder-part-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-  .finder-part-image {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    background: var(--color-background-accent, #f5f5f5);
-  }
-  .finder-part-content {
-    padding: 1rem;
-  }
-  .finder-part-title {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--color-foreground, #333);
-  }
-  .finder-part-price {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--color-accent, #007bff);
-    margin: 0.5rem 0;
-  }
-  .finder-part-sku,
-  .finder-part-variants {
-    color: var(--color-foreground-subtle, #666);
-    margin: 0.25rem 0;
-    font-size: 0.9rem;
-  }
-  .finder-view-product {
-    display: inline-block;
-    background: var(--color-button, #007bff);
-    color: var(--color-button-text, white);
-    text-decoration: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
-    font-weight: 600;
-    margin-top: 1rem;
-    transition: all 0.2s;
-  }
-  .finder-view-product:hover {
-    opacity: 0.9;
-  }
-  .finder-no-parts {
-    text-align: center;
-    padding: 3rem 1rem;
-    background: var(--color-background, white);
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 8px;
-    color: var(--color-foreground-subtle, #666);
-  }
-  @media (max-width: 768px) {
-    .finder-search-form {
-      grid-template-columns: 1fr;
-    }
-    .finder-header h1 {
-      font-size: 1.8rem;
-    }
-    .finder-parts-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
-
-<div class="motorcycle-parts-finder">
-  <div class="finder-breadcrumb">
-    <a href="${escapeHtml(shop)}">Home</a> › 
-    <a href="${baseUrl}">Find Parts</a> › 
-    ${bikeMake} ${bikeModel} ${bikeYear}
-  </div>
-  
-  <div class="finder-header">
-    <h1>Parts for ${bikeMake} ${bikeModel}</h1>
-    <p>${bikeYear} • ${bikeEngine}</p>
-  </div>
-
-  <div class="finder-search-widget">
-    <h3 style="margin: 0 0 1rem 0; color: var(--color-foreground, #333);">🔍 Find Parts for a Different Bike</h3>
-    <div class="finder-search-form">
-      <div class="finder-form-group">
-        <label for="make-select">Make</label>
-        <select id="make-select">
-          <option value="">Select Make</option>
-        </select>
-      </div>
-      <div class="finder-form-group">
-        <label for="model-select">Model</label>
-        <select id="model-select" disabled>
-          <option value="">Select Model</option>
-        </select>
-      </div>
-      <div class="finder-form-group">
-        <label for="year-select">Year</label>
-        <select id="year-select" disabled>
-          <option value="">Select Year</option>
-        </select>
-      </div>
-      <div class="finder-form-group">
-        <button class="finder-search-btn" id="search-button">Find My Bike</button>
-      </div>
+<body>
+  <div class="container">
+    <div class="breadcrumb">
+      <a href="${escapeHtml(shop)}">Home</a> > 
+      <a href="${baseUrl}">Find Parts</a> > 
+      ${bikeMake} ${bikeModel} ${bikeYear}
     </div>
-    <div id="search-results"></div>
-  </div>
+    
+    <div class="header">
+      <h1>Parts for ${bikeMake} ${bikeModel}</h1>
+      <p>${bikeYear} • ${bikeEngine}</p>
+    </div>
 
-  <div class="finder-parts-section">
-    <h2>Compatible Renthal Parts (${compatibleParts.length})</h2>
-    ${compatibleParts.length > 0 ? `
-      <div class="finder-parts-grid">
-        ${compatibleParts.map(part => {
-          const partTitle = escapeHtml(part.title || 'Unnamed Product');
-          const partPrice = escapeHtml(part.variants?.[0]?.price || '0.00');
-          const partSku = escapeHtml(part.variants?.[0]?.sku || 'N/A');
-          const partHandle = escapeHtml(part.handle || '');
-          const imageUrl = part.images?.[0]?.src ? escapeHtml(part.images[0].src) : '';
-          
-          return `
-          <div class="finder-part-card">
-            ${imageUrl ? 
-              `<img src="${imageUrl}" alt="${partTitle}" class="finder-part-image">` :
-              `<div class="finder-part-image" style="display: flex; align-items: center; justify-content: center; color: var(--color-foreground-subtle, #999);">No Image</div>`
-            }
-            <div class="finder-part-content">
-              <h3 class="finder-part-title">${partTitle}</h3>
-              <div class="finder-part-price">$${partPrice}</div>
-              <div class="finder-part-sku">SKU: ${partSku}</div>
-              ${part.variants && part.variants.length > 1 ? 
-                `<div class="finder-part-variants">${part.variants.length} variants available</div>` : ''
+    <div class="search-widget">
+      <h3>🔍 Find Parts for a Different Bike</h3>
+      <div class="search-form">
+        <div class="form-group">
+          <label for="make-select">Make</label>
+          <select id="make-select">
+            <option value="">Select Make</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="model-select">Model</label>
+          <select id="model-select" disabled>
+            <option value="">Select Model</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="year-select">📅 Year</label>
+          <select id="year-select" disabled>
+            <option value="">Select Year</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="model-input">Model Search (Optional)</label>
+          <input type="text" id="model-input" placeholder="e.g., CRF450R">
+        </div>
+        <div class="form-group">
+          <button class="search-btn" onclick="searchMotorcycles()">Find My Bike</button>
+        </div>
+      </div>
+      <div id="search-results"></div>
+    </div>
+
+    <div class="parts-section">
+      <h2>Compatible Renthal Parts (${compatibleParts.length})</h2>
+      ${compatibleParts.length > 0 ? `
+        <div class="parts-grid">
+          ${compatibleParts.map(part => {
+            const partTitle = escapeHtml(part.title || 'Unnamed Product');
+            const partPrice = escapeHtml(part.variants?.[0]?.price || '0.00');
+            const partSku = escapeHtml(part.variants?.[0]?.sku || 'N/A');
+            const partHandle = escapeHtml(part.handle || '');
+            const imageUrl = part.images?.[0]?.src ? escapeHtml(part.images[0].src) : '';
+            
+            return `
+            <div class="part-card">
+              ${imageUrl ? 
+                `<img src="${imageUrl}" alt="${partTitle}" class="part-image">` :
+                `<div class="part-image" style="display: flex; align-items: center; justify-content: center; background: #f1f1f1; color: #999;">No Image</div>`
               }
-              <a href="${escapeHtml(shop)}/products/${partHandle}" class="finder-view-product" target="_top">View Product</a>
+              <div class="part-content">
+                <h3 class="part-title">${partTitle}</h3>
+                <div class="part-price">$${partPrice}</div>
+                <div class="part-sku">SKU: ${partSku}</div>
+                ${part.variants && part.variants.length > 1 ? 
+                  `<div class="part-variants">${part.variants.length} variants available</div>` : ''
+                }
+                <a href="${escapeHtml(shop)}/products/${partHandle}" class="view-product" target="_top">View Product</a>
+              </div>
             </div>
-          </div>
-        `;}).join('')}
-      </div>
-    ` : `
-      <div class="finder-no-parts">
-        <h3>No Compatible Parts Found</h3>
-        <p>We don't have any parts mapped for this specific motorcycle yet.</p>
-        <p>Try searching for a similar model or contact us for assistance.</p>
-      </div>
-    `}
+          `;}).join('')}
+        </div>
+      ` : `
+        <div class="no-parts">
+          <h3>No Compatible Parts Found</h3>
+          <p>We don't have any parts mapped for this specific motorcycle yet.</p>
+          <p>Try searching for a similar model or contact us for assistance.</p>
+        </div>
+      `}
+    </div>
   </div>
-</div>
-`;
+
+  <script>
+    const baseUrl = "${baseUrl}";
+    
+    async function loadSearchOptions() {
+      try {
+        console.log('📞 Fetching makes data...');
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'makes');
+        const makesRes = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
+        console.log('📞 Makes response status:', makesRes.status);
+        const makes = await makesRes.json();
+        console.log('📊 Makes data received:', makes);
+        populateSelect('make-select', makes);
+        console.log('✅ Makes dropdown populated');
+      } catch (error) {
+        console.error('❌ Failed to load search options:', error);
+      }
+    }
+
+    async function loadModelsForMake(make) {
+      try {
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'models');
+        params.set('make', make);
+        const response = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
+        const models = await response.json();
+        populateSelect('model-select', models);
+        document.getElementById('model-select').disabled = false;
+        
+        // Reset and disable year dropdown
+        document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
+        document.getElementById('year-select').disabled = true;
+      } catch (error) {
+        console.error('Failed to load models:', error);
+      }
+    }
+
+    async function loadYearsForMakeModel(make, model) {
+      try {
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'years');
+        params.set('make', make);
+        params.set('model', model);
+        const response = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
+        const years = await response.json();
+        populateSelect('year-select', years);
+        document.getElementById('year-select').disabled = false;
+      } catch (error) {
+        console.error('Failed to load years:', error);
+      }
+    }
+    
+    function populateSelect(selectId, options) {
+      const select = document.getElementById(selectId);
+      
+      // Clear existing options first (keep only the first placeholder option)
+      const firstOption = select.firstElementChild;
+      select.innerHTML = '';
+      if (firstOption) {
+        select.appendChild(firstOption);
+      }
+      
+      // Add new options
+      options.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option;
+        optionElement.textContent = option;
+        select.appendChild(optionElement);
+      });
+    }
+    
+
+    async function searchMotorcycles() {
+      const make = document.getElementById('make-select').value;
+      const model = document.getElementById('model-select').value;
+      const year = document.getElementById('year-select').value;
+
+      if (!make || !model || !year) {
+        alert('Please select make, model, and year');
+        return;
+      }
+      
+      try {
+        // Include app proxy params in search request
+        const params = new URLSearchParams(window.location.search);
+        const response = await fetch(\`/apps/fit-my-bike/search?\${params.toString()}\`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ make, model, year })
+        });
+        
+        const { motorcycles } = await response.json();
+        
+        if (motorcycles.length === 1) {
+          window.top.location.href = \`\${baseUrl}?bikeid=\${motorcycles[0].recid}\`;
+        } else if (motorcycles.length > 1) {
+          showMotorcycleSelection(motorcycles);
+        } else {
+          alert('No motorcycles found for your selection. Try different criteria.');
+        }
+      } catch (error) {
+        console.error('Search failed:', error);
+        alert('Search failed. Please try again.');
+      }
+    }
+    
+    function showMotorcycleSelection(motorcycles) {
+      const resultsDiv = document.getElementById('search-results');
+      
+      // Create header safely
+      const header = document.createElement('h4');
+      header.style.cssText = 'margin: 20px 0 15px 0; color: #2c3e50;';
+      header.textContent = 'Select Your Exact Model:';
+      
+      // Create container
+      const container = document.createElement('div');
+      container.style.cssText = 'display: grid; gap: 10px;';
+      
+      // Create buttons safely using DOM API
+      motorcycles.forEach(bike => {
+        const button = document.createElement('button');
+        button.style.cssText = 'padding: 15px; border: 2px solid #e74c3c; background: white; border-radius: 8px; cursor: pointer; text-align: left; font-size: 16px; transition: all 0.2s;';
+        
+        // Create content safely
+        const strong = document.createElement('strong');
+        strong.textContent = \`\${bike.bikemake} \${bike.bikemodel}\`;
+        
+        button.appendChild(strong);
+        button.appendChild(document.createTextNode(\` • \${bike.bikeyear} • \${bike.bikeengine || 'Standard'}\`));
+        
+        // Safe event handlers
+        button.addEventListener('click', () => {
+          window.top.location.href = \`\${baseUrl}?bikeid=\${bike.recid}\`;
+        });
+        button.addEventListener('mouseover', () => {
+          button.style.background = '#e74c3c';
+          button.style.color = 'white';
+        });
+        button.addEventListener('mouseout', () => {
+          button.style.background = 'white';
+          button.style.color = '#333';
+        });
+        
+        container.appendChild(button);
+      });
+      
+      // Clear and append safely
+      resultsDiv.innerHTML = '';
+      resultsDiv.appendChild(header);
+      resultsDiv.appendChild(container);
+    }
+    
+    // Initialize search on page load with proper timing
+    function init() {
+      console.log('🚀 Page loaded, initializing search options...');
+      loadSearchOptions();
+      
+      // Set up event handlers for cascading dropdowns (only once)
+      const makeSelect = document.getElementById('make-select');
+      if (makeSelect && !makeSelect.hasAttribute('data-initialized')) {
+        makeSelect.setAttribute('data-initialized', 'true');
+        makeSelect.addEventListener('change', function() {
+        const make = this.value;
+        if (make) {
+          loadModelsForMake(make);
+        } else {
+          // Reset model and year dropdowns
+          document.getElementById('model-select').innerHTML = '<option value="">Select Model</option>';
+          document.getElementById('model-select').disabled = true;
+          document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
+          document.getElementById('year-select').disabled = true;
+        }
+      });
+
+      const modelSelect = document.getElementById('model-select');
+      if (modelSelect && !modelSelect.hasAttribute('data-initialized')) {
+        modelSelect.setAttribute('data-initialized', 'true');
+        modelSelect.addEventListener('change', function() {
+        const make = document.getElementById('make-select').value;
+        const model = this.value;
+        if (make && model) {
+          loadYearsForMakeModel(make, model);
+        } else {
+          // Reset year dropdown
+          document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
+          document.getElementById('year-select').disabled = true;
+        }
+        });
+      }
+    }
+
+    // Handle initialization timing properly
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
+  `;
 }
 
-// Fragment version of search page
-function generateSearchPage(shop: string, useFragment: boolean = true): string {
-  const baseUrl = `/apps/fit-my-bike`;
-  
-  // ROLLBACK CAPABILITY: Use original if requested
-  if (!useFragment) {
-    return generateSearchPageOriginal(shop);
-  }
-  
-  // Return theme-friendly fragment (ONLY content, no document structure)
-  return `
-<div id="fmb-search" class="motorcycle-parts-search" data-base-url="${baseUrl}">
-<style>
-  .motorcycle-parts-search {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-  }
-  .finder-search-header {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
-  .finder-search-header h1 {
-    font-size: 2.5rem;
-    margin: 0 0 1rem 0;
-    color: var(--color-foreground, #333);
-  }
-  .finder-search-header p {
-    font-size: 1.2rem;
-    color: var(--color-foreground-subtle, #666);
-    margin: 0;
-  }
-  .finder-search-card {
-    background: var(--color-background, white);
-    padding: 2rem;
-    border-radius: 8px;
-    border: 1px solid var(--color-border, #ddd);
-    margin-bottom: 2rem;
-  }
-  .finder-search-card h2 {
-    margin: 0 0 1.5rem 0;
-    color: var(--color-foreground, #333);
-    font-size: 1.6rem;
-    text-align: center;
-  }
-  .finder-search-form {
-    display: grid;
-    gap: 1rem;
-  }
-  .finder-form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: var(--color-foreground, #333);
-    font-size: 1rem;
-  }
-  .finder-form-group select,
-  .finder-form-group input {
-    width: 100%;
-    padding: 0.8rem;
-    border: 1px solid var(--color-border, #ccc);
-    border-radius: 8px;
-    font-size: 1rem;
-    color: var(--color-foreground, #333);
-    background: var(--color-background, white);
-    transition: border-color 0.2s;
-  }
-  .finder-form-group select:focus,
-  .finder-form-group input:focus {
-    border-color: var(--color-accent, #007bff);
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
-  }
-  .finder-search-btn {
-    background: var(--color-button, #007bff);
-    color: var(--color-button-text, white);
-    border: none;
-    padding: 1rem;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 0.5rem;
-    transition: all 0.2s;
-  }
-  .finder-search-btn:hover {
-    opacity: 0.9;
-  }
-  .finder-quick-search {
-    margin-top: 2rem;
-    padding-top: 2rem;
-    border-top: 1px solid var(--color-border, #eee);
-  }
-  .finder-quick-search h3 {
-    margin: 0 0 1rem 0;
-    color: var(--color-foreground, #333);
-  }
-  .finder-search-input-group {
-    display: flex;
-    gap: 1rem;
-    position: relative;
-  }
-  .finder-search-input-group input {
-    flex: 1;
-  }
-  .finder-search-input-group button {
-    background: var(--color-accent, #007bff);
-    color: var(--color-button-text, white);
-    border: none;
-    padding: 0.8rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .finder-search-input-group button:hover {
-    opacity: 0.9;
-  }
-  .finder-search-results {
-    margin-top: 1.5rem;
-  }
-  .finder-results-grid {
-    display: grid;
-    gap: 1rem;
-  }
-  .finder-result-item {
-    padding: 1rem;
-    background: var(--color-background, white);
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .finder-result-item:hover {
-    background: var(--color-accent, #f0f0f0);
-    border-color: var(--color-accent-strong, #007bff);
-  }
-  .finder-result-title {
-    font-weight: 600;
-    color: var(--color-foreground, #333);
-    margin-bottom: 0.25rem;
-  }
-  .finder-result-details {
-    color: var(--color-foreground-subtle, #666);
-    font-size: 0.9rem;
-  }
-  .finder-auto-suggestions {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: var(--color-background, white);
-    border: 1px solid var(--color-border, #ccc);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 1000;
-    display: none;
-  }
-  .finder-suggestion-item {
-    padding: 0.8rem;
-    cursor: pointer;
-    border-bottom: 1px solid var(--color-border, #eee);
-    transition: background-color 0.2s;
-  }
-  .finder-suggestion-item:hover {
-    background: var(--color-accent, #f8f9fa);
-  }
-  .finder-suggestion-item:last-child {
-    border-bottom: none;
-  }
-  @media (max-width: 768px) {
-    .finder-search-input-group {
-      flex-direction: column;
-    }
-    .finder-search-header h1 {
-      font-size: 2rem;
-    }
-  }
-</style>
-
-  <div class="finder-search-header">
-    <h1>Find Motorcycle Parts</h1>
-    <p>Search by year, make, and model to discover compatible parts</p>
-  </div>
-
-  <div class="finder-search-card">
-    <h2>Search by Make, Model & Year</h2>
-    <div class="finder-search-form">
-      <div class="finder-form-group">
-        <label for="make-select">Make</label>
-        <select id="make-select">
-          <option value="">Select Make</option>
-        </select>
-      </div>
-      <div class="finder-form-group">
-        <label for="model-select">Model</label>
-        <select id="model-select" disabled>
-          <option value="">Select Model</option>
-        </select>
-      </div>
-      <div class="finder-form-group">
-        <label for="year-select">Year</label>
-        <select id="year-select" disabled>
-          <option value="">Select Year</option>
-        </select>
-      </div>
-      <button class="finder-search-btn" id="search-button">Find My Bike</button>
-    </div>
-    
-    <div class="finder-quick-search">
-      <h3>🔍 Quick Search</h3>
-      <div class="finder-search-input-group">
-        <input type="text" id="quick-search" placeholder="e.g., Honda CRF450R, Yamaha YZ250F, KTM 250 SX-F">
-        <button id="quick-search-button">Search</button>
-        <div id="auto-suggestions" class="finder-auto-suggestions"></div>
-      </div>
-    </div>
-    
-    <div id="search-results" class="finder-search-results"></div>
-  </div>
-</div>
-`;
-}
-
-// Create backup of original search page function  
-function generateSearchPageOriginal(shop: string): string {
+function generateSearchPage(shop: string): string {
   const baseUrl = `/apps/fit-my-bike`;
   
   return `
@@ -732,13 +527,667 @@ function generateSearchPageOriginal(shop: string): string {
   <title>Find Motorcycle Parts | Renthal Official</title>
   <meta name="description" content="Find compatible Renthal parts for your motorcycle. Search by year, make, and model to discover high-quality motorcycle parts and accessories.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>/* Original styles would go here */</style>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      margin: 0; padding: 20px; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding-top: 50px; }
+    .header { 
+      text-align: center; 
+      color: white; 
+      margin-bottom: 40px;
+    }
+    .header h1 { 
+      font-size: 3em; 
+      margin: 0 0 15px 0; 
+      font-weight: 700;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .header p { 
+      font-size: 1.3em; 
+      margin: 0; 
+      opacity: 0.9;
+    }
+    .search-card { 
+      background: white; 
+      padding: 40px; 
+      border-radius: 20px; 
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+    .search-card h2 { 
+      margin: 0 0 30px 0; 
+      color: #2c3e50; 
+      font-size: 1.8em;
+      text-align: center;
+    }
+    .search-form { display: grid; gap: 20px; }
+    .form-group label { 
+      display: block; 
+      margin-bottom: 8px; 
+      font-weight: 600; 
+      color: #555; 
+      font-size: 1.1em;
+    }
+    select, input { 
+      width: 100%; 
+      padding: 15px; 
+      border: 2px solid #e1e8ed; 
+      border-radius: 12px; 
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    select:focus, input:focus { 
+      border-color: #667eea; 
+      outline: none; 
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .search-btn { 
+      background: linear-gradient(135deg, #667eea, #764ba2); 
+      color: white; 
+      border: none; 
+      padding: 18px; 
+      border-radius: 12px; 
+      font-size: 18px; 
+      font-weight: 600;
+      cursor: pointer; 
+      margin-top: 10px;
+      transition: transform 0.2s;
+    }
+    .search-btn:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    .quick-text-search { 
+      margin-top: 30px; 
+      padding-top: 30px; 
+      border-top: 2px solid #f1f1f1;
+    }
+    .quick-text-search h3 { 
+      margin: 0 0 15px 0; 
+      color: #2c3e50;
+    }
+    .search-input-group { 
+      display: flex; 
+      gap: 15px;
+      position: relative; 
+    }
+    .search-input-group input { 
+      flex: 1;
+    }
+    .search-input-group button { 
+      background: #e74c3c; 
+      color: white; 
+      border: none; 
+      padding: 15px 30px; 
+      border-radius: 12px; 
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .search-input-group button:hover { 
+      background: #c0392b; 
+    }
+    #search-results { 
+      margin-top: 25px;
+    }
+    .results-grid { 
+      display: grid; 
+      gap: 15px; 
+    }
+    .result-item { 
+      padding: 20px; 
+      background: #f8f9fa; 
+      border: 2px solid transparent; 
+      border-radius: 12px; 
+      cursor: pointer; 
+      transition: all 0.2s;
+    }
+    .result-item:hover { 
+      border-color: #667eea; 
+      background: white; 
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .result-title { 
+      font-weight: 600; 
+      color: #2c3e50; 
+      margin-bottom: 5px;
+    }
+    .result-details { 
+      color: #666; 
+      font-size: 0.95em;
+    }
+    @media (max-width: 768px) {
+      .container { padding-top: 20px; }
+      .header h1 { font-size: 2.2em; }
+      .search-card { padding: 25px; margin: 0 10px; }
+      .search-input-group { flex-direction: column; }
+    }
+  </style>
 </head>
-<body>/* Original body would go here */</body>
-</html>
-`;
-}
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🏍️ Find Your Parts</h1>
+      <p>Discover compatible Renthal parts for your motorcycle</p>
+    </div>
 
+    <div class="search-card">
+      <div class="quick-text-search">
+        <h3>💨 Quick Search</h3>
+        <p style="color: #666; margin-bottom: 15px;">Search directly for your motorcycle model</p>
+        <div class="search-input-group">
+          <input type="text" id="quick-search" placeholder="e.g., Honda CRF450R 2023" 
+                 aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" autocomplete="off">
+          <div id="suggestions-dropdown" role="listbox" 
+               style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-radius: 8px; max-height: 300px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 4px;"></div>
+        </div>
+      </div>
+
+      <h2>Search by Make, Model & Year</h2>
+      <div class="search-form">
+        <div class="form-group">
+          <label for="make-select">🏭 Make</label>
+          <select id="make-select">
+            <option value="">Choose your bike make</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="model-select">🏍️ Model</label>
+          <select id="model-select" disabled>
+            <option value="">Choose your bike model</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="year-select">📅 Year</label>
+          <select id="year-select" disabled>
+            <option value="">Choose your bike year</option>
+          </select>
+        </div>
+        <button class="search-btn" onclick="searchMotorcycles()">🔍 Find Compatible Parts</button>
+      </div>
+
+      <div id="search-results"></div>
+    </div>
+  </div>
+
+  <script>
+    const baseUrl = "${baseUrl}";
+    
+    async function loadSearchOptions() {
+      try {
+        console.log('📞 Fetching makes data...');
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'makes');
+        const makesRes = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
+        console.log('📞 Makes response status:', makesRes.status);
+        const makes = await makesRes.json();
+        console.log('📊 Makes data received:', makes);
+        populateSelect('make-select', makes.sort());
+        console.log('✅ Makes dropdown populated');
+      } catch (error) {
+        console.error('❌ Failed to load search options:', error);
+      }
+    }
+
+    async function loadModelsForMake(make) {
+      try {
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'models');
+        params.set('make', make);
+        const response = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
+        const models = await response.json();
+        populateSelect('model-select', models.sort());
+        document.getElementById('model-select').disabled = false;
+        
+        // Reset and disable year dropdown
+        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
+        document.getElementById('year-select').disabled = true;
+      } catch (error) {
+        console.error('Failed to load models:', error);
+      }
+    }
+
+    async function loadYearsForMakeModel(make, model) {
+      try {
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'years');
+        params.set('make', make);
+        params.set('model', model);
+        const response = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
+        const years = await response.json();
+        populateSelect('year-select', years.sort((a, b) => b - a)); // Recent years first
+        document.getElementById('year-select').disabled = false;
+      } catch (error) {
+        console.error('Failed to load years:', error);
+      }
+    }
+    
+    function populateSelect(selectId, options) {
+      const select = document.getElementById(selectId);
+      
+      // Clear existing options first (keep only the first placeholder option)
+      const firstOption = select.firstElementChild;
+      select.innerHTML = '';
+      if (firstOption) {
+        select.appendChild(firstOption);
+      }
+      
+      // Add new options
+      options.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option;
+        optionElement.textContent = option;
+        select.appendChild(optionElement);
+      });
+    }
+    
+
+    async function searchMotorcycles() {
+      const make = document.getElementById('make-select').value;
+      const model = document.getElementById('model-select').value;
+      const year = document.getElementById('year-select').value;
+
+      if (!make || !model || !year) {
+        alert('Please select make, model, and year to search');
+        return;
+      }
+      
+      await performSearch({ make, model, year });
+    }
+    
+    async function quickSearch() {
+      const query = document.getElementById('quick-search').value.trim();
+      
+      if (!query) {
+        alert('Please enter a motorcycle model to search');
+        return;
+      }
+      
+      await performSearch({ searchQuery: query });
+    }
+    
+    async function performSearch(searchParams) {
+      try {
+        // Include app proxy params in search request
+        const params = new URLSearchParams(window.location.search);
+        const response = await fetch(\`/apps/fit-my-bike/search?\${params.toString()}\`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(searchParams)
+        });
+        
+        const { motorcycles } = await response.json();
+        showSearchResults(motorcycles);
+      } catch (error) {
+        console.error('Search failed:', error);
+        alert('Search failed. Please try again.');
+      }
+    }
+    
+    function showSearchResults(motorcycles) {
+      const resultsDiv = document.getElementById('search-results');
+      
+      // Clear previous results
+      resultsDiv.innerHTML = '';
+      
+      if (motorcycles.length === 0) {
+        // Create no results message safely
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.style.cssText = 'text-align: center; padding: 30px; color: #666;';
+        
+        const heading = document.createElement('h3');
+        heading.textContent = 'No motorcycles found';
+        
+        const message = document.createElement('p');
+        message.textContent = 'Try adjusting your search criteria or contact us for assistance.';
+        
+        noResultsDiv.appendChild(heading);
+        noResultsDiv.appendChild(message);
+        resultsDiv.appendChild(noResultsDiv);
+        return;
+      }
+      
+      if (motorcycles.length === 1) {
+        // Direct redirect for single result
+        window.top.location.href = \`\${baseUrl}?bikeid=\${motorcycles[0].recid}\`;
+        return;
+      }
+      
+      // Create header safely
+      const header = document.createElement('h3');
+      header.style.cssText = 'margin: 25px 0 15px 0; color: #2c3e50;';
+      header.textContent = \`Found \${motorcycles.length} motorcycles - Select your exact model:\`;
+      
+      // Create results grid
+      const grid = document.createElement('div');
+      grid.className = 'results-grid';
+      
+      // Create result items safely
+      motorcycles.forEach(bike => {
+        const item = document.createElement('div');
+        item.className = 'result-item';
+        
+        // Create title element
+        const title = document.createElement('div');
+        title.className = 'result-title';
+        title.textContent = \`\${bike.bikemake} \${bike.bikemodel}\`;
+        
+        // Create details element
+        const details = document.createElement('div');
+        details.className = 'result-details';
+        details.textContent = \`\${bike.bikeyear} • \${bike.bikeengine || 'Standard Engine'}\`;
+        
+        // Safe click handler
+        item.addEventListener('click', () => {
+          window.top.location.href = \`\${baseUrl}?bikeid=\${bike.recid}\`;
+        });
+        
+        item.appendChild(title);
+        item.appendChild(details);
+        grid.appendChild(item);
+      });
+      
+      resultsDiv.appendChild(header);
+      resultsDiv.appendChild(grid);
+    }
+    
+    // Auto-suggest functionality with debounced search
+    let searchTimeout = null;
+    let abortController = null;
+
+    function debounceSearch(query) {
+      // Clear previous timeout and abort request
+      clearTimeout(searchTimeout);
+      if (abortController) {
+        abortController.abort();
+      }
+
+      if (!query.trim()) {
+        hideSuggestions();
+        clearResults();
+        return;
+      }
+
+      searchTimeout = setTimeout(() => {
+        performAutoSearch(query);
+      }, 300);
+    }
+
+    function normalizeMotorcycleQuery(query) {
+      // Convert to uppercase for case-insensitive matching
+      let normalized = query.toUpperCase();
+      
+      // Handle common motorcycle model patterns with missing spaces
+      // Pattern: Letters followed by numbers (e.g., "RM100" → "RM 100", "CRF450R" → "CRF 450R")
+      normalized = normalized.replace(/([A-Z]+)(\\d+)([A-Z]*)/g, '$1 $2$3');
+      
+      // Handle patterns like "450R" or "250F" (number followed by letter)
+      normalized = normalized.replace(/\\b(\\d+)([A-Z]{1,2})\\b/g, '$1$2');
+      
+      // Clean up multiple spaces
+      normalized = normalized.replace(/\\s+/g, ' ').trim();
+      
+      return normalized;
+    }
+
+    function parseYearFromQuery(query) {
+      // Extract 4-digit years from the search query (between 1900-2050)
+      const yearMatch = query.match(/\\b(19\\d{2}|20[0-4]\\d|2050)\\b/);
+      if (yearMatch) {
+        return {
+          year: parseInt(yearMatch[1]),
+          cleanQuery: normalizeMotorcycleQuery(query.replace(yearMatch[0], '').replace(/\\s+/g, ' ').trim())
+        };
+      }
+      return { year: null, cleanQuery: normalizeMotorcycleQuery(query) };
+    }
+
+    async function performAutoSearch(query) {
+      try {
+        abortController = new AbortController();
+        
+        // Parse year from search query if present
+        const { year: parsedYear, cleanQuery } = parseYearFromQuery(query);
+        
+        // Get current filter values
+        const make = document.getElementById('make-select').value;
+        const model = document.getElementById('model-select').value;
+        const selectedYear = document.getElementById('year-select').value;
+        
+        // Use parsed year if found, otherwise use selected year
+        const finalYear = parsedYear || selectedYear || undefined;
+
+        console.log('🔍 Auto search:', { 
+          originalQuery: query, 
+          normalizedQuery: cleanQuery,
+          parsedYear, 
+          finalYear,
+          make,
+          model
+        });
+
+        // Include app proxy params in search request
+        const params = new URLSearchParams(window.location.search);
+        const response = await fetch(\`/apps/fit-my-bike/search?\${params.toString()}\`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            searchQuery: cleanQuery, // Use cleaned query without year
+            make: make || undefined,
+            model: model || undefined, 
+            year: finalYear
+          }),
+          signal: abortController.signal
+        });
+        
+        const { motorcycles } = await response.json();
+        
+        console.log('🔍 Auto search results:', motorcycles.length, 'motorcycles found');
+        
+        // Filter motorcycles by year range if a year was parsed from query
+        let filteredMotorcycles = motorcycles;
+        if (parsedYear) {
+          filteredMotorcycles = motorcycles.filter(bike => {
+            const withinRange = parsedYear >= bike.firstyear && parsedYear <= bike.lastyear;
+            if (!withinRange) {
+              console.log('❌ Filtered out:', bike.bikemake, bike.bikemodel, 
+                         \`(\${bike.firstyear}-\${bike.lastyear})\`, 
+                         'because', parsedYear, 'not in range');
+            }
+            return withinRange;
+          });
+          console.log('🔍 After year filtering:', filteredMotorcycles.length, 'motorcycles remain');
+        }
+        
+        // Only show suggestions (top 8) in dropdown, not in main results
+        showSuggestions(filteredMotorcycles.slice(0, 8), query);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Auto search failed:', error);
+        }
+      }
+    }
+
+    function showSuggestions(motorcycles, query) {
+      const dropdown = document.getElementById('suggestions-dropdown');
+      const input = document.getElementById('quick-search');
+      dropdown.innerHTML = '';
+      
+      if (motorcycles.length === 0) {
+        dropdown.style.display = 'none';
+        input.setAttribute('aria-expanded', 'false');
+        return;
+      }
+
+      // Group motorcycles by make + model, but separate discontinuous year ranges
+      const suggestions = [];
+      motorcycles.forEach(bike => {
+        suggestions.push({
+          bikemake: bike.bikemake,
+          bikemodel: bike.bikemodel,
+          yearRange: bike.firstyear === bike.lastyear ? 
+            bike.firstyear.toString() : 
+            \`\${bike.firstyear}-\${bike.lastyear}\`,
+          recid: bike.recid
+        });
+      });
+
+      // Display separate suggestions for each motorcycle
+      suggestions.slice(0, 8).forEach((suggestion, index) => {
+        const item = document.createElement('div');
+        item.setAttribute('role', 'option');
+        item.setAttribute('id', \`suggestion-\${index}\`);
+        item.style.cssText = 'padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s;';
+        
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight: 600; color: #2c3e50; padding: 2px 0;';
+        title.textContent = \`\${suggestion.bikemake} \${suggestion.bikemodel} (\${suggestion.yearRange})\`;
+        
+        item.appendChild(title);
+        
+        item.addEventListener('mouseenter', () => {
+          item.style.backgroundColor = '#f8f9fa';
+        });
+        item.addEventListener('mouseleave', () => {
+          item.style.backgroundColor = 'white';
+        });
+        item.addEventListener('click', () => {
+          window.top.location.href = \`\${baseUrl}?bikeid=\${suggestion.recid}\`;
+        });
+        
+        dropdown.appendChild(item);
+      });
+      
+      dropdown.style.display = 'block';
+      input.setAttribute('aria-expanded', 'true');
+    }
+
+    function hideSuggestions() {
+      const dropdown = document.getElementById('suggestions-dropdown');
+      const input = document.getElementById('quick-search');
+      dropdown.style.display = 'none';
+      input.setAttribute('aria-expanded', 'false');
+    }
+
+    function clearResults() {
+      document.getElementById('search-results').innerHTML = '';
+    }
+
+    // Initialize everything on page load with proper timing
+    function init() {
+      console.log('🚀 Main search page loaded, initializing...');
+      loadSearchOptions();
+      
+      // Set up auto-suggest for quick search
+      const quickSearchInput = document.getElementById('quick-search');
+      if (quickSearchInput && !quickSearchInput.hasAttribute('data-initialized')) {
+        quickSearchInput.setAttribute('data-initialized', 'true');
+        
+        quickSearchInput.addEventListener('input', function() {
+          debounceSearch(this.value);
+        });
+        
+        quickSearchInput.addEventListener('focus', function() {
+          if (this.value.trim()) {
+            debounceSearch(this.value);
+          }
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+          if (!e.target.closest('.search-input-group')) {
+            hideSuggestions();
+          }
+        });
+        
+        // Handle keyboard navigation in suggestions
+        quickSearchInput.addEventListener('keydown', function(e) {
+          const dropdown = document.getElementById('suggestions-dropdown');
+          const items = dropdown.querySelectorAll('div[style*="padding: 12px"]');
+          
+          if (e.key === 'ArrowDown' && items.length > 0) {
+            e.preventDefault();
+            items[0].focus();
+          } else if (e.key === 'Escape') {
+            hideSuggestions();
+          }
+        });
+      }
+      
+      // Set up event handlers for cascading dropdowns (only once)
+      const makeSelect = document.getElementById('make-select');
+      if (makeSelect && !makeSelect.hasAttribute('data-initialized')) {
+        makeSelect.setAttribute('data-initialized', 'true');
+        makeSelect.addEventListener('change', function() {
+          const make = this.value;
+          if (make) {
+            loadModelsForMake(make);
+          } else {
+            // Reset model and year dropdowns
+            document.getElementById('model-select').innerHTML = '<option value="">Choose your bike model</option>';
+            document.getElementById('model-select').disabled = true;
+            document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
+            document.getElementById('year-select').disabled = true;
+          }
+          
+          // Trigger auto-search if quick search has content
+          const quickSearch = document.getElementById('quick-search').value;
+          if (quickSearch.trim()) {
+            debounceSearch(quickSearch);
+          }
+        });
+      }
+
+      const modelSelect = document.getElementById('model-select');
+      if (modelSelect && !modelSelect.hasAttribute('data-initialized')) {
+        modelSelect.setAttribute('data-initialized', 'true');
+        modelSelect.addEventListener('change', function() {
+          const make = document.getElementById('make-select').value;
+          const model = this.value;
+          if (make && model) {
+            loadYearsForMakeModel(make, model);
+          } else {
+            // Reset year dropdown
+            document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
+            document.getElementById('year-select').disabled = true;
+          }
+          
+          // Trigger auto-search if quick search has content
+          const quickSearch = document.getElementById('quick-search').value;
+          if (quickSearch.trim()) {
+            debounceSearch(quickSearch);
+          }
+        });
+      }
+    }
+
+    // Handle initialization timing properly
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+    
+    // Allow Enter key to trigger search
+    document.getElementById('quick-search').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        quickSearch();
+      }
+    });
+  </script>
+</body>
+</html>
+  `;
+}
 
 // Configure multer for file uploads
 const upload = multer({
@@ -1783,15 +2232,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const csvString = csvBuffer.toString('utf-8');
 
       // Parse CSV with error handling
-      const records = await new Promise((resolve, reject) => {
-        parseCsv(csvString, {
-          columns: true,
-          skip_empty_lines: true,
-          trim: true,
-        }, (err: any, records: any) => {
-          if (err) reject(err);
-          else resolve(records);
-        });
+      const parsePromise = promisify(parseCsv);
+      const records = await parsePromise(csvString, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
       });
 
       if (!Array.isArray(records) || records.length === 0) {
@@ -2697,21 +3142,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Map compatible parts to Shopify products
           const compatibleShopifyProducts = compatibleParts
-            .map((mapping: any) => shopifyProducts.find((p: any) => p.id.toString() === mapping.shopifyProductId))
+            .map(mapping => shopifyProducts.find(p => p.id.toString() === mapping.shopifyProductId))
             .filter(Boolean);
           
-          // Use full HTML by default (fragments were causing styling/functionality issues)
-          const useFragment = req.query.fragment === '1';
-          return res.send(generateMotorcyclePage(motorcycle, compatibleShopifyProducts, shop as string, useFragment));
+          return res.send(generateMotorcyclePage(motorcycle, compatibleShopifyProducts, shop as string));
         } catch (error) {
           console.error('Error loading motorcycle page:', error);
           return res.status(500).send("Error loading motorcycle data");
         }
       } else {
         // Show search page
-        // Use full HTML by default (fragments were causing styling/functionality issues)
-        const useFragment = req.query.fragment === '1';
-        return res.send(generateSearchPage(shop as string, useFragment));
+        return res.send(generateSearchPage(shop as string));
       }
     } catch (error) {
       console.error('App proxy error:', error);
