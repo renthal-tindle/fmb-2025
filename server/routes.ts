@@ -256,7 +256,7 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
           </select>
         </div>
         <div class="form-group">
-          <label for="year-select">Year (Optional)</label>
+          <label for="year-select">📅 Year</label>
           <select id="year-select" disabled>
             <option value="">Select Year</option>
           </select>
@@ -391,8 +391,8 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
       const model = document.getElementById('model-select').value;
       const year = document.getElementById('year-select').value;
 
-      if (!make || !model) {
-        alert('Please select at least make and model');
+      if (!make || !model || !year) {
+        alert('Please select make, model, and year');
         return;
       }
       
@@ -704,7 +704,7 @@ function generateSearchPage(shop: string): string {
           </select>
         </div>
         <div class="form-group">
-          <label for="year-select">📅 Year (Optional)</label>
+          <label for="year-select">📅 Year</label>
           <select id="year-select" disabled>
             <option value="">Choose your bike year</option>
           </select>
@@ -796,8 +796,8 @@ function generateSearchPage(shop: string): string {
       const model = document.getElementById('model-select').value;
       const year = document.getElementById('year-select').value;
 
-      if (!make || !model) {
-        alert('Please select at least make and model to search');
+      if (!make || !model || !year) {
+        alert('Please select make, model, and year to search');
         return;
       }
       
