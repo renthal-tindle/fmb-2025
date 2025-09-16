@@ -195,7 +195,7 @@ export class DatabaseStorage implements IStorage {
     return result.map(row => row.bikemodel);
   }
 
-  async getDistinctYearsByMakeModel(make: string, model: string): Promise<number[]> {
+  async getDistinctYearsByMakeModel(make: string, model: string): Promise<string[]> {
     const result = await db.select({ 
       firstyear: motorcycles.firstyear, 
       lastyear: motorcycles.lastyear 
@@ -215,8 +215,48 @@ export class DatabaseStorage implements IStorage {
       }
     });
     
-    // Convert to array and sort in descending order (newest first)
-    return Array.from(allYears).sort((a, b) => b - a);
+    // Convert to sorted array (newest first)
+    const sortedYears = Array.from(allYears).sort((a, b) => b - a);
+    
+    // Group consecutive years into ranges
+    return this.groupYearsIntoRanges(sortedYears);
+  }
+
+  private groupYearsIntoRanges(years: number[]): string[] {
+    if (years.length === 0) return [];
+    if (years.length === 1) return [years[0].toString()];
+    
+    const ranges: string[] = [];
+    let rangeStart = years[0];
+    let rangeEnd = years[0];
+    
+    for (let i = 1; i < years.length; i++) {
+      // Since years are sorted descending, consecutive means current year is rangeStart - 1
+      if (years[i] === rangeStart - 1) {
+        // Extend the current range
+        rangeStart = years[i];
+      } else {
+        // End the current range and add it to results
+        if (rangeStart === rangeEnd) {
+          ranges.push(rangeEnd.toString());
+        } else {
+          ranges.push(`${rangeEnd}-${rangeStart}`);
+        }
+        
+        // Start a new range
+        rangeStart = years[i];
+        rangeEnd = years[i];
+      }
+    }
+    
+    // Add the final range
+    if (rangeStart === rangeEnd) {
+      ranges.push(rangeEnd.toString());
+    } else {
+      ranges.push(`${rangeEnd}-${rangeStart}`);
+    }
+    
+    return ranges;
   }
 
   async filterMotorcyclesByMakeModelYear(make: string, model: string, year?: number): Promise<Motorcycle[]> {
@@ -229,6 +269,22 @@ export class DatabaseStorage implements IStorage {
     if (year) {
       conditions.push(lte(motorcycles.firstyear, year));
       conditions.push(gte(motorcycles.lastyear, year));
+    }
+
+    return await db.select().from(motorcycles).where(and(...conditions));
+  }
+
+  async filterMotorcyclesByMakeModelYearRange(make: string, model: string, startYear?: number, endYear?: number): Promise<Motorcycle[]> {
+    const conditions = [
+      ilike(motorcycles.bikemake, make),
+      ilike(motorcycles.bikemodel, model)
+    ];
+
+    // Year range is optional - if provided, check if the ranges overlap
+    if (startYear !== undefined && endYear !== undefined) {
+      // Ranges overlap if: motorcycle.firstyear <= endYear AND motorcycle.lastyear >= startYear
+      conditions.push(lte(motorcycles.firstyear, endYear));
+      conditions.push(gte(motorcycles.lastyear, startYear));
     }
 
     return await db.select().from(motorcycles).where(and(...conditions));

@@ -3251,6 +3251,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Helper function to parse year ranges
+  function parseYearRange(yearString: string | undefined): { startYear?: number; endYear?: number } | undefined {
+    if (!yearString) return undefined;
+    
+    // Check if it's a year range (contains dash)
+    if (yearString.includes('-')) {
+      const [startStr, endStr] = yearString.split('-');
+      const startYear = parseInt(startStr.trim());
+      const endYear = parseInt(endStr.trim());
+      return { startYear, endYear };
+    } else {
+      // Single year
+      const singleYear = parseInt(yearString);
+      return { startYear: singleYear, endYear: singleYear };
+    }
+  }
+
   // API endpoint for motorcycle search
   // Search route with full shop path
   app.post("/api/proxy/:shop/apps/fit-my-bike/search", appProxySecurityMiddleware, async (req, res) => {
@@ -3261,8 +3278,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (searchQuery) {
         motorcycles = await storage.searchMotorcycles(searchQuery);
       } else if (make && model) {
-        // New Make > Model > Year flow - use new filtering method
-        motorcycles = await storage.filterMotorcyclesByMakeModelYear(make, model, year ? parseInt(year) : undefined);
+        // New Make > Model > Year flow - handle year ranges
+        const yearRange = parseYearRange(year);
+        if (yearRange) {
+          // For year ranges, find motorcycles that overlap with any part of the range
+          motorcycles = await storage.filterMotorcyclesByMakeModelYearRange(make, model, yearRange.startYear, yearRange.endYear);
+        } else {
+          motorcycles = await storage.filterMotorcyclesByMakeModelYear(make, model, undefined);
+        }
       } else if (year && make) {
         // Backward compatibility for old Year > Make flow
         motorcycles = await storage.filterMotorcycles({
@@ -3294,15 +3317,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (searchQuery) {
         motorcycles = await storage.searchMotorcycles(searchQuery);
       } else if (make && model) {
-        // New Make > Model > Year flow - use new filtering method
-        motorcycles = await storage.filterMotorcyclesByMakeModelYear(make, model, year ? parseInt(year) : undefined);
+        // New Make > Model > Year flow - handle year ranges
+        const yearRange = parseYearRange(year);
+        if (yearRange) {
+          // For year ranges, find motorcycles that overlap with any part of the range
+          motorcycles = await storage.filterMotorcyclesByMakeModelYearRange(make, model, yearRange.startYear, yearRange.endYear);
+        } else {
+          motorcycles = await storage.filterMotorcyclesByMakeModelYear(make, model, undefined);
+        }
       } else if (year && make) {
-        // Backward compatibility for old Year > Make flow
-        motorcycles = await storage.filterMotorcycles({
-          firstyear: parseInt(year),
-          lastyear: parseInt(year),
-          bikemake: make
-        });
+        // Backward compatibility for old Year > Make flow - handle year ranges
+        const yearRange = parseYearRange(year);
+        if (yearRange && yearRange.startYear === yearRange.endYear) {
+          motorcycles = await storage.filterMotorcycles({
+            firstyear: yearRange.startYear,
+            lastyear: yearRange.startYear,
+            bikemake: make
+          });
+        } else {
+          // For year ranges in old flow, just use the start year for compatibility
+          motorcycles = await storage.filterMotorcycles({
+            firstyear: yearRange?.startYear || parseInt(year),
+            lastyear: yearRange?.startYear || parseInt(year),
+            bikemake: make
+          });
+        }
         
         if (model) {
           motorcycles = motorcycles.filter(m => 

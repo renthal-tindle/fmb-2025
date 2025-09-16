@@ -26,8 +26,9 @@ export interface IStorage {
   getDistinctMotorcycleMakes(): Promise<string[]>;
   getDistinctMotorcycleYears(): Promise<number[]>;
   getDistinctMotorcycleModelsByMake(make: string): Promise<string[]>;
-  getDistinctYearsByMakeModel(make: string, model: string): Promise<number[]>;
+  getDistinctYearsByMakeModel(make: string, model: string): Promise<string[]>;
   filterMotorcyclesByMakeModelYear(make: string, model: string, year?: number): Promise<Motorcycle[]>;
+  filterMotorcyclesByMakeModelYearRange(make: string, model: string, startYear?: number, endYear?: number): Promise<Motorcycle[]>;
   getNextMotorcycleRecid(): Promise<number>;
 
   // Shopify Products
@@ -290,7 +291,7 @@ export class MemStorage implements IStorage {
     return Array.from(new Set(models)).sort();
   }
 
-  async getDistinctYearsByMakeModel(make: string, model: string): Promise<number[]> {
+  async getDistinctYearsByMakeModel(make: string, model: string): Promise<string[]> {
     const motorcycles = Array.from(this.motorcycles.values());
     const allYears = new Set<number>();
     
@@ -306,8 +307,48 @@ export class MemStorage implements IStorage {
         }
       });
     
-    // Convert to array and sort in descending order (newest first)
-    return Array.from(allYears).sort((a, b) => b - a);
+    // Convert to sorted array (newest first)
+    const sortedYears = Array.from(allYears).sort((a, b) => b - a);
+    
+    // Group consecutive years into ranges
+    return this.groupYearsIntoRanges(sortedYears);
+  }
+
+  private groupYearsIntoRanges(years: number[]): string[] {
+    if (years.length === 0) return [];
+    if (years.length === 1) return [years[0].toString()];
+    
+    const ranges: string[] = [];
+    let rangeStart = years[0];
+    let rangeEnd = years[0];
+    
+    for (let i = 1; i < years.length; i++) {
+      // Since years are sorted descending, consecutive means current year is rangeStart - 1
+      if (years[i] === rangeStart - 1) {
+        // Extend the current range
+        rangeStart = years[i];
+      } else {
+        // End the current range and add it to results
+        if (rangeStart === rangeEnd) {
+          ranges.push(rangeEnd.toString());
+        } else {
+          ranges.push(`${rangeEnd}-${rangeStart}`);
+        }
+        
+        // Start a new range
+        rangeStart = years[i];
+        rangeEnd = years[i];
+      }
+    }
+    
+    // Add the final range
+    if (rangeStart === rangeEnd) {
+      ranges.push(rangeEnd.toString());
+    } else {
+      ranges.push(`${rangeEnd}-${rangeStart}`);
+    }
+    
+    return ranges;
   }
 
   async filterMotorcyclesByMakeModelYear(make: string, model: string, year?: number): Promise<Motorcycle[]> {
@@ -320,6 +361,25 @@ export class MemStorage implements IStorage {
       
       // Year is optional - if provided, check if the year falls within the bike's production range
       if (year && (motorcycle.firstyear > year || motorcycle.lastyear < year)) return false;
+      
+      return true;
+    });
+  }
+
+  async filterMotorcyclesByMakeModelYearRange(make: string, model: string, startYear?: number, endYear?: number): Promise<Motorcycle[]> {
+    return Array.from(this.motorcycles.values()).filter(motorcycle => {
+      // Make is required
+      if (motorcycle.bikemake.toLowerCase() !== make.toLowerCase()) return false;
+      
+      // Model is required
+      if (motorcycle.bikemodel.toLowerCase() !== model.toLowerCase()) return false;
+      
+      // Year range is optional - if provided, check if the ranges overlap
+      if (startYear !== undefined && endYear !== undefined) {
+        // Check if the motorcycle's production range overlaps with the selected year range
+        // Ranges overlap if: motorcycle.firstyear <= endYear AND motorcycle.lastyear >= startYear
+        if (motorcycle.firstyear > endYear || motorcycle.lastyear < startYear) return false;
+      }
       
       return true;
     });
