@@ -103,7 +103,7 @@ function createAppProxySecurityMiddleware() {
 // ==========================================
 
 function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: string): string {
-  const baseUrl = `${escapeHtml(shop)}/apps/fit-my-bike`;
+  const baseUrl = `/apps/fit-my-bike`;
   const bikeMake = escapeHtml(motorcycle.bikemake || '');
   const bikeModel = escapeHtml(motorcycle.bikemodel || '');
   const bikeYear = motorcycle.bikeyear || 'Unknown Year';
@@ -519,7 +519,7 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
 }
 
 function generateSearchPage(shop: string): string {
-  const baseUrl = `${shop}/apps/fit-my-bike`;
+  const baseUrl = `/apps/fit-my-bike`;
   
   return `
 <!DOCTYPE html>
