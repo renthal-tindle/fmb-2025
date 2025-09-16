@@ -286,7 +286,11 @@ async function renderStorefrontShell(shop: string): Promise<{
 async function generateNativeMotorcyclePage(shop: string, motorcycle: any): Promise<string> {
   const bikeMake = escapeHtml(motorcycle.bikemake || 'Unknown');
   const bikeModel = escapeHtml(motorcycle.bikemodel || 'Unknown');
-  const bikeYear = motorcycle.bikeyear || 'Unknown';
+  const bikeYear = motorcycle.firstyear && motorcycle.lastyear 
+    ? (motorcycle.firstyear === motorcycle.lastyear 
+        ? motorcycle.firstyear.toString() 
+        : `${motorcycle.firstyear}-${motorcycle.lastyear}`)
+    : 'Unknown';
   const bikeEngine = escapeHtml(motorcycle.bikeengine || 'All Engines');
   
   return `
@@ -3556,7 +3560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If bikeid is provided, generate specific motorcycle page
       if (bikeid) {
-        const motorcycle = await storage.getMotorcycleByRecid(parseInt(bikeid));
+        const motorcycle = await storage.getMotorcycle(parseInt(bikeid));
         if (!motorcycle) {
           return res.status(404).json({ error: 'Motorcycle not found' });
         }
