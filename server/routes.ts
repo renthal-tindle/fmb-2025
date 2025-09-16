@@ -25,21 +25,31 @@ function escapeHtml(unsafe: string): string {
 
 function validateAppProxySignature(originalUrl: string, secret: string): boolean {
   if (!originalUrl || !secret) {
+    console.error('Missing URL or secret for signature validation');
     return false;
   }
   
   try {
     // Extract query string from the original URL
     const queryIndex = originalUrl.indexOf('?');
-    if (queryIndex === -1) return false;
+    if (queryIndex === -1) {
+      console.error('No query string found in URL:', originalUrl);
+      return false;
+    }
     
     const queryString = originalUrl.substring(queryIndex + 1);
+    console.log('🔍 Query string:', queryString);
     
     // Parse to extract signature without altering original encoding
     const params = new URLSearchParams(queryString);
     const signature = params.get('signature');
     
-    if (!signature) return false;
+    if (!signature) {
+      console.error('No signature parameter found in query string');
+      return false;
+    }
+    
+    console.log('🔍 Signature from request:', signature);
     
     // Remove signature parameter from the raw query string while preserving exact encoding
     // This ensures we match Shopify's signature calculation exactly
@@ -63,23 +73,31 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
       queryStringWithoutSignature = '';
     }
     
+    console.log('🔍 Query string without signature:', queryStringWithoutSignature);
+    
     // Calculate HMAC signature using the exact raw query string
     const calculatedSignature = crypto
       .createHmac('sha256', secret)
       .update(queryStringWithoutSignature)
       .digest('hex');
     
+    console.log('🔍 Calculated signature:', calculatedSignature);
+    console.log('🔍 Signatures match:', signature === calculatedSignature);
+    
     // Validate signature format before comparison
     if (signature.length !== 64 || !/^[a-fA-F0-9]+$/.test(signature)) {
-      console.error('Invalid signature format');
+      console.error('Invalid signature format:', signature);
       return false;
     }
     
     // Constant-time comparison to prevent timing attacks
-    return crypto.timingSafeEqual(
+    const isValid = crypto.timingSafeEqual(
       Buffer.from(signature, 'hex'),
       Buffer.from(calculatedSignature, 'hex')
     );
+    
+    console.log('🔍 Final validation result:', isValid);
+    return isValid;
   } catch (error) {
     console.error('Signature validation error:', error);
     return false;
