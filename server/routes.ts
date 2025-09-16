@@ -311,8 +311,8 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
     async function loadSearchOptions() {
       try {
         const [yearsRes, makesRes] = await Promise.all([
-          fetch(\`\${baseUrl}/search-data?type=years\`),
-          fetch(\`\${baseUrl}/search-data?type=makes\`)
+          fetch(\`/apps/fit-my-bike/search-data?type=years\`),
+          fetch(\`/apps/fit-my-bike/search-data?type=makes\`)
         ]);
         
         const years = await yearsRes.json();
@@ -346,7 +346,7 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
       }
       
       try {
-        const response = await fetch(\`\${baseUrl}/search\`, {
+        const response = await fetch(\`/apps/fit-my-bike/search\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ year, make, model })
@@ -621,8 +621,8 @@ function generateSearchPage(shop: string): string {
     async function loadSearchOptions() {
       try {
         const [yearsRes, makesRes] = await Promise.all([
-          fetch(\`\${baseUrl}/search-data?type=years\`),
-          fetch(\`\${baseUrl}/search-data?type=makes\`)
+          fetch(\`/apps/fit-my-bike/search-data?type=years\`),
+          fetch(\`/apps/fit-my-bike/search-data?type=makes\`)
         ]);
         
         const years = await yearsRes.json();
@@ -671,7 +671,7 @@ function generateSearchPage(shop: string): string {
     
     async function performSearch(searchParams) {
       try {
-        const response = await fetch(\`\${baseUrl}/search\`, {
+        const response = await fetch(\`/apps/fit-my-bike/search\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(searchParams)
@@ -2738,7 +2738,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // API endpoint for search data (years, makes, etc.)
+  // API endpoint for search data (years, makes, etc.) - with shop path
+  app.get("/api/proxy/:shop/apps/fit-my-bike/search-data", appProxySecurityMiddleware, async (req, res) => {
+    try {
+      const { type } = req.query;
+      
+      let data = [];
+      switch (type) {
+        case 'years':
+          data = await storage.getDistinctMotorcycleYears();
+          break;
+        case 'makes':
+          data = await storage.getDistinctMotorcycleMakes();
+          break;
+        default:
+          data = [];
+      }
+      
+      res.json(data);
+    } catch (error) {
+      console.error('Search data error:', error);
+      res.status(500).json({ error: 'Failed to load search data' });
+    }
+  });
+
+  // API endpoint for search data (years, makes, etc.) - fallback route
   app.get("/api/proxy/search-data", appProxySecurityMiddleware, async (req, res) => {
     try {
       const { type } = req.query;
@@ -2763,6 +2787,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // API endpoint for motorcycle search
+  // Search route with full shop path
+  app.post("/api/proxy/:shop/apps/fit-my-bike/search", appProxySecurityMiddleware, async (req, res) => {
+    try {
+      const { year, make, model, searchQuery } = req.body;
+      
+      let motorcycles = [];
+      if (searchQuery) {
+        motorcycles = await storage.searchMotorcycles(searchQuery);
+      } else if (year && make) {
+        motorcycles = await storage.filterMotorcycles({
+          firstyear: parseInt(year),
+          lastyear: parseInt(year),
+          bikemake: make
+        });
+        
+        if (model) {
+          motorcycles = motorcycles.filter(m => 
+            m.bikemodel.toLowerCase().includes(model.toLowerCase())
+          );
+        }
+      }
+      
+      res.json({ motorcycles });
+    } catch (error) {
+      console.error('Motorcycle search error:', error);
+      res.status(500).json({ error: 'Search failed' });
+    }
+  });
+
+  // Search route fallback
   app.post("/api/proxy/search", appProxySecurityMiddleware, async (req, res) => {
     try {
       const { year, make, model, searchQuery } = req.body;
