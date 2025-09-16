@@ -37,21 +37,13 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
       return false;
     }
     
-    const rawQueryString = originalUrl.substring(queryIndex + 1);
-    // Decode HTML entities that may have been encoded by Express middleware
-    const queryString = rawQueryString
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#039;/g, "'");
+    const queryString = originalUrl.substring(queryIndex + 1);
+    console.log('🔍 Query string:', queryString);
     
-    console.log('🔍 Raw query string:', rawQueryString);
-    console.log('🔍 Decoded query string:', queryString);
-    
-    // Parse to extract signature without altering original encoding
+    // Parse to extract signature and path_prefix
     const params = new URLSearchParams(queryString);
     const signature = params.get('signature');
+    const pathPrefix = decodeURIComponent(params.get('path_prefix') || '');
     
     if (!signature) {
       console.error('No signature parameter found in query string');
@@ -59,9 +51,9 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
     }
     
     console.log('🔍 Signature from request:', signature);
+    console.log('🔍 Path prefix:', pathPrefix);
     
     // Remove signature parameter from the raw query string while preserving exact encoding
-    // This ensures we match Shopify's signature calculation exactly
     const signatureParam = `signature=${signature}`;
     let queryStringWithoutSignature = queryString;
     
@@ -84,10 +76,15 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
     
     console.log('🔍 Query string without signature:', queryStringWithoutSignature);
     
-    // Calculate HMAC signature using the exact raw query string
+    // Build the payload for signature validation: path_prefix + '?' + query_without_signature
+    // This matches how Shopify calculates the signature
+    const payload = pathPrefix + (queryStringWithoutSignature ? ('?' + queryStringWithoutSignature) : '');
+    console.log('🔍 Payload for signature calculation:', payload);
+    
+    // Calculate HMAC signature using the path + query payload
     const calculatedSignature = crypto
       .createHmac('sha256', secret)
-      .update(queryStringWithoutSignature)
+      .update(payload)
       .digest('hex');
     
     console.log('🔍 Calculated signature:', calculatedSignature);
