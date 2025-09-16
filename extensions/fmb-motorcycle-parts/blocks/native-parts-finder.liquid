@@ -91,7 +91,7 @@
         fetch(`${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/compatible-parts`).then(r => r.json())
       ])
       .then(([motorcycles, parts]) => {
-        const motorcycle = motorcycles[0];
+        const motorcycle = motorcycles.find(m => m.recid == bikeid);
         if (!motorcycle) {
           throw new Error('Motorcycle not found');
         }
