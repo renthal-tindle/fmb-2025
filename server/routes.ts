@@ -1751,6 +1751,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const shop = callback.session.shop;
         console.log(`App installed successfully for ${shop}`);
         
+        // ✅ MANUALLY PERSIST SESSION - This fixes the core issue!
+        console.log(`🔧 MANUAL: Persisting session for ${shop} after callback`);
+        try {
+          // Store in database for permanent persistence
+          const stored = await storage.storeShopifySession(callback.session);
+          
+          // Store in memory for current session
+          inMemorySessionStorage.set(callback.session.id, callback.session);
+          inMemorySessionStorage.set('current', callback.session);
+          
+          if (stored) {
+            console.log(`✅ MANUAL: Successfully stored session for ${shop} in DATABASE`);
+          } else {
+            console.log(`❌ MANUAL: Failed to store session for ${shop} in DATABASE`);
+          }
+        } catch (error) {
+          console.error(`💥 MANUAL: Error storing session for ${shop}:`, error);
+        }
+        
         // Store the access token globally for direct use
         if (callback.session.accessToken) {
           global.LATEST_SHOPIFY_ACCESS_TOKEN = callback.session.accessToken;
