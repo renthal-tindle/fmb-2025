@@ -981,15 +981,11 @@ function generateSearchPage(shop: string): string {
           grouped[key] = {
             bikemake: bike.bikemake,
             bikemodel: bike.bikemodel,
-            years: [bike.bikeyear],
-            engines: [bike.bikeengine || 'Standard Engine'],
+            years: [parseInt(bike.bikeyear) || 0], // Convert to number
             recid: bike.recid // Use first bike's ID for navigation
           };
         } else {
-          grouped[key].years.push(bike.bikeyear);
-          if (bike.bikeengine && !grouped[key].engines.includes(bike.bikeengine)) {
-            grouped[key].engines.push(bike.bikeengine);
-          }
+          grouped[key].years.push(parseInt(bike.bikeyear) || 0); // Convert to number
         }
       });
 
@@ -1001,7 +997,7 @@ function generateSearchPage(shop: string): string {
         item.style.cssText = 'padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s;';
         
         const title = document.createElement('div');
-        title.style.cssText = 'font-weight: 600; color: #2c3e50; margin-bottom: 3px;';
+        title.style.cssText = 'font-weight: 600; color: #2c3e50; padding: 2px 0;';
         
         // Create year range display
         const minYear = Math.min(...group.years);
@@ -1009,13 +1005,7 @@ function generateSearchPage(shop: string): string {
         const yearRange = minYear === maxYear ? minYear.toString() : \`\${minYear}-\${maxYear}\`;
         title.textContent = \`\${group.bikemake} \${group.bikemodel} (\${yearRange})\`;
         
-        const details = document.createElement('div');
-        details.style.cssText = 'color: #666; font-size: 0.9em;';
-        const uniqueEngines = [...new Set(group.engines)];
-        details.textContent = uniqueEngines.join(', ');
-        
         item.appendChild(title);
-        item.appendChild(details);
         
         item.addEventListener('mouseenter', () => {
           item.style.backgroundColor = '#f8f9fa';
