@@ -2741,15 +2741,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API endpoint for search data (years, makes, etc.) - with shop path
   app.get("/api/proxy/:shop/apps/fit-my-bike/search-data", appProxySecurityMiddleware, async (req, res) => {
     try {
-      const { type } = req.query;
+      const { type, make, model } = req.query;
       
       let data = [];
       switch (type) {
         case 'years':
-          data = await storage.getDistinctMotorcycleYears();
+          if (make && model) {
+            // Get years for specific make+model combination
+            data = await storage.getDistinctYearsByMakeModel(make as string, model as string);
+          } else {
+            // Get all years (backward compatibility)
+            data = await storage.getDistinctMotorcycleYears();
+          }
           break;
         case 'makes':
           data = await storage.getDistinctMotorcycleMakes();
+          break;
+        case 'models':
+          if (make) {
+            // Get models for specific make
+            data = await storage.getDistinctMotorcycleModelsByMake(make as string);
+          } else {
+            data = [];
+          }
           break;
         default:
           data = [];
@@ -2765,15 +2779,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API endpoint for search data (years, makes, etc.) - fallback route
   app.get("/api/proxy/search-data", appProxySecurityMiddleware, async (req, res) => {
     try {
-      const { type } = req.query;
+      const { type, make, model } = req.query;
       
       let data = [];
       switch (type) {
         case 'years':
-          data = await storage.getDistinctMotorcycleYears();
+          if (make && model) {
+            // Get years for specific make+model combination
+            data = await storage.getDistinctYearsByMakeModel(make as string, model as string);
+          } else {
+            // Get all years (backward compatibility)
+            data = await storage.getDistinctMotorcycleYears();
+          }
           break;
         case 'makes':
           data = await storage.getDistinctMotorcycleMakes();
+          break;
+        case 'models':
+          if (make) {
+            // Get models for specific make
+            data = await storage.getDistinctMotorcycleModelsByMake(make as string);
+          } else {
+            data = [];
+          }
           break;
         default:
           data = [];
@@ -2795,7 +2823,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let motorcycles = [];
       if (searchQuery) {
         motorcycles = await storage.searchMotorcycles(searchQuery);
+      } else if (make && model) {
+        // New Make > Model > Year flow - use new filtering method
+        motorcycles = await storage.filterMotorcyclesByMakeModelYear(make, model, year ? parseInt(year) : undefined);
       } else if (year && make) {
+        // Backward compatibility for old Year > Make flow
         motorcycles = await storage.filterMotorcycles({
           firstyear: parseInt(year),
           lastyear: parseInt(year),
@@ -2824,7 +2856,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let motorcycles = [];
       if (searchQuery) {
         motorcycles = await storage.searchMotorcycles(searchQuery);
+      } else if (make && model) {
+        // New Make > Model > Year flow - use new filtering method
+        motorcycles = await storage.filterMotorcyclesByMakeModelYear(make, model, year ? parseInt(year) : undefined);
       } else if (year && make) {
+        // Backward compatibility for old Year > Make flow
         motorcycles = await storage.filterMotorcycles({
           firstyear: parseInt(year),
           lastyear: parseInt(year),
