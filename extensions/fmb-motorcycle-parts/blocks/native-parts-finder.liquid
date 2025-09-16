@@ -271,10 +271,6 @@
             </div>
           </div>
           
-          <button id="find-parts-btn-${config.blockId}" class="fmb-find-button" disabled>
-            Find Compatible Parts
-          </button>
-          
           <div id="results-${config.blockId}" class="fmb-results"></div>
         </div>
       `;
@@ -367,7 +363,6 @@
       const makeSelect = container.querySelector(`#make-select-${config.blockId}`);
       const modelSelect = container.querySelector(`#model-select-${config.blockId}`);
       const yearSelect = container.querySelector(`#year-select-${config.blockId}`);
-      const findButton = container.querySelector(`#find-parts-btn-${config.blockId}`);
       const results = container.querySelector(`#results-${config.blockId}`);
 
       let motorcycleData = [];
@@ -448,7 +443,6 @@
             modelSelect.appendChild(option);
           });
         }
-        updateFindButton();
       });
 
       modelSelect.addEventListener('change', function() {
@@ -476,17 +470,16 @@
             yearSelect.appendChild(option);
           });
         }
-        updateFindButton();
       });
 
-      yearSelect.addEventListener('change', updateFindButton);
+      yearSelect.addEventListener('change', function() {
+        // Auto-search when all three filters are selected
+        if (makeSelect.value && modelSelect.value && yearSelect.value) {
+          performAutoSearch();
+        }
+      });
 
-      function updateFindButton() {
-        const hasSelections = makeSelect.value && modelSelect.value && yearSelect.value;
-        findButton.disabled = !hasSelections;
-      }
-
-      findButton.addEventListener('click', function() {
+      function performAutoSearch() {
         const make = makeSelect.value;
         const model = modelSelect.value;
         const year = parseInt(yearSelect.value);
@@ -506,7 +499,7 @@
         } else {
           results.innerHTML = '<p class="fmb-no-results">No matching motorcycle found.</p>';
         }
-      });
+      }
     }
 
     function setupPartInteractions(config, container) {
