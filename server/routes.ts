@@ -982,8 +982,23 @@ function generateSearchPage(shop: string): string {
         
         console.log('🔍 Auto search results:', motorcycles.length, 'motorcycles found');
         
+        // Filter motorcycles by year range if a year was parsed from query
+        let filteredMotorcycles = motorcycles;
+        if (parsedYear) {
+          filteredMotorcycles = motorcycles.filter(bike => {
+            const withinRange = parsedYear >= bike.firstyear && parsedYear <= bike.lastyear;
+            if (!withinRange) {
+              console.log('❌ Filtered out:', bike.bikemake, bike.bikemodel, 
+                         \`(\${bike.firstyear}-\${bike.lastyear})\`, 
+                         'because', parsedYear, 'not in range');
+            }
+            return withinRange;
+          });
+          console.log('🔍 After year filtering:', filteredMotorcycles.length, 'motorcycles remain');
+        }
+        
         // Only show suggestions (top 8) in dropdown, not in main results
-        showSuggestions(motorcycles.slice(0, 8), query);
+        showSuggestions(filteredMotorcycles.slice(0, 8), query);
       } catch (error) {
         if (error.name !== 'AbortError') {
           console.error('Auto search failed:', error);
