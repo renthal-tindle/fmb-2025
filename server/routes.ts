@@ -368,6 +368,15 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
     
     function populateSelect(selectId, options) {
       const select = document.getElementById(selectId);
+      
+      // Clear existing options first (keep only the first placeholder option)
+      const firstOption = select.firstElementChild;
+      select.innerHTML = '';
+      if (firstOption) {
+        select.appendChild(firstOption);
+      }
+      
+      // Add new options
       options.forEach(option => {
         const optionElement = document.createElement('option');
         optionElement.value = option;
@@ -376,31 +385,6 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
       });
     }
     
-    // Event handlers for cascading dropdowns
-    document.getElementById('make-select').addEventListener('change', function() {
-      const make = this.value;
-      if (make) {
-        loadModelsForMake(make);
-      } else {
-        // Reset model and year dropdowns
-        document.getElementById('model-select').innerHTML = '<option value="">Select Model</option>';
-        document.getElementById('model-select').disabled = true;
-        document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
-        document.getElementById('year-select').disabled = true;
-      }
-    });
-
-    document.getElementById('model-select').addEventListener('change', function() {
-      const make = document.getElementById('make-select').value;
-      const model = this.value;
-      if (make && model) {
-        loadYearsForMakeModel(make, model);
-      } else {
-        // Reset year dropdown
-        document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
-        document.getElementById('year-select').disabled = true;
-      }
-    });
 
     async function searchMotorcycles() {
       const make = document.getElementById('make-select').value;
@@ -488,8 +472,11 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
       console.log('🚀 Page loaded, initializing search options...');
       loadSearchOptions();
       
-      // Set up event handlers for cascading dropdowns
-      document.getElementById('make-select').addEventListener('change', function() {
+      // Set up event handlers for cascading dropdowns (only once)
+      const makeSelect = document.getElementById('make-select');
+      if (makeSelect && !makeSelect.hasAttribute('data-initialized')) {
+        makeSelect.setAttribute('data-initialized', 'true');
+        makeSelect.addEventListener('change', function() {
         const make = this.value;
         if (make) {
           loadModelsForMake(make);
@@ -502,7 +489,10 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
         }
       });
 
-      document.getElementById('model-select').addEventListener('change', function() {
+      const modelSelect = document.getElementById('model-select');
+      if (modelSelect && !modelSelect.hasAttribute('data-initialized')) {
+        modelSelect.setAttribute('data-initialized', 'true');
+        modelSelect.addEventListener('change', function() {
         const make = document.getElementById('make-select').value;
         const model = this.value;
         if (make && model) {
@@ -512,7 +502,8 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
           document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
           document.getElementById('year-select').disabled = true;
         }
-      });
+        });
+      }
     }
 
     // Handle initialization timing properly
@@ -784,6 +775,15 @@ function generateSearchPage(shop: string): string {
     
     function populateSelect(selectId, options) {
       const select = document.getElementById(selectId);
+      
+      // Clear existing options first (keep only the first placeholder option)
+      const firstOption = select.firstElementChild;
+      select.innerHTML = '';
+      if (firstOption) {
+        select.appendChild(firstOption);
+      }
+      
+      // Add new options
       options.forEach(option => {
         const optionElement = document.createElement('option');
         optionElement.value = option;
@@ -792,31 +792,6 @@ function generateSearchPage(shop: string): string {
       });
     }
     
-    // Event handlers for cascading dropdowns
-    document.getElementById('make-select').addEventListener('change', function() {
-      const make = this.value;
-      if (make) {
-        loadModelsForMake(make);
-      } else {
-        // Reset model and year dropdowns
-        document.getElementById('model-select').innerHTML = '<option value="">Choose your bike model</option>';
-        document.getElementById('model-select').disabled = true;
-        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
-        document.getElementById('year-select').disabled = true;
-      }
-    });
-
-    document.getElementById('model-select').addEventListener('change', function() {
-      const make = document.getElementById('make-select').value;
-      const model = this.value;
-      if (make && model) {
-        loadYearsForMakeModel(make, model);
-      } else {
-        // Reset year dropdown
-        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
-        document.getElementById('year-select').disabled = true;
-      }
-    });
 
     async function searchMotorcycles() {
       const make = document.getElementById('make-select').value;
@@ -933,21 +908,28 @@ function generateSearchPage(shop: string): string {
       console.log('🚀 Main search page loaded, initializing...');
       loadSearchOptions();
       
-      // Set up event handlers for cascading dropdowns
-      document.getElementById('make-select').addEventListener('change', function() {
-        const make = this.value;
-        if (make) {
-          loadModelsForMake(make);
-        } else {
-          // Reset model and year dropdowns
-          document.getElementById('model-select').innerHTML = '<option value="">Choose your bike model</option>';
-          document.getElementById('model-select').disabled = true;
-          document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
-          document.getElementById('year-select').disabled = true;
-        }
-      });
+      // Set up event handlers for cascading dropdowns (only once)
+      const makeSelect = document.getElementById('make-select');
+      if (makeSelect && !makeSelect.hasAttribute('data-initialized')) {
+        makeSelect.setAttribute('data-initialized', 'true');
+        makeSelect.addEventListener('change', function() {
+          const make = this.value;
+          if (make) {
+            loadModelsForMake(make);
+          } else {
+            // Reset model and year dropdowns
+            document.getElementById('model-select').innerHTML = '<option value="">Choose your bike model</option>';
+            document.getElementById('model-select').disabled = true;
+            document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
+            document.getElementById('year-select').disabled = true;
+          }
+        });
+      }
 
-      document.getElementById('model-select').addEventListener('change', function() {
+      const modelSelect = document.getElementById('model-select');
+      if (modelSelect && !modelSelect.hasAttribute('data-initialized')) {
+        modelSelect.setAttribute('data-initialized', 'true');
+        modelSelect.addEventListener('change', function() {
         const make = document.getElementById('make-select').value;
         const model = this.value;
         if (make && model) {
@@ -957,7 +939,8 @@ function generateSearchPage(shop: string): string {
           document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
           document.getElementById('year-select').disabled = true;
         }
-      });
+        });
+      }
     }
 
     // Handle initialization timing properly
