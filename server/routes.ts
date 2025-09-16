@@ -146,82 +146,172 @@ function createAppProxySecurityMiddleware() {
 // SHOPIFY THEME INTEGRATION
 // ==========================================
 
-async function fetchShopifyThemeElements(shop: string): Promise<{header: string, footer: string, css: string}> {
-  try {
-    // Get the clean shop domain
-    const shopDomain = shop.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    
-    console.log(`🎨 Fetching ACTUAL website content from: https://${shopDomain}`);
-    
-    // Fetch the actual HTML from the live store
-    const response = await fetch(`https://${shopDomain}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; FMB-App-Proxy/1.0)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      },
-      timeout: 10000
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const html = await response.text();
-    console.log(`✅ Successfully fetched ${html.length} chars of HTML from live store`);
-    
-    // Extract the actual header and footer from the HTML
-    const headerMatch = html.match(/<header[^>]*>[\s\S]*?<\/header>/i);
-    const footerMatch = html.match(/<footer[^>]*>[\s\S]*?<\/footer>/i);
-    
-    // Also extract any header-related sections like shopify-section-header
-    const shopifyHeaderMatch = html.match(/<[^>]*shopify-section[^>]*header[^>]*>[\s\S]*?<\/[^>]*>/i);
-    const shopifyFooterMatch = html.match(/<[^>]*shopify-section[^>]*footer[^>]*>[\s\S]*?<\/[^>]*>/i);
-    
-    // Extract CSS from the HTML
-    const styleMatches = html.match(/<style[^>]*>[\s\S]*?<\/style>/gi) || [];
-    const linkMatches = html.match(/<link[^>]*rel=["\']stylesheet["\'][^>]*>/gi) || [];
-    
-    let extractedCSS = '';
-    styleMatches.forEach(style => {
-      extractedCSS += style + '\n';
-    });
-    
-    // Use the extracted content or fall back to a simpler approach
-    const actualHeader = shopifyHeaderMatch?.[0] || headerMatch?.[0] || '';
-    const actualFooter = shopifyFooterMatch?.[0] || footerMatch?.[0] || '';
-    
-    console.log(`📋 Extracted header: ${actualHeader.length} chars`);
-    console.log(`📋 Extracted footer: ${actualFooter.length} chars`);
-    console.log(`📋 Extracted CSS: ${extractedCSS.length} chars`);
-    
-    return {
-      header: actualHeader || `<!-- No header found in ${shopDomain} -->`,
-      footer: actualFooter || `<!-- No footer found in ${shopDomain} -->`,
-      css: extractedCSS + `
-        /* App-specific styles to ensure content displays properly */
-        .main-content { 
-          min-height: 60vh; 
-          padding: 2rem 0;
-        }
-        .shopify-section { width: 100%; }
-      `
-    };
-    
-  } catch (error) {
-    console.error(`❌ Failed to fetch actual website content from ${shop}:`, error);
-    
-    // Return minimal content instead of fake content
-    return {
-      header: `<!-- Could not fetch header from ${shop} -->`,
-      footer: `<!-- Could not fetch footer from ${shop} -->`, 
-      css: `
-        /* Minimal fallback styles */
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-        .main-content { padding: 2rem; min-height: 60vh; }
-        .shopify-section { width: 100%; }
-      `
-    };
-  }
+async function generateLiveThemeIntegration(shop: string): Promise<{headerScript: string, footerScript: string, css: string}> {
+  const shopDomain = shop.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  
+  return {
+    headerScript: `
+      <!-- Live Header Integration -->
+      <div id="live-header-container"></div>
+      <script>
+        (function() {
+          console.log('🚀 Loading live header from ${shopDomain}');
+          
+          // Create iframe to fetch header content
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = 'https://${shopDomain}';
+          
+          iframe.onload = function() {
+            try {
+              const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+              const headerContainer = document.getElementById('live-header-container');
+              
+              // Try multiple selectors to find the header
+              const headerSelectors = [
+                'header',
+                '.header',
+                '#header',
+                '[class*="header"]',
+                '.shopify-section-header',
+                '#shopify-section-header'
+              ];
+              
+              let headerFound = false;
+              for (const selector of headerSelectors) {
+                const headerElement = iframeDoc.querySelector(selector);
+                if (headerElement) {
+                  headerContainer.innerHTML = headerElement.outerHTML;
+                  
+                  // Fix links to open in parent window
+                  const links = headerContainer.querySelectorAll('a');
+                  links.forEach(link => {
+                    if (link.href && !link.href.includes('/apps/fit-my-bike')) {
+                      link.target = '_parent';
+                    }
+                  });
+                  
+                  console.log('✅ Header loaded with selector:', selector);
+                  headerFound = true;
+                  break;
+                }
+              }
+              
+              if (!headerFound) {
+                console.warn('⚠️ No header found on ${shopDomain}');
+                headerContainer.innerHTML = '<div style="padding: 1rem; background: #f8f9fa; border-bottom: 1px solid #ddd;"><a href="https://${shopDomain}" style="font-size: 1.5rem; font-weight: bold; text-decoration: none; color: #333;">← Back to Store</a></div>';
+              }
+              
+              // Copy stylesheets from the main site
+              const stylesheets = iframeDoc.querySelectorAll('link[rel="stylesheet"], style');
+              stylesheets.forEach(style => {
+                if (style.tagName === 'LINK') {
+                  const link = document.createElement('link');
+                  link.rel = 'stylesheet';
+                  link.href = style.href;
+                  document.head.appendChild(link);
+                } else {
+                  const styleElement = document.createElement('style');
+                  styleElement.textContent = style.textContent;
+                  document.head.appendChild(styleElement);
+                }
+              });
+              
+            } catch (error) {
+              console.error('❌ Could not load header:', error);
+              document.getElementById('live-header-container').innerHTML = 
+                '<div style="padding: 1rem; background: #f8f9fa; border-bottom: 1px solid #ddd;"><a href="https://${shopDomain}" style="font-size: 1.5rem; font-weight: bold; text-decoration: none; color: #333;">← Back to Store</a></div>';
+            } finally {
+              document.body.removeChild(iframe);
+            }
+          };
+          
+          iframe.onerror = function() {
+            console.error('❌ Failed to load ${shopDomain}');
+            document.getElementById('live-header-container').innerHTML = 
+              '<div style="padding: 1rem; background: #f8f9fa; border-bottom: 1px solid #ddd;"><a href="https://${shopDomain}" style="font-size: 1.5rem; font-weight: bold; text-decoration: none; color: #333;">← Back to Store</a></div>';
+            document.body.removeChild(iframe);
+          };
+          
+          document.body.appendChild(iframe);
+        })();
+      </script>
+    `,
+    footerScript: `
+      <!-- Live Footer Integration -->
+      <div id="live-footer-container"></div>
+      <script>
+        (function() {
+          console.log('🚀 Loading live footer from ${shopDomain}');
+          
+          // Use same iframe approach for footer
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = 'https://${shopDomain}';
+          
+          iframe.onload = function() {
+            try {
+              const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+              const footerContainer = document.getElementById('live-footer-container');
+              
+              // Try multiple selectors to find the footer
+              const footerSelectors = [
+                'footer',
+                '.footer',
+                '#footer',
+                '[class*="footer"]',
+                '.shopify-section-footer',
+                '#shopify-section-footer'
+              ];
+              
+              let footerFound = false;
+              for (const selector of footerSelectors) {
+                const footerElement = iframeDoc.querySelector(selector);
+                if (footerElement) {
+                  footerContainer.innerHTML = footerElement.outerHTML;
+                  
+                  // Fix links to open in parent window
+                  const links = footerContainer.querySelectorAll('a');
+                  links.forEach(link => {
+                    if (link.href && !link.href.includes('/apps/fit-my-bike')) {
+                      link.target = '_parent';
+                    }
+                  });
+                  
+                  console.log('✅ Footer loaded with selector:', selector);
+                  footerFound = true;
+                  break;
+                }
+              }
+              
+              if (!footerFound) {
+                console.log('ℹ️ No footer found on ${shopDomain}');
+              }
+              
+            } catch (error) {
+              console.error('❌ Could not load footer:', error);
+            } finally {
+              document.body.removeChild(iframe);
+            }
+          };
+          
+          iframe.onerror = function() {
+            console.error('❌ Failed to load ${shopDomain} for footer');
+            document.body.removeChild(iframe);
+          };
+          
+          document.body.appendChild(iframe);
+        })();
+      </script>
+    `,
+    css: `
+      /* Live theme integration styles */
+      body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+      #live-header-container { width: 100%; position: sticky; top: 0; z-index: 1000; }
+      #live-footer-container { width: 100%; margin-top: auto; }
+      .main-content { min-height: calc(100vh - 200px); padding: 1rem; }
+    `
+  };
 }
 
 function extractBrandColor(themeContent: string): string {
@@ -362,8 +452,8 @@ async function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], s
   const yearRange = firstYear === lastYear ? firstYear.toString() : `${firstYear}-${lastYear}`;
   const bikeEngine = escapeHtml(motorcycle.bikeengine || 'All Engines');
   
-  // Fetch theme elements for integration
-  const themeElements = await fetchShopifyThemeElements(shop);
+  // Generate live theme integration
+  const themeIntegration = await generateLiveThemeIntegration(shop);
   
   return `
 <!DOCTYPE html>
@@ -393,7 +483,7 @@ async function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], s
   }
   </script>
   <style>
-    ${themeElements.css}
+    ${themeIntegration.css}
     
     /* App-specific styles */
     * { box-sizing: border-box; }
@@ -505,7 +595,7 @@ async function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], s
   </style>
 </head>
 <body>
-  ${themeElements.header}
+  ${themeIntegration.headerScript}
   
   <div class="main-content">
     <div class="container">
@@ -794,15 +884,15 @@ async function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], s
   </script>
   </div>
   
-  ${themeElements.footer}
+  ${themeIntegration.footerScript}
 </body>
 </html>
   `;
 }
 
 async function generateSearchPage(shop: string): Promise<string> {
-  // Fetch theme elements for integration
-  const themeElements = await fetchShopifyThemeElements(shop);
+  // Generate live theme integration
+  const themeIntegration = await generateLiveThemeIntegration(shop);
   const baseUrl = `/apps/fit-my-bike`;
   
   return `
@@ -813,7 +903,7 @@ async function generateSearchPage(shop: string): Promise<string> {
   <meta name="description" content="Find compatible Renthal parts for your motorcycle. Search by year, make, and model to discover high-quality motorcycle parts and accessories.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    ${themeElements.css}
+    ${themeIntegration.css}
     
     /* App-specific styles */
     * { box-sizing: border-box; }
@@ -960,7 +1050,7 @@ async function generateSearchPage(shop: string): Promise<string> {
   </style>
 </head>
 <body>
-  ${themeElements.header}
+  ${themeIntegration.headerScript}
   
   <div class="main-content">
     <div class="container">
@@ -1478,7 +1568,7 @@ async function generateSearchPage(shop: string): Promise<string> {
   </script>
   </div>
   
-  ${themeElements.footer}
+  ${themeIntegration.footerScript}
 </body>
 </html>
   `;
