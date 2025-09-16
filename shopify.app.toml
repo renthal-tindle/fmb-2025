@@ -19,7 +19,6 @@ redirect_urls = [
 ]
 
 [build]
-include_config_on_deploy = true
 
 [webhooks]
 api_version = "2024-01"
