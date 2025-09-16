@@ -316,18 +316,38 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
     
     async function loadSearchOptions() {
       try {
-        const [yearsRes, makesRes] = await Promise.all([
-          fetch(\`/apps/fit-my-bike/search-data?type=years\`),
-          fetch(\`/apps/fit-my-bike/search-data?type=makes\`)
-        ]);
-        
-        const years = await yearsRes.json();
+        // Only load makes initially
+        const makesRes = await fetch(\`/apps/fit-my-bike/search-data?type=makes\`);
         const makes = await makesRes.json();
-        
-        populateSelect('year-select', years);
         populateSelect('make-select', makes);
       } catch (error) {
         console.error('Failed to load search options:', error);
+      }
+    }
+
+    async function loadModelsForMake(make) {
+      try {
+        const response = await fetch(\`/apps/fit-my-bike/search-data?type=models&make=\${encodeURIComponent(make)}\`);
+        const models = await response.json();
+        populateSelect('model-select', models);
+        document.getElementById('model-select').disabled = false;
+        
+        // Reset and disable year dropdown
+        document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
+        document.getElementById('year-select').disabled = true;
+      } catch (error) {
+        console.error('Failed to load models:', error);
+      }
+    }
+
+    async function loadYearsForMakeModel(make, model) {
+      try {
+        const response = await fetch(\`/apps/fit-my-bike/search-data?type=years&make=\${encodeURIComponent(make)}&model=\${encodeURIComponent(model)}\`);
+        const years = await response.json();
+        populateSelect('year-select', years);
+        document.getElementById('year-select').disabled = false;
+      } catch (error) {
+        console.error('Failed to load years:', error);
       }
     }
     
@@ -341,13 +361,40 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
       });
     }
     
-    async function searchMotorcycles() {
-      const year = document.getElementById('year-select').value;
+    // Event handlers for cascading dropdowns
+    document.getElementById('make-select').addEventListener('change', function() {
+      const make = this.value;
+      if (make) {
+        loadModelsForMake(make);
+      } else {
+        // Reset model and year dropdowns
+        document.getElementById('model-select').innerHTML = '<option value="">Select Model</option>';
+        document.getElementById('model-select').disabled = true;
+        document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
+        document.getElementById('year-select').disabled = true;
+      }
+    });
+
+    document.getElementById('model-select').addEventListener('change', function() {
       const make = document.getElementById('make-select').value;
-      const model = document.getElementById('model-input').value;
+      const model = this.value;
+      if (make && model) {
+        loadYearsForMakeModel(make, model);
+      } else {
+        // Reset year dropdown
+        document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
+        document.getElementById('year-select').disabled = true;
+      }
+    });
+
+    async function searchMotorcycles() {
+      const make = document.getElementById('make-select').value;
+      const model = document.getElementById('model-select').value;
+      const year = document.getElementById('year-select').value;
+      const modelSearch = document.getElementById('model-input').value;
       
-      if (!year || !make) {
-        alert('Please select at least year and make');
+      if (!make || !model) {
+        alert('Please select at least make and model');
         return;
       }
       
@@ -355,7 +402,7 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
         const response = await fetch(\`/apps/fit-my-bike/search\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ year, make, model })
+          body: JSON.stringify({ make, model, year, searchQuery: modelSearch })
         });
         
         const { motorcycles } = await response.json();
@@ -632,18 +679,38 @@ function generateSearchPage(shop: string): string {
     
     async function loadSearchOptions() {
       try {
-        const [yearsRes, makesRes] = await Promise.all([
-          fetch(\`/apps/fit-my-bike/search-data?type=years\`),
-          fetch(\`/apps/fit-my-bike/search-data?type=makes\`)
-        ]);
-        
-        const years = await yearsRes.json();
+        // Only load makes initially
+        const makesRes = await fetch(\`/apps/fit-my-bike/search-data?type=makes\`);
         const makes = await makesRes.json();
-        
-        populateSelect('year-select', years.sort((a, b) => b - a)); // Recent years first
         populateSelect('make-select', makes.sort());
       } catch (error) {
         console.error('Failed to load search options:', error);
+      }
+    }
+
+    async function loadModelsForMake(make) {
+      try {
+        const response = await fetch(\`/apps/fit-my-bike/search-data?type=models&make=\${encodeURIComponent(make)}\`);
+        const models = await response.json();
+        populateSelect('model-select', models.sort());
+        document.getElementById('model-select').disabled = false;
+        
+        // Reset and disable year dropdown
+        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike\'s year</option>';
+        document.getElementById('year-select').disabled = true;
+      } catch (error) {
+        console.error('Failed to load models:', error);
+      }
+    }
+
+    async function loadYearsForMakeModel(make, model) {
+      try {
+        const response = await fetch(\`/apps/fit-my-bike/search-data?type=years&make=\${encodeURIComponent(make)}&model=\${encodeURIComponent(model)}\`);
+        const years = await response.json();
+        populateSelect('year-select', years.sort((a, b) => b - a)); // Recent years first
+        document.getElementById('year-select').disabled = false;
+      } catch (error) {
+        console.error('Failed to load years:', error);
       }
     }
     
@@ -657,17 +724,44 @@ function generateSearchPage(shop: string): string {
       });
     }
     
-    async function searchMotorcycles() {
-      const year = document.getElementById('year-select').value;
+    // Event handlers for cascading dropdowns
+    document.getElementById('make-select').addEventListener('change', function() {
+      const make = this.value;
+      if (make) {
+        loadModelsForMake(make);
+      } else {
+        // Reset model and year dropdowns
+        document.getElementById('model-select').innerHTML = '<option value="">Choose your bike\'s model</option>';
+        document.getElementById('model-select').disabled = true;
+        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike\'s year</option>';
+        document.getElementById('year-select').disabled = true;
+      }
+    });
+
+    document.getElementById('model-select').addEventListener('change', function() {
       const make = document.getElementById('make-select').value;
-      const model = document.getElementById('model-input').value;
+      const model = this.value;
+      if (make && model) {
+        loadYearsForMakeModel(make, model);
+      } else {
+        // Reset year dropdown
+        document.getElementById('year-select').innerHTML = '<option value="">Choose your bike\'s year</option>';
+        document.getElementById('year-select').disabled = true;
+      }
+    });
+
+    async function searchMotorcycles() {
+      const make = document.getElementById('make-select').value;
+      const model = document.getElementById('model-select').value;
+      const year = document.getElementById('year-select').value;
+      const modelSearch = document.getElementById('model-input').value;
       
-      if (!year || !make) {
-        alert('Please select at least year and make to search');
+      if (!make || !model) {
+        alert('Please select at least make and model to search');
         return;
       }
       
-      await performSearch({ year, make, model });
+      await performSearch({ make, model, year, searchQuery: modelSearch });
     }
     
     async function quickSearch() {
