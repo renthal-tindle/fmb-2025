@@ -981,11 +981,17 @@ function generateSearchPage(shop: string): string {
           grouped[key] = {
             bikemake: bike.bikemake,
             bikemodel: bike.bikemodel,
-            years: [parseInt(bike.bikeyear) || 0], // Convert to number
+            years: [bike.firstyear, bike.lastyear].filter(y => y), // Use both firstyear and lastyear
             recid: bike.recid // Use first bike's ID for navigation
           };
         } else {
-          grouped[key].years.push(parseInt(bike.bikeyear) || 0); // Convert to number
+          // Add both years if they don't already exist
+          if (bike.firstyear && !grouped[key].years.includes(bike.firstyear)) {
+            grouped[key].years.push(bike.firstyear);
+          }
+          if (bike.lastyear && !grouped[key].years.includes(bike.lastyear)) {
+            grouped[key].years.push(bike.lastyear);
+          }
         }
       });
 
