@@ -185,6 +185,55 @@ export class DatabaseStorage implements IStorage {
     return Array.from(allYears).sort((a, b) => b - a);
   }
 
+  async getDistinctMotorcycleModelsByMake(make: string): Promise<string[]> {
+    const result = await db.select({ bikemodel: motorcycles.bikemodel })
+      .from(motorcycles)
+      .where(ilike(motorcycles.bikemake, make))
+      .groupBy(motorcycles.bikemodel)
+      .orderBy(motorcycles.bikemodel);
+    
+    return result.map(row => row.bikemodel);
+  }
+
+  async getDistinctYearsByMakeModel(make: string, model: string): Promise<number[]> {
+    const result = await db.select({ 
+      firstyear: motorcycles.firstyear, 
+      lastyear: motorcycles.lastyear 
+    }).from(motorcycles)
+    .where(and(
+      ilike(motorcycles.bikemake, make),
+      ilike(motorcycles.bikemodel, model)
+    ));
+    
+    // Create a Set to collect all unique years from the ranges
+    const allYears = new Set<number>();
+    
+    result.forEach(row => {
+      // Add all years in the range from firstyear to lastyear
+      for (let year = row.firstyear; year <= row.lastyear; year++) {
+        allYears.add(year);
+      }
+    });
+    
+    // Convert to array and sort in descending order (newest first)
+    return Array.from(allYears).sort((a, b) => b - a);
+  }
+
+  async filterMotorcyclesByMakeModelYear(make: string, model: string, year?: number): Promise<Motorcycle[]> {
+    const conditions = [
+      ilike(motorcycles.bikemake, make),
+      ilike(motorcycles.bikemodel, model)
+    ];
+
+    // Year is optional - if provided, check if the year falls within the bike's production range
+    if (year) {
+      conditions.push(lte(motorcycles.firstyear, year));
+      conditions.push(gte(motorcycles.lastyear, year));
+    }
+
+    return await db.select().from(motorcycles).where(and(...conditions));
+  }
+
   // Shopify Products
   async getShopifyProducts(): Promise<ShopifyProduct[]> {
     const products = await db.select().from(shopifyProducts);

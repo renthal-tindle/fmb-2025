@@ -25,6 +25,9 @@ export interface IStorage {
   filterMotorcycles(filters: { bikemake?: string; firstyear?: number; lastyear?: number; biketype?: number }): Promise<Motorcycle[]>;
   getDistinctMotorcycleMakes(): Promise<string[]>;
   getDistinctMotorcycleYears(): Promise<number[]>;
+  getDistinctMotorcycleModelsByMake(make: string): Promise<string[]>;
+  getDistinctYearsByMakeModel(make: string, model: string): Promise<number[]>;
+  filterMotorcyclesByMakeModelYear(make: string, model: string, year?: number): Promise<Motorcycle[]>;
   getNextMotorcycleRecid(): Promise<number>;
 
   // Shopify Products
@@ -278,6 +281,50 @@ export class MemStorage implements IStorage {
     return Array.from(allYears).sort((a, b) => b - a);
   }
 
+  async getDistinctMotorcycleModelsByMake(make: string): Promise<string[]> {
+    const motorcycles = Array.from(this.motorcycles.values());
+    const models = motorcycles
+      .filter(m => m.bikemake.toLowerCase() === make.toLowerCase())
+      .map(m => m.bikemodel);
+    
+    return Array.from(new Set(models)).sort();
+  }
+
+  async getDistinctYearsByMakeModel(make: string, model: string): Promise<number[]> {
+    const motorcycles = Array.from(this.motorcycles.values());
+    const allYears = new Set<number>();
+    
+    motorcycles
+      .filter(m => 
+        m.bikemake.toLowerCase() === make.toLowerCase() && 
+        m.bikemodel.toLowerCase() === model.toLowerCase()
+      )
+      .forEach(motorcycle => {
+        // Add all years in the range from firstyear to lastyear
+        for (let year = motorcycle.firstyear; year <= motorcycle.lastyear; year++) {
+          allYears.add(year);
+        }
+      });
+    
+    // Convert to array and sort in descending order (newest first)
+    return Array.from(allYears).sort((a, b) => b - a);
+  }
+
+  async filterMotorcyclesByMakeModelYear(make: string, model: string, year?: number): Promise<Motorcycle[]> {
+    return Array.from(this.motorcycles.values()).filter(motorcycle => {
+      // Make is required
+      if (motorcycle.bikemake.toLowerCase() !== make.toLowerCase()) return false;
+      
+      // Model is required
+      if (motorcycle.bikemodel.toLowerCase() !== model.toLowerCase()) return false;
+      
+      // Year is optional - if provided, check if the year falls within the bike's production range
+      if (year && (motorcycle.firstyear > year || motorcycle.lastyear < year)) return false;
+      
+      return true;
+    });
+  }
+
   async getNextMotorcycleRecid(): Promise<number> {
     if (this.motorcycles.size === 0) {
       return 10000; // Default starting point
@@ -302,7 +349,8 @@ export class MemStorage implements IStorage {
       sku: product.sku || null,
       imageUrl: product.imageUrl || null,
       category: product.category || null,
-      tags: product.tags || null
+      tags: product.tags || null,
+      variants: product.variants || null
     };
     this.shopifyProducts.set(product.id, shopifyProduct);
     return shopifyProduct;
