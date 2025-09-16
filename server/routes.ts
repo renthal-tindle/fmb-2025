@@ -316,18 +316,28 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
     
     async function loadSearchOptions() {
       try {
-        // Only load makes initially
-        const makesRes = await fetch(\`/apps/fit-my-bike/search-data?type=makes\`);
+        console.log('📞 Fetching makes data...');
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'makes');
+        const makesRes = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
+        console.log('📞 Makes response status:', makesRes.status);
         const makes = await makesRes.json();
+        console.log('📊 Makes data received:', makes);
         populateSelect('make-select', makes);
+        console.log('✅ Makes dropdown populated');
       } catch (error) {
-        console.error('Failed to load search options:', error);
+        console.error('❌ Failed to load search options:', error);
       }
     }
 
     async function loadModelsForMake(make) {
       try {
-        const response = await fetch(\`/apps/fit-my-bike/search-data?type=models&make=\${encodeURIComponent(make)}\`);
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'models');
+        params.set('make', make);
+        const response = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
         const models = await response.json();
         populateSelect('model-select', models);
         document.getElementById('model-select').disabled = false;
@@ -342,7 +352,12 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
 
     async function loadYearsForMakeModel(make, model) {
       try {
-        const response = await fetch(\`/apps/fit-my-bike/search-data?type=years&make=\${encodeURIComponent(make)}&model=\${encodeURIComponent(model)}\`);
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'years');
+        params.set('make', make);
+        params.set('model', model);
+        const response = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
         const years = await response.json();
         populateSelect('year-select', years);
         document.getElementById('year-select').disabled = false;
@@ -399,7 +414,9 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
       }
       
       try {
-        const response = await fetch(\`/apps/fit-my-bike/search\`, {
+        // Include app proxy params in search request
+        const params = new URLSearchParams(window.location.search);
+        const response = await fetch(\`/apps/fit-my-bike/search?\${params.toString()}\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ make, model, year, searchQuery: modelSearch })
@@ -466,10 +483,44 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
       resultsDiv.appendChild(container);
     }
     
-    // Initialize search on page load
-    document.addEventListener('DOMContentLoaded', () => {
+    // Initialize search on page load with proper timing
+    function init() {
+      console.log('🚀 Page loaded, initializing search options...');
       loadSearchOptions();
-    });
+      
+      // Set up event handlers for cascading dropdowns
+      document.getElementById('make-select').addEventListener('change', function() {
+        const make = this.value;
+        if (make) {
+          loadModelsForMake(make);
+        } else {
+          // Reset model and year dropdowns
+          document.getElementById('model-select').innerHTML = '<option value="">Select Model</option>';
+          document.getElementById('model-select').disabled = true;
+          document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
+          document.getElementById('year-select').disabled = true;
+        }
+      });
+
+      document.getElementById('model-select').addEventListener('change', function() {
+        const make = document.getElementById('make-select').value;
+        const model = this.value;
+        if (make && model) {
+          loadYearsForMakeModel(make, model);
+        } else {
+          // Reset year dropdown
+          document.getElementById('year-select').innerHTML = '<option value="">Select Year</option>';
+          document.getElementById('year-select').disabled = true;
+        }
+      });
+    }
+
+    // Handle initialization timing properly
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
   </script>
 </body>
 </html>
@@ -681,18 +732,28 @@ function generateSearchPage(shop: string): string {
     
     async function loadSearchOptions() {
       try {
-        // Only load makes initially
-        const makesRes = await fetch(\`/apps/fit-my-bike/search-data?type=makes\`);
+        console.log('📞 Fetching makes data...');
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'makes');
+        const makesRes = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
+        console.log('📞 Makes response status:', makesRes.status);
         const makes = await makesRes.json();
+        console.log('📊 Makes data received:', makes);
         populateSelect('make-select', makes.sort());
+        console.log('✅ Makes dropdown populated');
       } catch (error) {
-        console.error('Failed to load search options:', error);
+        console.error('❌ Failed to load search options:', error);
       }
     }
 
     async function loadModelsForMake(make) {
       try {
-        const response = await fetch(\`/apps/fit-my-bike/search-data?type=models&make=\${encodeURIComponent(make)}\`);
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'models');
+        params.set('make', make);
+        const response = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
         const models = await response.json();
         populateSelect('model-select', models.sort());
         document.getElementById('model-select').disabled = false;
@@ -707,7 +768,12 @@ function generateSearchPage(shop: string): string {
 
     async function loadYearsForMakeModel(make, model) {
       try {
-        const response = await fetch(\`/apps/fit-my-bike/search-data?type=years&make=\${encodeURIComponent(make)}&model=\${encodeURIComponent(model)}\`);
+        // Include app proxy params from current page
+        const params = new URLSearchParams(window.location.search);
+        params.set('type', 'years');
+        params.set('make', make);
+        params.set('model', model);
+        const response = await fetch(\`/apps/fit-my-bike/search-data?\${params.toString()}\`);
         const years = await response.json();
         populateSelect('year-select', years.sort((a, b) => b - a)); // Recent years first
         document.getElementById('year-select').disabled = false;
@@ -779,7 +845,9 @@ function generateSearchPage(shop: string): string {
     
     async function performSearch(searchParams) {
       try {
-        const response = await fetch(\`/apps/fit-my-bike/search\`, {
+        // Include app proxy params in search request
+        const params = new URLSearchParams(window.location.search);
+        const response = await fetch(\`/apps/fit-my-bike/search?\${params.toString()}\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(searchParams)
@@ -860,10 +928,44 @@ function generateSearchPage(shop: string): string {
       resultsDiv.appendChild(grid);
     }
     
-    // Initialize search options on page load
-    document.addEventListener('DOMContentLoaded', () => {
+    // Initialize everything on page load with proper timing
+    function init() {
+      console.log('🚀 Main search page loaded, initializing...');
       loadSearchOptions();
-    });
+      
+      // Set up event handlers for cascading dropdowns
+      document.getElementById('make-select').addEventListener('change', function() {
+        const make = this.value;
+        if (make) {
+          loadModelsForMake(make);
+        } else {
+          // Reset model and year dropdowns
+          document.getElementById('model-select').innerHTML = '<option value="">Choose your bike\'s model</option>';
+          document.getElementById('model-select').disabled = true;
+          document.getElementById('year-select').innerHTML = '<option value="">Choose your bike\'s year</option>';
+          document.getElementById('year-select').disabled = true;
+        }
+      });
+
+      document.getElementById('model-select').addEventListener('change', function() {
+        const make = document.getElementById('make-select').value;
+        const model = this.value;
+        if (make && model) {
+          loadYearsForMakeModel(make, model);
+        } else {
+          // Reset year dropdown
+          document.getElementById('year-select').innerHTML = '<option value="">Choose your bike\'s year</option>';
+          document.getElementById('year-select').disabled = true;
+        }
+      });
+    }
+
+    // Handle initialization timing properly
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
     
     // Allow Enter key to trigger search
     document.getElementById('quick-search').addEventListener('keypress', function(e) {
