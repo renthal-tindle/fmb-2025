@@ -37,8 +37,17 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
       return false;
     }
     
-    const queryString = originalUrl.substring(queryIndex + 1);
-    console.log('🔍 Query string:', queryString);
+    const rawQueryString = originalUrl.substring(queryIndex + 1);
+    // Decode HTML entities that may have been encoded by Express middleware
+    const queryString = rawQueryString
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'");
+    
+    console.log('🔍 Raw query string:', rawQueryString);
+    console.log('🔍 Decoded query string:', queryString);
     
     // Parse to extract signature without altering original encoding
     const params = new URLSearchParams(queryString);
