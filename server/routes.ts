@@ -39,16 +39,21 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
     
     const rawQueryString = originalUrl.substring(queryIndex + 1);
     
-    // Decode HTML entities that may be present
-    const queryString = rawQueryString
+    // Check if we have HTML entities to decode
+    const hasEntities = rawQueryString.includes('&amp;');
+    console.log('🔍 Raw query string:', rawQueryString);
+    console.log('🔍 Has HTML entities:', hasEntities);
+    
+    // Decode HTML entities if present
+    const queryString = hasEntities ? rawQueryString
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
-      .replace(/&#039;/g, "'");
+      .replace(/&#039;/g, "'") : rawQueryString;
       
-    console.log('🔍 Raw query string:', rawQueryString);
     console.log('🔍 Decoded query string:', queryString);
+    console.log('🔍 String changed after decoding:', rawQueryString !== queryString);
     
     // Parse to extract signature and path_prefix
     const params = new URLSearchParams(queryString);
@@ -124,9 +129,17 @@ function createAppProxySecurityMiddleware() {
         return res.status(401).send("Request timestamp too old");
       }
       
-      // Validate app proxy signature
-      const appProxySecret = process.env.SHOPIFY_API_SECRET; // Use app secret for proxy
-      if (!appProxySecret || !validateAppProxySignature(req.originalUrl, appProxySecret)) {
+      // Validate app proxy signature - try both possible secrets
+      const appProxySecret = process.env.SHOPIFY_API_SECRET; // This might be the Client Secret
+      const clientSecret = process.env.SHOPIFY_CLIENT_SECRET; // Alternative env var name
+      
+      console.log('🔍 Available secrets:', {
+        API_SECRET: appProxySecret ? 'Present' : 'Missing',
+        CLIENT_SECRET: clientSecret ? 'Present' : 'Missing'
+      });
+      
+      const secretToUse = clientSecret || appProxySecret;
+      if (!secretToUse || !validateAppProxySignature(req.originalUrl, secretToUse)) {
         console.error(`Invalid app proxy signature for shop: ${shop}`);
         return res.status(403).send("Unauthorized proxy request");
       }
