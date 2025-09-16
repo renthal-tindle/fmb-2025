@@ -30,33 +30,18 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
   }
   
   try {
-    // Extract query string from the original URL
+    // Extract query string from the original URL - treat literally, no entity decoding
     const queryIndex = originalUrl.indexOf('?');
     if (queryIndex === -1) {
       console.error('No query string found in URL:', originalUrl);
       return false;
     }
     
-    const rawQueryString = originalUrl.substring(queryIndex + 1);
+    const rawQuery = originalUrl.substring(queryIndex + 1);
+    console.log('🔍 Raw query string:', rawQuery);
     
-    // Check if we have HTML entities to decode
-    const hasEntities = rawQueryString.includes('&amp;');
-    console.log('🔍 Raw query string:', rawQueryString);
-    console.log('🔍 Has HTML entities:', hasEntities);
-    
-    // Decode HTML entities if present
-    const queryString = hasEntities ? rawQueryString
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#039;/g, "'") : rawQueryString;
-      
-    console.log('🔍 Decoded query string:', queryString);
-    console.log('🔍 String changed after decoding:', rawQueryString !== queryString);
-    
-    // Parse to extract signature and path_prefix (for extraction only, not reconstruction)
-    const params = new URLSearchParams(queryString);
+    // Extract signature from query parameters
+    const params = new URLSearchParams(rawQuery);
     const signature = params.get('signature');
     const pathPrefix = decodeURIComponent(params.get('path_prefix') || '');
     
@@ -68,38 +53,34 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
     console.log('🔍 Signature from request:', signature);
     console.log('🔍 Path prefix:', pathPrefix);
     
-    // Manually remove signature and path_prefix while preserving exact encoding
-    // This avoids URLSearchParams.toString() re-encoding issues
-    let queryStringWithoutSignature = queryString;
-    
-    // Remove signature parameter
+    // Remove ONLY the signature parameter while preserving all others (including path_prefix)
     const signatureParam = `signature=${signature}`;
-    if (queryStringWithoutSignature.includes('&' + signatureParam)) {
-      queryStringWithoutSignature = queryStringWithoutSignature.replace('&' + signatureParam, '');
-    } else if (queryStringWithoutSignature.startsWith(signatureParam + '&')) {
-      queryStringWithoutSignature = queryStringWithoutSignature.substring(signatureParam.length + 1);
-    } else if (queryStringWithoutSignature === signatureParam) {
-      queryStringWithoutSignature = '';
+    let queryWithoutSig = rawQuery;
+    
+    if (queryWithoutSig.includes('&' + signatureParam)) {
+      queryWithoutSig = queryWithoutSig.replace('&' + signatureParam, '');
+    } else if (queryWithoutSig.startsWith(signatureParam + '&')) {
+      queryWithoutSig = queryWithoutSig.substring(signatureParam.length + 1);
+    } else if (queryWithoutSig === signatureParam) {
+      queryWithoutSig = '';
     }
     
-    // Remove path_prefix parameter  
-    const pathPrefixParam = `path_prefix=${encodeURIComponent('/apps/fit-my-bike')}`;
-    if (queryStringWithoutSignature.includes('&' + pathPrefixParam)) {
-      queryStringWithoutSignature = queryStringWithoutSignature.replace('&' + pathPrefixParam, '');
-    } else if (queryStringWithoutSignature.startsWith(pathPrefixParam + '&')) {
-      queryStringWithoutSignature = queryStringWithoutSignature.substring(pathPrefixParam.length + 1);
-    } else if (queryStringWithoutSignature === pathPrefixParam) {
-      queryStringWithoutSignature = '';
-    }
+    console.log('🔍 Query without signature:', queryWithoutSig);
     
-    console.log('🔍 Query string without signature:', queryStringWithoutSignature);
+    // Extract subpath from the request URL (preserves trailing slash)
+    const urlPath = originalUrl.split('?')[0];
+    const subPath = urlPath.replace(/^\/api\/proxy/, '');
+    console.log('🔍 Sub path:', subPath);
     
-    // Build the payload for signature validation: path_prefix + '?' + query_without_signature
-    // This matches how Shopify calculates the signature
-    const payload = pathPrefix + (queryStringWithoutSignature ? ('?' + queryStringWithoutSignature) : '');
-    console.log('🔍 Payload for signature calculation:', payload);
+    // Build the raw path that Shopify signed: path_prefix + subpath
+    const rawPath = pathPrefix + subPath;
+    console.log('🔍 Raw path:', rawPath);
     
-    // Calculate HMAC signature using the path + query payload
+    // Build the complete payload: rawPath + query_without_signature
+    const payload = rawPath + (queryWithoutSig ? ('?' + queryWithoutSig) : '');
+    console.log('🔍 Complete payload for signature:', payload);
+    
+    // Calculate HMAC signature using the exact payload Shopify used
     const calculatedSignature = crypto
       .createHmac('sha256', secret)
       .update(payload)
