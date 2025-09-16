@@ -235,7 +235,7 @@
         <div class="fmb-finder-form">
           <!-- Quick Search Section -->
           <div class="fmb-quick-search">
-            <h3>💨 Quick Search</h3>
+            <h3>Quick Search</h3>
             <p>Search directly for your motorcycle model</p>
             <div class="fmb-search-input-group">
               <input type="text" id="quick-search-${config.blockId}" class="fmb-search-input" 
@@ -249,7 +249,7 @@
           <h3>Search by Make, Model & Year</h3>
           <div class="fmb-form-grid">
             <div class="fmb-form-group">
-              <label for="make-select-${config.blockId}">🏭 Make</label>
+              <label for="make-select-${config.blockId}">Make</label>
               <select id="make-select-${config.blockId}" class="fmb-select">
                 <option value="">Choose your bike make</option>
                 ${makes.map(make => `<option value="${make}">${make}</option>`).join('')}
@@ -257,14 +257,14 @@
             </div>
             
             <div class="fmb-form-group">
-              <label for="model-select-${config.blockId}">🏍️ Model</label>
+              <label for="model-select-${config.blockId}">Model</label>
               <select id="model-select-${config.blockId}" class="fmb-select" disabled>
                 <option value="">Choose your bike model</option>
               </select>
             </div>
             
             <div class="fmb-form-group">
-              <label for="year-select-${config.blockId}">📅 Year</label>
+              <label for="year-select-${config.blockId}">Year</label>
               <select id="year-select-${config.blockId}" class="fmb-select" disabled>
                 <option value="">Choose your bike year</option>
               </select>
@@ -272,7 +272,7 @@
           </div>
           
           <button id="find-parts-btn-${config.blockId}" class="fmb-find-button" disabled>
-            🔍 Find Compatible Parts
+            Find Compatible Parts
           </button>
           
           <div id="results-${config.blockId}" class="fmb-results"></div>
