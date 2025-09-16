@@ -2700,8 +2700,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .map((mapping: any) => shopifyProducts.find((p: any) => p.id.toString() === mapping.shopifyProductId))
             .filter(Boolean);
           
-          // Check for rollback parameter
-          const useFragment = req.query.rollback !== '1';
+          // Use full HTML by default (fragments were causing styling/functionality issues)
+          const useFragment = req.query.fragment === '1';
           return res.send(generateMotorcyclePage(motorcycle, compatibleShopifyProducts, shop as string, useFragment));
         } catch (error) {
           console.error('Error loading motorcycle page:', error);
@@ -2709,8 +2709,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         // Show search page
-        // Check for rollback parameter
-        const useFragment = req.query.rollback !== '1';
+        // Use full HTML by default (fragments were causing styling/functionality issues)
+        const useFragment = req.query.fragment === '1';
         return res.send(generateSearchPage(shop as string, useFragment));
       }
     } catch (error) {
