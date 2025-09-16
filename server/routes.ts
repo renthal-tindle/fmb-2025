@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertMotorcycleSchema, insertPartMappingSchema, insertImportHistorySchema, insertPartCategoryTagsSchema } from "@shared/schema";
 import { z } from "zod";
-import { getAuthUrl, validateAuthCallback, verifyShop, fetchShopifyProducts, inMemorySessionStorage } from "./shopify-auth";
+import { getAuthUrl, validateAuthCallback, verifyShop, fetchShopifyProducts, inMemorySessionStorage, shopify } from "./shopify-auth";
 import multer from 'multer';
 import { parse as parseCsv } from 'csv-parse';
 import { Readable } from 'stream';
