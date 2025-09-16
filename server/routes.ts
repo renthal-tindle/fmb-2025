@@ -467,7 +467,9 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
     }
     
     // Initialize search on page load
-    loadSearchOptions();
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSearchOptions();
+    });
   </script>
 </body>
 </html>
@@ -859,7 +861,9 @@ function generateSearchPage(shop: string): string {
     }
     
     // Initialize search options on page load
-    loadSearchOptions();
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSearchOptions();
+    });
     
     // Allow Enter key to trigger search
     document.getElementById('quick-search').addEventListener('keypress', function(e) {
@@ -2848,6 +2852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/proxy/:shop/apps/fit-my-bike/search-data", appProxySecurityMiddleware, async (req, res) => {
     try {
       const { type, make, model } = req.query;
+      console.log('🔍 Search data request:', { type, make, model });
       
       let data = [];
       switch (type) {

@@ -491,6 +491,7 @@ export class MemStorage implements IStorage {
     const tag: PartCategoryTags = {
       id,
       ...partCategoryTag,
+      assignedSection: partCategoryTag.assignedSection || null,
       createdAt: now,
       updatedAt: now,
     };
@@ -522,6 +523,9 @@ export class MemStorage implements IStorage {
     const searchAnalytics: SearchAnalytics = {
       id,
       ...analytics,
+      resultsCount: analytics.resultsCount || 0,
+      ipAddress: analytics.ipAddress || null,
+      userAgent: analytics.userAgent || null,
       createdAt: now,
     };
     this.searchAnalytics.set(id, searchAnalytics);
