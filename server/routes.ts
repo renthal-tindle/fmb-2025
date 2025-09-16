@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertMotorcycleSchema, insertPartMappingSchema, insertImportHistorySchema, insertPartCategoryTagsSchema } from "@shared/schema";
 import { z } from "zod";
-import { getAuthUrl, validateAuthCallback, verifyShop, fetchShopifyProducts, sessionStorage } from "./shopify-auth";
+import { getAuthUrl, validateAuthCallback, verifyShop, fetchShopifyProducts, inMemorySessionStorage } from "./shopify-auth";
 import multer from 'multer';
 import { parse as parseCsv } from 'csv-parse';
 import { Readable } from 'stream';
@@ -248,15 +248,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.setHeader('Content-Type', 'application/json');
     
     try {
-      const sessionCount = sessionStorage.size;
-      const sessionKeys = Array.from(sessionStorage.keys());
+      const sessionCount = inMemorySessionStorage.size;
+      const sessionKeys = Array.from(inMemorySessionStorage.keys());
       const hasGlobalToken = !!global.LATEST_SHOPIFY_ACCESS_TOKEN;
       
       // Collect debug session info
       
       // Get actual session data
       let workingSession = null;
-      const sessions = Array.from(sessionStorage.values()).map(session => {
+      const sessions = Array.from(inMemorySessionStorage.values()).map(session => {
         const sessionData = {
           id: session.id,
           shop: session.shop,
@@ -325,10 +325,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check current session status
       
       // Try all methods to get a session
-      const currentSession = sessionStorage.get('current');
+      const currentSession = inMemorySessionStorage.get('current');
       // Check for current session
       
-      const allSessions = Array.from(sessionStorage.values());
+      const allSessions = Array.from(inMemorySessionStorage.values());
       // Check all available sessions
       
       let workingSession = null;
@@ -354,7 +354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!workingSession) {
         return res.json({
           error: 'No working session found',
-          sessionCount: sessionStorage.size,
+          sessionCount: inMemorySessionStorage.size,
           globalToken: !!global.LATEST_SHOPIFY_ACCESS_TOKEN
         });
       }
@@ -469,10 +469,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { search } = req.query;
       
       // Check what sessions we have
-      const sessions = Array.from(sessionStorage.values());
+      const sessions = Array.from(inMemorySessionStorage.values());
       
       // Find working session
-      let activeSession = sessionStorage.get('current');
+      let activeSession = inMemorySessionStorage.get('current');
       if (!activeSession || !activeSession.accessToken) {
         activeSession = sessions.find((session: any) => session?.accessToken);
       }
@@ -551,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Try to get live data from Shopify first
       try {
-        const sessions = Array.from(sessionStorage.values());
+        const sessions = Array.from(inMemorySessionStorage.values());
         const activeSession = sessions.find((session: any) => session?.accessToken);
         
         if (activeSession) {
@@ -582,7 +582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Product ${req.params.id} not found in Shopify, no local fallback`);
       return res.status(404).json({ 
         message: "Product not found in Shopify store",
-        needsAuth: !sessionStorage.has('current'),
+        needsAuth: !inMemorySessionStorage.has('current'),
         productId: req.params.id
       });
     } catch (error) {
@@ -1486,7 +1486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Debug endpoint to check Shopify authentication status
   app.get("/api/debug/shopify-status", async (req, res) => {
     try {
-      const sessions = Array.from(sessionStorage.values());
+      const sessions = Array.from(inMemorySessionStorage.values());
       const activeSession = sessions.find((session: any) => session?.accessToken);
       
       res.json({
@@ -1714,8 +1714,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Shop parameter is required" });
       }
       
-      const session = await sessionStorage.findSessionsByShop(shop);
-      const isInstalled = session.length > 0;
+      const sessions = Array.from(inMemorySessionStorage.values()).filter(s => s.shop === shop);
+      const isInstalled = sessions.length > 0;
       
       res.json({ 
         installed: isInstalled,

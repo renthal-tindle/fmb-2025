@@ -30,8 +30,8 @@ export const shopify = shopifyApi({
         const stored = await storage.storeShopifySession(session);
         
         // Also keep in memory for compatibility during current session
-        sessionStorage.set(session.id, session);
-        sessionStorage.set('current', session);
+        inMemorySessionStorage.set(session.id, session);
+        inMemorySessionStorage.set('current', session);
         
         if (stored) {
           console.log(`✅ PERMANENT: Stored Shopify session for ${session.shop} in DATABASE`);
@@ -47,14 +47,14 @@ export const shopify = shopifyApi({
     },
     loadSession: async (id: string): Promise<Session | undefined> => {
       // Try memory first for speed
-      let session = sessionStorage.get(id);
+      let session = inMemorySessionStorage.get(id);
       
       // Fallback to database
       if (!session) {
         session = await storage.getShopifySession(id);
         if (session) {
           // Cache in memory for current session
-          sessionStorage.set(id, session);
+          inMemorySessionStorage.set(id, session);
           console.log(`📥 RESTORED: Loaded session ${id} from DATABASE`);
         }
       }
@@ -62,7 +62,7 @@ export const shopify = shopifyApi({
       return session;
     },
     deleteSession: async (id: string): Promise<boolean> => {
-      sessionStorage.delete(id);
+      inMemorySessionStorage.delete(id);
       return await storage.deleteShopifySession(id);
     },
   },
@@ -70,18 +70,18 @@ export const shopify = shopifyApi({
 
 export type ShopifySession = Session;
 
-// Session storage with persistence
-const sessionStorage = new Map<string, Session>();
+// In-memory session storage with persistence
+const inMemorySessionStorage = new Map<string, Session>();
 
 // Persistence functions with actual implementation
 const persistSessions = () => {
   try {
-    const sessionsObj = Object.fromEntries(sessionStorage.entries());
+    const sessionsObj = Object.fromEntries(inMemorySessionStorage.entries());
     // Store sessions as JSON in a temporary storage (environment variable approach)
     if (typeof global !== 'undefined') {
       global.PERSISTED_SHOPIFY_SESSIONS = JSON.stringify(sessionsObj);
     }
-    console.log(`Persisted ${sessionStorage.size} Shopify sessions`);
+    console.log(`Persisted ${inMemorySessionStorage.size} Shopify sessions`);
   } catch (error) {
     console.error('Failed to persist sessions:', error);
   }
@@ -94,10 +94,10 @@ const loadPersistedSessions = async () => {
     
     for (const sessionData of sessions) {
       if (sessionData && sessionData.id) {
-        sessionStorage.set(sessionData.id, sessionData as Session);
+        inMemorySessionStorage.set(sessionData.id, sessionData as Session);
         // Store latest session as 'current' for easy access
         if (sessionData.shop) {
-          sessionStorage.set('current', sessionData as Session);
+          inMemorySessionStorage.set('current', sessionData as Session);
         }
       }
     }
@@ -120,12 +120,12 @@ const loadPersistedSessions = async () => {
 // Load sessions on startup
 loadPersistedSessions();
 
-// Export sessionStorage for use in other modules
-export { sessionStorage };
+// Export inMemorySessionStorage for use in other modules
+export { inMemorySessionStorage };
 
 // Get current session helper
 export const getCurrentSession = (): Session | undefined => {
-  return sessionStorage.get('current');
+  return inMemorySessionStorage.get('current');
 };
 
 // Middleware to verify shop parameter
