@@ -69,6 +69,12 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
       .update(queryStringWithoutSignature)
       .digest('hex');
     
+    // Validate signature format before comparison
+    if (signature.length !== 64 || !/^[a-fA-F0-9]+$/.test(signature)) {
+      console.error('Invalid signature format');
+      return false;
+    }
+    
     // Constant-time comparison to prevent timing attacks
     return crypto.timingSafeEqual(
       Buffer.from(signature, 'hex'),
