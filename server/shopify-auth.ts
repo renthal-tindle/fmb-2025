@@ -22,18 +22,28 @@ export const shopify = shopifyApi({
   isEmbeddedApp: false, // Set to false for easier development
   sessionStorage: {
     storeSession: async (session: Session): Promise<boolean> => {
-      // Store in database for permanent persistence
-      const stored = await storage.storeShopifySession(session);
+      console.log(`🔄 ATTEMPTING: Storing session ${session.id} for shop ${session.shop}`);
+      console.log(`Session data: ID=${session.id}, Shop=${session.shop}, HasToken=${!!session.accessToken}`);
       
-      // Also keep in memory for compatibility during current session
-      sessionStorage.set(session.id, session);
-      sessionStorage.set('current', session);
-      
-      if (stored) {
-        console.log(`✅ PERMANENT: Stored Shopify session for ${session.shop} in DATABASE`);
+      try {
+        // Store in database for permanent persistence
+        const stored = await storage.storeShopifySession(session);
+        
+        // Also keep in memory for compatibility during current session
+        sessionStorage.set(session.id, session);
+        sessionStorage.set('current', session);
+        
+        if (stored) {
+          console.log(`✅ PERMANENT: Stored Shopify session for ${session.shop} in DATABASE`);
+        } else {
+          console.log(`❌ FAILED: Could not store session for ${session.shop} in DATABASE`);
+        }
+        
+        return stored;
+      } catch (error) {
+        console.error(`💥 ERROR: Exception while storing session for ${session.shop}:`, error);
+        return false;
       }
-      
-      return stored;
     },
     loadSession: async (id: string): Promise<Session | undefined> => {
       // Try memory first for speed

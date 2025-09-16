@@ -5,6 +5,7 @@ api_version = "2024-01"
 [[extensions]]
 name = "FMB Motorcycle Parts Extension"
 handle = "fmb-motorcycle-parts"
+uid = "e4889382-e92e-f88b-d72c-af4907973d7e2288adaa"
 type = "theme_app_extension"
 
 [extensions.development]
