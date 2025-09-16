@@ -929,7 +929,8 @@ function generateSearchPage(shop: string): string {
     }
 
     function normalizeMotorcycleQuery(query) {
-      let normalized = query;
+      // Convert to uppercase for case-insensitive matching
+      let normalized = query.toUpperCase();
       
       // Handle common motorcycle model patterns with missing spaces
       // Pattern: Letters followed by numbers (e.g., "RM100" → "RM 100", "CRF450R" → "CRF 450R")
