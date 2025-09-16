@@ -390,8 +390,7 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
       const make = document.getElementById('make-select').value;
       const model = document.getElementById('model-select').value;
       const year = document.getElementById('year-select').value;
-      const modelSearch = document.getElementById('model-input').value;
-      
+
       if (!make || !model) {
         alert('Please select at least make and model');
         return;
@@ -403,7 +402,7 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
         const response = await fetch(\`/apps/fit-my-bike/search?\${params.toString()}\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ make, model, year, searchQuery: modelSearch })
+          body: JSON.stringify({ make, model, year })
         });
         
         const { motorcycles } = await response.json();
@@ -710,10 +709,6 @@ function generateSearchPage(shop: string): string {
             <option value="">Choose your bike year</option>
           </select>
         </div>
-        <div class="form-group">
-          <label for="model-input">🔍 Model Search (Optional)</label>
-          <input type="text" id="model-input" placeholder="e.g., CRF450R, YZ250F, KX450">
-        </div>
         <button class="search-btn" onclick="searchMotorcycles()">🔍 Find Compatible Parts</button>
       </div>
 
@@ -800,14 +795,13 @@ function generateSearchPage(shop: string): string {
       const make = document.getElementById('make-select').value;
       const model = document.getElementById('model-select').value;
       const year = document.getElementById('year-select').value;
-      const modelSearch = document.getElementById('model-input').value;
-      
+
       if (!make || !model) {
         alert('Please select at least make and model to search');
         return;
       }
       
-      await performSearch({ make, model, year, searchQuery: modelSearch });
+      await performSearch({ make, model, year });
     }
     
     async function quickSearch() {
