@@ -6,7 +6,12 @@ application_url = "https://56e00a98-ad08-48da-8c00-1d8f49a92d07-00-32mevip0hcwqx
 embedded = true
 
 [access_scopes]
-scopes = "read_products"
+scopes = "read_products,write_app_proxy"
+
+[app_proxy]
+url = "https://56e00a98-ad08-48da-8c00-1d8f49a92d07-00-32mevip0hcwqx.spock.replit.dev/api/proxy"
+subpath = "fit-my-bike"
+prefix = "apps"
 
 [auth]
 redirect_urls = [
