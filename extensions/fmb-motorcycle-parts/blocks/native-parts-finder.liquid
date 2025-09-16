@@ -312,6 +312,55 @@
       `;
     }
 
+    function searchMotorcycles(motorcycleData, query) {
+      const searchTerm = query.toLowerCase().trim();
+      if (!searchTerm) return [];
+      
+      // Check if it's a direct RECID search
+      if (/^\d+$/.test(searchTerm)) {
+        const recid = parseInt(searchTerm);
+        const directMatch = motorcycleData.find(bike => bike.recid === recid);
+        if (directMatch) return [directMatch];
+      }
+      
+      // Split search into words for multi-word matching
+      const words = searchTerm.split(/\s+/).filter(word => word.length > 0);
+      if (words.length === 0) return [];
+      
+      return motorcycleData.filter(bike => {
+        // Normalize spaces for better matching (handles "rm100" matching "RM 100")
+        const normalizedMake = bike.bikemake.toLowerCase().replace(/\s+/g, '');
+        const normalizedModel = bike.bikemodel.toLowerCase().replace(/\s+/g, '');
+        const normalizedSearchTerm = searchTerm.replace(/\s+/g, '');
+        
+        // Check if the full search term matches (space-tolerant)
+        if (normalizedMake.includes(normalizedSearchTerm) || 
+            normalizedModel.includes(normalizedSearchTerm) ||
+            bike.bikemake.toLowerCase().includes(searchTerm) ||
+            bike.bikemodel.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        
+        // Check if all individual words match somewhere
+        const allWordsMatch = words.every(word => {
+          // Check if word is a year within the bike's range
+          const yearNum = parseInt(word);
+          if (!isNaN(yearNum) && yearNum >= bike.firstyear && yearNum <= bike.lastyear) {
+            return true;
+          }
+          
+          // Check if word matches in make, model, or recid
+          return bike.bikemake.toLowerCase().includes(word) ||
+                 bike.bikemodel.toLowerCase().includes(word) ||
+                 normalizedMake.includes(word.replace(/\s+/g, '')) ||
+                 normalizedModel.includes(word.replace(/\s+/g, '')) ||
+                 bike.recid.toString().includes(word);
+        });
+        
+        return allWordsMatch;
+      });
+    }
+
     function setupFinderInteractions(config, container) {
       const quickSearch = container.querySelector(`#quick-search-${config.blockId}`);
       const suggestionsDropdown = container.querySelector(`#suggestions-dropdown-${config.blockId}`);
@@ -343,17 +392,17 @@
         }
         
         searchTimeout = setTimeout(() => {
-          const matches = motorcycleData.filter(bike => {
-            const searchText = `${bike.bikemake} ${bike.bikemodel} ${bike.bikeyear}`.toLowerCase();
-            return searchText.includes(query.toLowerCase());
-          }).slice(0, 10);
+          const matches = searchMotorcycles(motorcycleData, query).slice(0, 10);
           
           if (matches.length > 0) {
-            suggestionsDropdown.innerHTML = matches.map(bike => 
-              `<div class="fmb-suggestion-item" data-bikeid="${bike.recid}">
-                ${bike.bikemake} ${bike.bikemodel} (${bike.bikeyear})
-              </div>`
-            ).join('');
+            suggestionsDropdown.innerHTML = matches.map(bike => {
+              const yearRange = bike.firstyear === bike.lastyear ? 
+                bike.firstyear : 
+                `${bike.firstyear}-${bike.lastyear}`;
+              return `<div class="fmb-suggestion-item" data-bikeid="${bike.recid}">
+                ${bike.bikemake} ${bike.bikemodel} (${yearRange})
+              </div>`;
+            }).join('');
             suggestionsDropdown.style.display = 'block';
           } else {
             suggestionsDropdown.style.display = 'none';
