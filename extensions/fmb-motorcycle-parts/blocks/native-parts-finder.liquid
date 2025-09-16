@@ -114,12 +114,17 @@
 
     function updateSEOForMotorcycle(motorcycle, parts, bikeid) {
       // Generate dynamic page title
-      const pageTitle = `${motorcycle.bikemake} ${motorcycle.bikemodel} ${motorcycle.bikeyear} Parts - Motorcycle Parts | {{ shop.name }}`;
+      const bikeYear = motorcycle.firstyear && motorcycle.lastyear 
+        ? (motorcycle.firstyear === motorcycle.lastyear 
+            ? motorcycle.firstyear.toString() 
+            : `${motorcycle.firstyear}-${motorcycle.lastyear}`)
+        : 'Unknown';
+      const pageTitle = `${motorcycle.bikemake} ${motorcycle.bikemodel} ${bikeYear} Parts - Motorcycle Parts | {{ shop.name }}`;
       document.title = pageTitle;
       
       // Update or create meta description
       const partCount = parts ? parts.length : 0;
-      const metaDescription = `Shop ${partCount} compatible parts for ${motorcycle.bikemake} ${motorcycle.bikemodel} ${motorcycle.bikeyear}. Find sprockets, chains, and more motorcycle parts with fast shipping.`;
+      const metaDescription = `Shop ${partCount} compatible parts for ${motorcycle.bikemake} ${motorcycle.bikemodel} ${bikeYear}. Find sprockets, chains, and more motorcycle parts with fast shipping.`;
       updateMetaTag('description', metaDescription);
       
       // Open Graph meta tags for social sharing
@@ -162,12 +167,19 @@
     }
     
     function addStructuredData(motorcycle, parts, bikeid) {
+      // Calculate year range
+      const bikeYear = motorcycle.firstyear && motorcycle.lastyear 
+        ? (motorcycle.firstyear === motorcycle.lastyear 
+            ? motorcycle.firstyear.toString() 
+            : `${motorcycle.firstyear}-${motorcycle.lastyear}`)
+        : 'Unknown';
+        
       // WebPage schema with Vehicle information
       const webPageSchema = {
         "@context": "https://schema.org",
         "@type": "WebPage",
-        "name": `${motorcycle.bikemake} ${motorcycle.bikemodel} ${motorcycle.bikeyear} Parts`,
-        "description": `Compatible motorcycle parts for ${motorcycle.bikemake} ${motorcycle.bikemodel} ${motorcycle.bikeyear}`,
+        "name": `${motorcycle.bikemake} ${motorcycle.bikemodel} ${bikeYear} Parts`,
+        "description": `Compatible motorcycle parts for ${motorcycle.bikemake} ${motorcycle.bikemodel} ${bikeYear}`,
         "url": window.location.href,
         "about": {
           "@type": "Vehicle",
@@ -189,7 +201,7 @@
       const itemListSchema = {
         "@context": "https://schema.org",
         "@type": "ItemList",
-        "name": `${motorcycle.bikemake} ${motorcycle.bikemodel} ${motorcycle.bikeyear} Compatible Parts`,
+        "name": `${motorcycle.bikemake} ${motorcycle.bikemodel} ${bikeYear} Compatible Parts`,
         "numberOfItems": parts.length,
         "itemListElement": parts.map((part, index) => ({
           "@type": "ListItem",
@@ -198,7 +210,7 @@
             "@type": "Product",
             "name": part.title,
             "sku": part.sku,
-            "description": part.compatibility || `Compatible with ${motorcycle.bikemake} ${motorcycle.bikemodel}`,
+            "description": part.compatibility || `Compatible with ${motorcycle.bikemake} ${motorcycle.bikemodel} ${bikeYear}`,
             "offers": {
               "@type": "Offer",
               "price": part.price,
@@ -277,10 +289,17 @@
     }
 
     function generateMotorcyclePageHTML(motorcycle, parts, config) {
+      // Calculate year range
+      const bikeYear = motorcycle.firstyear && motorcycle.lastyear 
+        ? (motorcycle.firstyear === motorcycle.lastyear 
+            ? motorcycle.firstyear.toString() 
+            : `${motorcycle.firstyear}-${motorcycle.lastyear}`)
+        : 'Unknown';
+        
       return `
         <div class="fmb-motorcycle-page">
           <div class="fmb-motorcycle-header">
-            <h2>${motorcycle.bikemake} ${motorcycle.bikemodel} (${motorcycle.bikeyear})</h2>
+            <h2>${motorcycle.bikemake} ${motorcycle.bikemodel} (${bikeYear})</h2>
             <p class="fmb-motorcycle-engine">Engine: ${motorcycle.bikeengine || 'All Engines'}</p>
             <a href="/pages/fit-my-bike" class="fmb-back-link">← Search for Different Motorcycle</a>
           </div>
