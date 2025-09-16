@@ -8,6 +8,792 @@ import multer from 'multer';
 import { parse as parseCsv } from 'csv-parse';
 import { Readable } from 'stream';
 import { promisify } from 'util';
+import crypto from 'crypto';
+
+// ==========================================
+// SECURITY UTILITIES
+// ==========================================
+
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function validateAppProxySignature(originalUrl: string, secret: string): boolean {
+  if (!originalUrl || !secret) {
+    return false;
+  }
+  
+  try {
+    // Extract query string from the original URL
+    const queryIndex = originalUrl.indexOf('?');
+    if (queryIndex === -1) return false;
+    
+    const queryString = originalUrl.substring(queryIndex + 1);
+    
+    // Parse to extract signature without altering original encoding
+    const params = new URLSearchParams(queryString);
+    const signature = params.get('signature');
+    
+    if (!signature) return false;
+    
+    // Remove signature parameter from the raw query string while preserving exact encoding
+    // This ensures we match Shopify's signature calculation exactly
+    const signatureParam = `signature=${signature}`;
+    let queryStringWithoutSignature = queryString;
+    
+    // Handle signature at the beginning
+    if (queryString.startsWith(signatureParam + '&')) {
+      queryStringWithoutSignature = queryString.substring(signatureParam.length + 1);
+    }
+    // Handle signature at the end  
+    else if (queryString.endsWith('&' + signatureParam)) {
+      queryStringWithoutSignature = queryString.substring(0, queryString.length - signatureParam.length - 1);
+    }
+    // Handle signature in the middle
+    else if (queryString.includes('&' + signatureParam + '&')) {
+      queryStringWithoutSignature = queryString.replace('&' + signatureParam + '&', '&');
+    }
+    // Handle signature as only parameter
+    else if (queryString === signatureParam) {
+      queryStringWithoutSignature = '';
+    }
+    
+    // Calculate HMAC signature using the exact raw query string
+    const calculatedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(queryStringWithoutSignature)
+      .digest('hex');
+    
+    // Constant-time comparison to prevent timing attacks
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(calculatedSignature, 'hex')
+    );
+  } catch (error) {
+    console.error('Signature validation error:', error);
+    return false;
+  }
+}
+
+// App Proxy Security Middleware
+function createAppProxySecurityMiddleware() {
+  return (req: any, res: any, next: any) => {
+    try {
+      const { shop, timestamp, signature } = req.query;
+      
+      // Check required parameters
+      if (!shop || !timestamp || !signature) {
+        console.error('Missing required app proxy parameters');
+        return res.status(400).send("Invalid proxy request - missing required parameters");
+      }
+      
+      // Validate timestamp freshness (within 5 minutes)
+      const requestTime = parseInt(timestamp as string);
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (Math.abs(currentTime - requestTime) > 300) {
+        console.error(`Stale timestamp for shop: ${shop}`);
+        return res.status(401).send("Request timestamp too old");
+      }
+      
+      // Validate app proxy signature
+      const appProxySecret = process.env.SHOPIFY_API_SECRET; // Use app secret for proxy
+      if (!appProxySecret || !validateAppProxySignature(req.originalUrl, appProxySecret)) {
+        console.error(`Invalid app proxy signature for shop: ${shop}`);
+        return res.status(403).send("Unauthorized proxy request");
+      }
+      
+      // Verify shop has an active session (is installed)
+      const sessions = Array.from(inMemorySessionStorage.values());
+      const shopSession = sessions.find((session: any) => session?.shop === shop);
+      if (!shopSession) {
+        console.error(`No active session found for shop: ${shop}`);
+        return res.status(403).send("App not installed for this shop");
+      }
+      
+      // Store shop in request for later use
+      req.shopifyShop = shop;
+      req.shopifySession = shopSession;
+      next();
+    } catch (error) {
+      console.error('App proxy security middleware error:', error);
+      res.status(500).send("Security validation failed");
+    }
+  };
+}
+
+// ==========================================
+// CUSTOMER-FACING PAGE TEMPLATES
+// ==========================================
+
+function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: string): string {
+  const baseUrl = `${escapeHtml(shop)}/apps/fit-my-bike`;
+  const bikeMake = escapeHtml(motorcycle.bikemake || '');
+  const bikeModel = escapeHtml(motorcycle.bikemodel || '');
+  const bikeYear = motorcycle.bikeyear || 'Unknown Year';
+  const bikeEngine = escapeHtml(motorcycle.bikeengine || 'All Engines');
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Parts for ${bikeMake} ${bikeModel} ${bikeYear} | Renthal Official</title>
+  <meta name="description" content="Find compatible Renthal parts for your ${bikeMake} ${bikeModel} ${bikeYear}. High-quality motorcycle parts and accessories.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta property="og:title" content="Parts for ${bikeMake} ${bikeModel} ${bikeYear}">
+  <meta property="og:description" content="Find compatible Renthal motorcycle parts and accessories">
+  <meta property="og:type" content="website">
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      margin: 0; padding: 20px; 
+      background: #f8f9fa; 
+      color: #333;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { 
+      background: linear-gradient(135deg, #e74c3c, #c0392b); 
+      color: white; 
+      padding: 30px; 
+      border-radius: 12px; 
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .header h1 { margin: 0 0 10px 0; font-size: 2.5em; font-weight: 700; }
+    .header p { margin: 0; font-size: 1.2em; opacity: 0.9; }
+    .search-widget { 
+      background: white; 
+      padding: 25px; 
+      border-radius: 12px; 
+      margin-bottom: 30px; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .search-widget h3 { margin: 0 0 20px 0; color: #2c3e50; }
+    .search-form { display: flex; gap: 15px; flex-wrap: wrap; align-items: end; }
+    .form-group { flex: 1; min-width: 150px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+    select, input, button { 
+      width: 100%; 
+      padding: 12px; 
+      border: 2px solid #ddd; 
+      border-radius: 8px; 
+      font-size: 16px;
+    }
+    select:focus, input:focus { border-color: #e74c3c; outline: none; }
+    .search-btn { 
+      background: #e74c3c; 
+      color: white; 
+      border: none; 
+      cursor: pointer; 
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .search-btn:hover { background: #c0392b; }
+    .parts-section h2 { color: #2c3e50; margin-bottom: 25px; font-size: 2em; }
+    .parts-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
+      gap: 25px; 
+    }
+    .part-card { 
+      background: white; 
+      border-radius: 12px; 
+      overflow: hidden; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .part-card:hover { 
+      transform: translateY(-5px); 
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15); 
+    }
+    .part-image { 
+      width: 100%; 
+      height: 200px; 
+      object-fit: cover; 
+      background: #f1f1f1;
+    }
+    .part-content { padding: 20px; }
+    .part-title { margin: 0 0 10px 0; font-size: 1.3em; font-weight: 600; color: #2c3e50; }
+    .part-price { font-size: 1.5em; font-weight: 700; color: #e74c3c; margin: 10px 0; }
+    .part-sku { color: #666; margin: 5px 0; }
+    .part-variants { color: #007cba; margin: 10px 0; font-weight: 500; }
+    .view-product { 
+      display: inline-block; 
+      background: #e74c3c; 
+      color: white; 
+      text-decoration: none; 
+      padding: 12px 25px; 
+      border-radius: 8px; 
+      font-weight: 600;
+      transition: background 0.2s;
+      margin-top: 15px;
+    }
+    .view-product:hover { background: #c0392b; }
+    .no-parts { 
+      text-align: center; 
+      padding: 60px 20px; 
+      background: white; 
+      border-radius: 12px; 
+      color: #666;
+    }
+    .breadcrumb { 
+      margin-bottom: 20px; 
+      color: #666; 
+    }
+    .breadcrumb a { color: #e74c3c; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    @media (max-width: 768px) {
+      .search-form { flex-direction: column; }
+      .form-group { min-width: 100%; }
+      .header h1 { font-size: 2em; }
+      .parts-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="breadcrumb">
+      <a href="${escapeHtml(shop)}">Home</a> > 
+      <a href="${baseUrl}">Find Parts</a> > 
+      ${bikeMake} ${bikeModel} ${bikeYear}
+    </div>
+    
+    <div class="header">
+      <h1>Parts for ${bikeMake} ${bikeModel}</h1>
+      <p>${bikeYear} • ${bikeEngine}</p>
+    </div>
+
+    <div class="search-widget">
+      <h3>🔍 Find Parts for a Different Bike</h3>
+      <div class="search-form">
+        <div class="form-group">
+          <label for="year-select">Year</label>
+          <select id="year-select">
+            <option value="">Select Year</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="make-select">Make</label>
+          <select id="make-select">
+            <option value="">Select Make</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="model-input">Model (Optional)</label>
+          <input type="text" id="model-input" placeholder="e.g., CRF450R">
+        </div>
+        <div class="form-group">
+          <button class="search-btn" onclick="searchMotorcycles()">Find My Bike</button>
+        </div>
+      </div>
+      <div id="search-results"></div>
+    </div>
+
+    <div class="parts-section">
+      <h2>Compatible Renthal Parts (${compatibleParts.length})</h2>
+      ${compatibleParts.length > 0 ? `
+        <div class="parts-grid">
+          ${compatibleParts.map(part => {
+            const partTitle = escapeHtml(part.title || 'Unnamed Product');
+            const partPrice = escapeHtml(part.variants?.[0]?.price || '0.00');
+            const partSku = escapeHtml(part.variants?.[0]?.sku || 'N/A');
+            const partHandle = escapeHtml(part.handle || '');
+            const imageUrl = part.images?.[0]?.src ? escapeHtml(part.images[0].src) : '';
+            
+            return `
+            <div class="part-card">
+              ${imageUrl ? 
+                `<img src="${imageUrl}" alt="${partTitle}" class="part-image">` :
+                `<div class="part-image" style="display: flex; align-items: center; justify-content: center; background: #f1f1f1; color: #999;">No Image</div>`
+              }
+              <div class="part-content">
+                <h3 class="part-title">${partTitle}</h3>
+                <div class="part-price">$${partPrice}</div>
+                <div class="part-sku">SKU: ${partSku}</div>
+                ${part.variants && part.variants.length > 1 ? 
+                  `<div class="part-variants">${part.variants.length} variants available</div>` : ''
+                }
+                <a href="${escapeHtml(shop)}/products/${partHandle}" class="view-product" target="_top">View Product</a>
+              </div>
+            </div>
+          `;}).join('')}
+        </div>
+      ` : `
+        <div class="no-parts">
+          <h3>No Compatible Parts Found</h3>
+          <p>We don't have any parts mapped for this specific motorcycle yet.</p>
+          <p>Try searching for a similar model or contact us for assistance.</p>
+        </div>
+      `}
+    </div>
+  </div>
+
+  <script>
+    const baseUrl = "${baseUrl}";
+    
+    async function loadSearchOptions() {
+      try {
+        const [yearsRes, makesRes] = await Promise.all([
+          fetch(\`\${baseUrl}/search-data?type=years\`),
+          fetch(\`\${baseUrl}/search-data?type=makes\`)
+        ]);
+        
+        const years = await yearsRes.json();
+        const makes = await makesRes.json();
+        
+        populateSelect('year-select', years);
+        populateSelect('make-select', makes);
+      } catch (error) {
+        console.error('Failed to load search options:', error);
+      }
+    }
+    
+    function populateSelect(selectId, options) {
+      const select = document.getElementById(selectId);
+      options.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option;
+        optionElement.textContent = option;
+        select.appendChild(optionElement);
+      });
+    }
+    
+    async function searchMotorcycles() {
+      const year = document.getElementById('year-select').value;
+      const make = document.getElementById('make-select').value;
+      const model = document.getElementById('model-input').value;
+      
+      if (!year || !make) {
+        alert('Please select at least year and make');
+        return;
+      }
+      
+      try {
+        const response = await fetch(\`\${baseUrl}/search\`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ year, make, model })
+        });
+        
+        const { motorcycles } = await response.json();
+        
+        if (motorcycles.length === 1) {
+          window.top.location.href = \`\${baseUrl}?bikeid=\${motorcycles[0].recid}\`;
+        } else if (motorcycles.length > 1) {
+          showMotorcycleSelection(motorcycles);
+        } else {
+          alert('No motorcycles found for your selection. Try different criteria.');
+        }
+      } catch (error) {
+        console.error('Search failed:', error);
+        alert('Search failed. Please try again.');
+      }
+    }
+    
+    function showMotorcycleSelection(motorcycles) {
+      const resultsDiv = document.getElementById('search-results');
+      
+      // Create header safely
+      const header = document.createElement('h4');
+      header.style.cssText = 'margin: 20px 0 15px 0; color: #2c3e50;';
+      header.textContent = 'Select Your Exact Model:';
+      
+      // Create container
+      const container = document.createElement('div');
+      container.style.cssText = 'display: grid; gap: 10px;';
+      
+      // Create buttons safely using DOM API
+      motorcycles.forEach(bike => {
+        const button = document.createElement('button');
+        button.style.cssText = 'padding: 15px; border: 2px solid #e74c3c; background: white; border-radius: 8px; cursor: pointer; text-align: left; font-size: 16px; transition: all 0.2s;';
+        
+        // Create content safely
+        const strong = document.createElement('strong');
+        strong.textContent = \`\${bike.bikemake} \${bike.bikemodel}\`;
+        
+        button.appendChild(strong);
+        button.appendChild(document.createTextNode(\` • \${bike.bikeyear} • \${bike.bikeengine || 'Standard'}\`));
+        
+        // Safe event handlers
+        button.addEventListener('click', () => {
+          window.top.location.href = \`\${baseUrl}?bikeid=\${bike.recid}\`;
+        });
+        button.addEventListener('mouseover', () => {
+          button.style.background = '#e74c3c';
+          button.style.color = 'white';
+        });
+        button.addEventListener('mouseout', () => {
+          button.style.background = 'white';
+          button.style.color = '#333';
+        });
+        
+        container.appendChild(button);
+      });
+      
+      // Clear and append safely
+      resultsDiv.innerHTML = '';
+      resultsDiv.appendChild(header);
+      resultsDiv.appendChild(container);
+    }
+    
+    // Initialize search on page load
+    loadSearchOptions();
+  </script>
+</body>
+</html>
+  `;
+}
+
+function generateSearchPage(shop: string): string {
+  const baseUrl = `${shop}/apps/fit-my-bike`;
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Find Motorcycle Parts | Renthal Official</title>
+  <meta name="description" content="Find compatible Renthal parts for your motorcycle. Search by year, make, and model to discover high-quality motorcycle parts and accessories.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      margin: 0; padding: 20px; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding-top: 50px; }
+    .header { 
+      text-align: center; 
+      color: white; 
+      margin-bottom: 40px;
+    }
+    .header h1 { 
+      font-size: 3em; 
+      margin: 0 0 15px 0; 
+      font-weight: 700;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .header p { 
+      font-size: 1.3em; 
+      margin: 0; 
+      opacity: 0.9;
+    }
+    .search-card { 
+      background: white; 
+      padding: 40px; 
+      border-radius: 20px; 
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+    .search-card h2 { 
+      margin: 0 0 30px 0; 
+      color: #2c3e50; 
+      font-size: 1.8em;
+      text-align: center;
+    }
+    .search-form { display: grid; gap: 20px; }
+    .form-group label { 
+      display: block; 
+      margin-bottom: 8px; 
+      font-weight: 600; 
+      color: #555; 
+      font-size: 1.1em;
+    }
+    select, input { 
+      width: 100%; 
+      padding: 15px; 
+      border: 2px solid #e1e8ed; 
+      border-radius: 12px; 
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    select:focus, input:focus { 
+      border-color: #667eea; 
+      outline: none; 
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .search-btn { 
+      background: linear-gradient(135deg, #667eea, #764ba2); 
+      color: white; 
+      border: none; 
+      padding: 18px; 
+      border-radius: 12px; 
+      font-size: 18px; 
+      font-weight: 600;
+      cursor: pointer; 
+      margin-top: 10px;
+      transition: transform 0.2s;
+    }
+    .search-btn:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    .quick-text-search { 
+      margin-top: 30px; 
+      padding-top: 30px; 
+      border-top: 2px solid #f1f1f1;
+    }
+    .quick-text-search h3 { 
+      margin: 0 0 15px 0; 
+      color: #2c3e50;
+    }
+    .search-input-group { 
+      display: flex; 
+      gap: 15px; 
+    }
+    .search-input-group input { 
+      flex: 1;
+    }
+    .search-input-group button { 
+      background: #e74c3c; 
+      color: white; 
+      border: none; 
+      padding: 15px 30px; 
+      border-radius: 12px; 
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .search-input-group button:hover { 
+      background: #c0392b; 
+    }
+    #search-results { 
+      margin-top: 25px;
+    }
+    .results-grid { 
+      display: grid; 
+      gap: 15px; 
+    }
+    .result-item { 
+      padding: 20px; 
+      background: #f8f9fa; 
+      border: 2px solid transparent; 
+      border-radius: 12px; 
+      cursor: pointer; 
+      transition: all 0.2s;
+    }
+    .result-item:hover { 
+      border-color: #667eea; 
+      background: white; 
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .result-title { 
+      font-weight: 600; 
+      color: #2c3e50; 
+      margin-bottom: 5px;
+    }
+    .result-details { 
+      color: #666; 
+      font-size: 0.95em;
+    }
+    @media (max-width: 768px) {
+      .container { padding-top: 20px; }
+      .header h1 { font-size: 2.2em; }
+      .search-card { padding: 25px; margin: 0 10px; }
+      .search-input-group { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🏍️ Find Your Parts</h1>
+      <p>Discover compatible Renthal parts for your motorcycle</p>
+    </div>
+
+    <div class="search-card">
+      <h2>Search by Year, Make & Model</h2>
+      <div class="search-form">
+        <div class="form-group">
+          <label for="year-select">📅 Year</label>
+          <select id="year-select">
+            <option value="">Choose your bike's year</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="make-select">🏭 Make</label>
+          <select id="make-select">
+            <option value="">Choose your bike's make</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="model-input">🏍️ Model (Optional)</label>
+          <input type="text" id="model-input" placeholder="e.g., CRF450R, YZ250F, KX450">
+        </div>
+        <button class="search-btn" onclick="searchMotorcycles()">🔍 Find Compatible Parts</button>
+      </div>
+
+      <div class="quick-text-search">
+        <h3>💨 Quick Search</h3>
+        <p style="color: #666; margin-bottom: 15px;">Or search directly for your motorcycle model</p>
+        <div class="search-input-group">
+          <input type="text" id="quick-search" placeholder="e.g., Honda CRF450R 2023">
+          <button onclick="quickSearch()">Search</button>
+        </div>
+      </div>
+
+      <div id="search-results"></div>
+    </div>
+  </div>
+
+  <script>
+    const baseUrl = "${baseUrl}";
+    
+    async function loadSearchOptions() {
+      try {
+        const [yearsRes, makesRes] = await Promise.all([
+          fetch(\`\${baseUrl}/search-data?type=years\`),
+          fetch(\`\${baseUrl}/search-data?type=makes\`)
+        ]);
+        
+        const years = await yearsRes.json();
+        const makes = await makesRes.json();
+        
+        populateSelect('year-select', years.sort((a, b) => b - a)); // Recent years first
+        populateSelect('make-select', makes.sort());
+      } catch (error) {
+        console.error('Failed to load search options:', error);
+      }
+    }
+    
+    function populateSelect(selectId, options) {
+      const select = document.getElementById(selectId);
+      options.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option;
+        optionElement.textContent = option;
+        select.appendChild(optionElement);
+      });
+    }
+    
+    async function searchMotorcycles() {
+      const year = document.getElementById('year-select').value;
+      const make = document.getElementById('make-select').value;
+      const model = document.getElementById('model-input').value;
+      
+      if (!year || !make) {
+        alert('Please select at least year and make to search');
+        return;
+      }
+      
+      await performSearch({ year, make, model });
+    }
+    
+    async function quickSearch() {
+      const query = document.getElementById('quick-search').value.trim();
+      
+      if (!query) {
+        alert('Please enter a motorcycle model to search');
+        return;
+      }
+      
+      await performSearch({ searchQuery: query });
+    }
+    
+    async function performSearch(searchParams) {
+      try {
+        const response = await fetch(\`\${baseUrl}/search\`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(searchParams)
+        });
+        
+        const { motorcycles } = await response.json();
+        showSearchResults(motorcycles);
+      } catch (error) {
+        console.error('Search failed:', error);
+        alert('Search failed. Please try again.');
+      }
+    }
+    
+    function showSearchResults(motorcycles) {
+      const resultsDiv = document.getElementById('search-results');
+      
+      // Clear previous results
+      resultsDiv.innerHTML = '';
+      
+      if (motorcycles.length === 0) {
+        // Create no results message safely
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.style.cssText = 'text-align: center; padding: 30px; color: #666;';
+        
+        const heading = document.createElement('h3');
+        heading.textContent = 'No motorcycles found';
+        
+        const message = document.createElement('p');
+        message.textContent = 'Try adjusting your search criteria or contact us for assistance.';
+        
+        noResultsDiv.appendChild(heading);
+        noResultsDiv.appendChild(message);
+        resultsDiv.appendChild(noResultsDiv);
+        return;
+      }
+      
+      if (motorcycles.length === 1) {
+        // Direct redirect for single result
+        window.top.location.href = \`\${baseUrl}?bikeid=\${motorcycles[0].recid}\`;
+        return;
+      }
+      
+      // Create header safely
+      const header = document.createElement('h3');
+      header.style.cssText = 'margin: 25px 0 15px 0; color: #2c3e50;';
+      header.textContent = \`Found \${motorcycles.length} motorcycles - Select your exact model:\`;
+      
+      // Create results grid
+      const grid = document.createElement('div');
+      grid.className = 'results-grid';
+      
+      // Create result items safely
+      motorcycles.forEach(bike => {
+        const item = document.createElement('div');
+        item.className = 'result-item';
+        
+        // Create title element
+        const title = document.createElement('div');
+        title.className = 'result-title';
+        title.textContent = \`\${bike.bikemake} \${bike.bikemodel}\`;
+        
+        // Create details element
+        const details = document.createElement('div');
+        details.className = 'result-details';
+        details.textContent = \`\${bike.bikeyear} • \${bike.bikeengine || 'Standard Engine'}\`;
+        
+        // Safe click handler
+        item.addEventListener('click', () => {
+          window.top.location.href = \`\${baseUrl}?bikeid=\${bike.recid}\`;
+        });
+        
+        item.appendChild(title);
+        item.appendChild(details);
+        grid.appendChild(item);
+      });
+      
+      resultsDiv.appendChild(header);
+      resultsDiv.appendChild(grid);
+    }
+    
+    // Initialize search options on page load
+    loadSearchOptions();
+    
+    // Allow Enter key to trigger search
+    document.getElementById('quick-search').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        quickSearch();
+      }
+    });
+  </script>
+</body>
+</html>
+  `;
+}
 
 // Configure multer for file uploads
 const upload = multer({
@@ -1905,6 +2691,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Product sync error:", error);
       res.status(500).json({ message: "Failed to sync products from Shopify" });
+    }
+  });
+
+  // ==========================================
+  // SHOPIFY APP PROXY ROUTES (Customer-Facing)
+  // ==========================================
+  
+  // Apply security middleware to all proxy routes
+  const appProxySecurityMiddleware = createAppProxySecurityMiddleware();
+  
+  // Main app proxy route - handles customer-facing pages
+  app.get("/api/proxy", appProxySecurityMiddleware, async (req, res) => {
+    try {
+      const { bikeid } = req.query;
+      const shop = req.shopifyShop;
+      
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      
+      if (bikeid) {
+        // Show specific motorcycle compatibility page
+        try {
+          const motorcycle = await storage.getMotorcycle(parseInt(bikeid as string));
+          const compatibleParts = await storage.getCompatibleParts(parseInt(bikeid as string));
+          
+          if (!motorcycle) {
+            return res.status(404).send(`
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>Motorcycle Not Found</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              </head>
+              <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <h1>Motorcycle Not Found</h1>
+                <p>Sorry, we couldn't find a motorcycle with that ID.</p>
+                <a href="${shop}/apps/fit-my-bike" style="color: #007cba;">← Back to Search</a>
+              </body>
+              </html>
+            `);
+          }
+          
+          // Get live Shopify products for the compatible parts
+          let shopifyProducts = [];
+          try {
+            const sessions = Array.from(inMemorySessionStorage.values());
+            const activeSession = sessions.find((session: any) => session?.accessToken);
+            
+            if (activeSession) {
+              const shopifyData = await fetchShopifyProducts(activeSession);
+              shopifyProducts = shopifyData.products || [];
+            }
+          } catch (error) {
+            console.error('Failed to fetch live Shopify products for proxy:', error);
+          }
+          
+          // Map compatible parts to Shopify products
+          const compatibleShopifyProducts = compatibleParts
+            .map(mapping => shopifyProducts.find(p => p.id.toString() === mapping.shopifyProductId))
+            .filter(Boolean);
+          
+          return res.send(generateMotorcyclePage(motorcycle, compatibleShopifyProducts, shop as string));
+        } catch (error) {
+          console.error('Error loading motorcycle page:', error);
+          return res.status(500).send("Error loading motorcycle data");
+        }
+      } else {
+        // Show search page
+        return res.send(generateSearchPage(shop as string));
+      }
+    } catch (error) {
+      console.error('App proxy error:', error);
+      res.status(500).send("Internal server error");
+    }
+  });
+  
+  // API endpoint for search data (years, makes, etc.)
+  app.get("/api/proxy/search-data", appProxySecurityMiddleware, async (req, res) => {
+    try {
+      const { type } = req.query;
+      
+      let data = [];
+      switch (type) {
+        case 'years':
+          data = await storage.getDistinctMotorcycleYears();
+          break;
+        case 'makes':
+          data = await storage.getDistinctMotorcycleMakes();
+          break;
+        default:
+          data = [];
+      }
+      
+      res.json(data);
+    } catch (error) {
+      console.error('Search data error:', error);
+      res.status(500).json({ error: 'Failed to load search data' });
+    }
+  });
+  
+  // API endpoint for motorcycle search
+  app.post("/api/proxy/search", appProxySecurityMiddleware, async (req, res) => {
+    try {
+      const { year, make, model, searchQuery } = req.body;
+      
+      let motorcycles = [];
+      if (searchQuery) {
+        motorcycles = await storage.searchMotorcycles(searchQuery);
+      } else if (year && make) {
+        motorcycles = await storage.filterMotorcycles({
+          firstyear: parseInt(year),
+          lastyear: parseInt(year),
+          bikemake: make
+        });
+        
+        if (model) {
+          motorcycles = motorcycles.filter(m => 
+            m.bikemodel.toLowerCase().includes(model.toLowerCase())
+          );
+        }
+      }
+      
+      res.json({ motorcycles });
+    } catch (error) {
+      console.error('Motorcycle search error:', error);
+      res.status(500).json({ error: 'Search failed' });
     }
   });
 
