@@ -1028,30 +1028,21 @@ function generateSearchPage(shop: string): string {
         return;
       }
 
-      // Group motorcycles by make + model to show year ranges
-      const grouped = {};
+      // Group motorcycles by make + model, but separate discontinuous year ranges
+      const suggestions = [];
       motorcycles.forEach(bike => {
-        const key = \`\${bike.bikemake}|\${bike.bikemodel}\`;
-        if (!grouped[key]) {
-          grouped[key] = {
-            bikemake: bike.bikemake,
-            bikemodel: bike.bikemodel,
-            years: [bike.firstyear, bike.lastyear].filter(y => y), // Use both firstyear and lastyear
-            recid: bike.recid // Use first bike's ID for navigation
-          };
-        } else {
-          // Add both years if they don't already exist
-          if (bike.firstyear && !grouped[key].years.includes(bike.firstyear)) {
-            grouped[key].years.push(bike.firstyear);
-          }
-          if (bike.lastyear && !grouped[key].years.includes(bike.lastyear)) {
-            grouped[key].years.push(bike.lastyear);
-          }
-        }
+        suggestions.push({
+          bikemake: bike.bikemake,
+          bikemodel: bike.bikemodel,
+          yearRange: bike.firstyear === bike.lastyear ? 
+            bike.firstyear.toString() : 
+            \`\${bike.firstyear}-\${bike.lastyear}\`,
+          recid: bike.recid
+        });
       });
 
-      // Display grouped suggestions with year ranges
-      Object.values(grouped).slice(0, 8).forEach((group, index) => {
+      // Display separate suggestions for each motorcycle
+      suggestions.slice(0, 8).forEach((suggestion, index) => {
         const item = document.createElement('div');
         item.setAttribute('role', 'option');
         item.setAttribute('id', \`suggestion-\${index}\`);
@@ -1059,12 +1050,7 @@ function generateSearchPage(shop: string): string {
         
         const title = document.createElement('div');
         title.style.cssText = 'font-weight: 600; color: #2c3e50; padding: 2px 0;';
-        
-        // Create year range display
-        const minYear = Math.min(...group.years);
-        const maxYear = Math.max(...group.years);
-        const yearRange = minYear === maxYear ? minYear.toString() : \`\${minYear}-\${maxYear}\`;
-        title.textContent = \`\${group.bikemake} \${group.bikemodel} (\${yearRange})\`;
+        title.textContent = \`\${suggestion.bikemake} \${suggestion.bikemodel} (\${suggestion.yearRange})\`;
         
         item.appendChild(title);
         
@@ -1075,7 +1061,7 @@ function generateSearchPage(shop: string): string {
           item.style.backgroundColor = 'white';
         });
         item.addEventListener('click', () => {
-          window.top.location.href = \`\${baseUrl}?bikeid=\${group.recid}\`;
+          window.top.location.href = \`\${baseUrl}?bikeid=\${suggestion.recid}\`;
         });
         
         dropdown.appendChild(item);
