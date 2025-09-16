@@ -244,19 +244,25 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
       <h3>🔍 Find Parts for a Different Bike</h3>
       <div class="search-form">
         <div class="form-group">
-          <label for="year-select">Year</label>
-          <select id="year-select">
-            <option value="">Select Year</option>
-          </select>
-        </div>
-        <div class="form-group">
           <label for="make-select">Make</label>
           <select id="make-select">
             <option value="">Select Make</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="model-input">Model (Optional)</label>
+          <label for="model-select">Model</label>
+          <select id="model-select" disabled>
+            <option value="">Select Model</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="year-select">Year (Optional)</label>
+          <select id="year-select" disabled>
+            <option value="">Select Year</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="model-input">Model Search (Optional)</label>
           <input type="text" id="model-input" placeholder="e.g., CRF450R">
         </div>
         <div class="form-group">
@@ -581,14 +587,8 @@ function generateSearchPage(shop: string): string {
     </div>
 
     <div class="search-card">
-      <h2>Search by Year, Make & Model</h2>
+      <h2>Search by Make, Model & Year</h2>
       <div class="search-form">
-        <div class="form-group">
-          <label for="year-select">📅 Year</label>
-          <select id="year-select">
-            <option value="">Choose your bike's year</option>
-          </select>
-        </div>
         <div class="form-group">
           <label for="make-select">🏭 Make</label>
           <select id="make-select">
@@ -596,7 +596,19 @@ function generateSearchPage(shop: string): string {
           </select>
         </div>
         <div class="form-group">
-          <label for="model-input">🏍️ Model (Optional)</label>
+          <label for="model-select">🏍️ Model</label>
+          <select id="model-select" disabled>
+            <option value="">Choose your bike's model</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="year-select">📅 Year (Optional)</label>
+          <select id="year-select" disabled>
+            <option value="">Choose your bike's year</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="model-input">🔍 Model Search (Optional)</label>
           <input type="text" id="model-input" placeholder="e.g., CRF450R, YZ250F, KX450">
         </div>
         <button class="search-btn" onclick="searchMotorcycles()">🔍 Find Compatible Parts</button>
