@@ -615,7 +615,8 @@ function generateSearchPage(shop: string): string {
     }
     .search-input-group { 
       display: flex; 
-      gap: 15px; 
+      gap: 15px;
+      position: relative; 
     }
     .search-input-group input { 
       flex: 1;
@@ -682,8 +683,10 @@ function generateSearchPage(shop: string): string {
         <h3>💨 Quick Search</h3>
         <p style="color: #666; margin-bottom: 15px;">Search directly for your motorcycle model</p>
         <div class="search-input-group">
-          <input type="text" id="quick-search" placeholder="e.g., Honda CRF450R 2023">
-          <div id="suggestions-dropdown" style="display: none; position: absolute; background: white; border: 1px solid #ccc; border-radius: 8px; max-height: 300px; overflow-y: auto; z-index: 1000; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"></div>
+          <input type="text" id="quick-search" placeholder="e.g., Honda CRF450R 2023" 
+                 aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" autocomplete="off">
+          <div id="suggestions-dropdown" role="listbox" 
+               style="display: none; position: absolute; background: white; border: 1px solid #ccc; border-radius: 8px; max-height: 300px; overflow-y: auto; z-index: 1000; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"></div>
         </div>
       </div>
 
@@ -962,15 +965,19 @@ function generateSearchPage(shop: string): string {
 
     function showSuggestions(motorcycles, query) {
       const dropdown = document.getElementById('suggestions-dropdown');
+      const input = document.getElementById('quick-search');
       dropdown.innerHTML = '';
       
       if (motorcycles.length === 0) {
         dropdown.style.display = 'none';
+        input.setAttribute('aria-expanded', 'false');
         return;
       }
 
-      motorcycles.forEach(bike => {
+      motorcycles.forEach((bike, index) => {
         const item = document.createElement('div');
+        item.setAttribute('role', 'option');
+        item.setAttribute('id', \`suggestion-\${index}\`);
         item.style.cssText = 'padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s;';
         
         const title = document.createElement('div');
@@ -998,10 +1005,14 @@ function generateSearchPage(shop: string): string {
       });
       
       dropdown.style.display = 'block';
+      input.setAttribute('aria-expanded', 'true');
     }
 
     function hideSuggestions() {
-      document.getElementById('suggestions-dropdown').style.display = 'none';
+      const dropdown = document.getElementById('suggestions-dropdown');
+      const input = document.getElementById('quick-search');
+      dropdown.style.display = 'none';
+      input.setAttribute('aria-expanded', 'false');
     }
 
     function clearResults() {
