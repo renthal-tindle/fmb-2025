@@ -30,7 +30,7 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
   }
   
   try {
-    // Extract query string from the original URL - treat literally, no entity decoding
+    // Extract query string from the original URL
     const queryIndex = originalUrl.indexOf('?');
     if (queryIndex === -1) {
       console.error('No query string found in URL:', originalUrl);
@@ -38,9 +38,44 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
     }
     
     const rawQuery = originalUrl.substring(queryIndex + 1);
-    // Future implementation: Shopify app proxy signature validation
-    // Currently using session-based security which is more reliable
-    return true;
+    const params = new URLSearchParams(rawQuery);
+    const signature = params.get('signature');
+    
+    if (!signature) {
+      console.error('No signature parameter found');
+      return false;
+    }
+    
+    // Remove signature from params for HMAC calculation
+    params.delete('signature');
+    
+    // Sort parameters alphabetically and create query string
+    const sortedParams = Array.from(params.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => `${key}=${value}`)
+      .join('&');
+    
+    // Calculate HMAC-SHA256
+    const calculatedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(sortedParams)
+      .digest('hex');
+    
+    // Use timing-safe comparison
+    const providedSignature = signature.toLowerCase();
+    const isValid = crypto.timingSafeEqual(
+      Buffer.from(calculatedSignature, 'hex'),
+      Buffer.from(providedSignature, 'hex')
+    );
+    
+    if (!isValid) {
+      console.error(`HMAC signature mismatch for proxy request`);
+      console.error(`Expected: ${calculatedSignature}`);
+      console.error(`Received: ${providedSignature}`);
+      console.error(`Query string: ${sortedParams}`);
+    }
+    
+    return isValid;
   } catch (error) {
     console.error('Signature validation error:', error);
     return false;
@@ -67,12 +102,17 @@ function createAppProxySecurityMiddleware() {
         return res.status(401).send("Request timestamp too old");
       }
       
-      // TEMPORARY: Skip signature validation due to encoding issues
-      // We already validate: shop session exists, timestamp is fresh, and app is installed
-      // TODO: Fix signature validation in future version
-      // Using session-based security - validates app installation and timestamp freshness
+      // Validate HMAC signature for security
+      const secret = process.env.SHOPIFY_API_SECRET;
+      if (!secret) {
+        console.error('SHOPIFY_API_SECRET not configured');
+        return res.status(500).send("Server configuration error");
+      }
       
-      // Alternative approach: If we need signature validation, uncomment below
+      if (!validateAppProxySignature(req.originalUrl, secret)) {
+        console.error(`Invalid HMAC signature for proxy request from shop: ${shop}`);
+        return res.status(403).send("Invalid request signature");
+      }
       // const appProxySecret = process.env.SHOPIFY_API_SECRET;
       // if (!appProxySecret || !validateAppProxySignature(req.originalUrl, appProxySecret)) {
       //   console.error(`Invalid app proxy signature for shop: ${shop}`);
@@ -99,34 +139,134 @@ function createAppProxySecurityMiddleware() {
 }
 
 // ==========================================
+// SHOPIFY THEME INTEGRATION
+// ==========================================
+
+async function fetchShopifyThemeElements(shop: string): Promise<{header: string, footer: string, css: string}> {
+  try {
+    // Get the clean shop domain
+    const shopDomain = shop.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    
+    // Try to fetch sections from the live Shopify store
+    const sectionsUrl = `https://${shopDomain}/?sections=header,footer`;
+    console.log(`🎨 Fetching theme sections from: ${sectionsUrl}`);
+    
+    const response = await fetch(sectionsUrl, {
+      headers: {
+        'User-Agent': 'FMB-App-Proxy/1.0',
+        'Accept': 'application/json,text/html'
+      },
+      timeout: 5000 // 5 second timeout
+    });
+    
+    if (response.ok) {
+      const sectionsData = await response.json();
+      console.log(`✅ Successfully fetched theme sections for ${shopDomain}`);
+      
+      return {
+        header: sectionsData.header || '',
+        footer: sectionsData.footer || '',
+        css: `
+          /* Theme integration styles */
+          .shopify-section { width: 100%; }
+          .main-content { position: relative; z-index: 1; }
+          /* Ensure app content doesn't conflict with theme */
+          .main-content * { position: relative; }
+        `
+      };
+    } else {
+      console.warn(`⚠️ Failed to fetch sections for ${shopDomain}, using fallback`);
+      throw new Error(`HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.error(`❌ Theme fetch failed for ${shop}:`, error);
+    
+    // Fallback to basic theme structure
+    return {
+      header: `
+        <header id="shopify-section-header" class="shopify-section">
+          <div class="header-wrapper" style="padding: 1rem; background: #ffffff; border-bottom: 1px solid #e5e5e5;">
+            <nav class="header__inline-menu">
+              <a href="/" class="header__heading-link" style="text-decoration: none;">
+                <h1 class="header__heading" style="margin: 0; font-size: 1.5rem; color: #000;">Your Store</h1>
+              </a>
+            </nav>
+          </div>
+        </header>
+      `,
+      footer: `
+        <footer id="shopify-section-footer" class="shopify-section">
+          <div class="footer" style="padding: 2rem; background: #f8f9fa; border-top: 1px solid #e5e5e5; text-align: center;">
+            <div class="footer__content-top">
+              <p>&copy; 2024 Your Store. All rights reserved.</p>
+            </div>
+          </div>
+        </footer>
+      `,
+      css: `
+        /* Fallback theme integration styles */
+        .shopify-section { width: 100%; }
+        .main-content { position: relative; z-index: 1; }
+      `
+    };
+  }
+}
+
+// ==========================================
 // CUSTOMER-FACING PAGE TEMPLATES
 // ==========================================
 
-function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: string): string {
+async function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: string): Promise<string> {
   const baseUrl = `/apps/fit-my-bike`;
   const bikeMake = escapeHtml(motorcycle.bikemake || '');
   const bikeModel = escapeHtml(motorcycle.bikemodel || '');
-  const bikeYear = motorcycle.bikeyear || 'Unknown Year';
+  const firstYear = motorcycle.firstyear || 'Unknown';
+  const lastYear = motorcycle.lastyear || 'Unknown';
+  const yearRange = firstYear === lastYear ? firstYear.toString() : `${firstYear}-${lastYear}`;
   const bikeEngine = escapeHtml(motorcycle.bikeengine || 'All Engines');
+  
+  // Fetch theme elements for integration
+  const themeElements = await fetchShopifyThemeElements(shop);
   
   return `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Parts for ${bikeMake} ${bikeModel} ${bikeYear} | Renthal Official</title>
-  <meta name="description" content="Find compatible Renthal parts for your ${bikeMake} ${bikeModel} ${bikeYear}. High-quality motorcycle parts and accessories.">
+  <title>Parts for ${bikeMake} ${bikeModel} ${yearRange} | Your Store</title>
+  <meta name="description" content="Find compatible parts for your ${bikeMake} ${bikeModel} ${yearRange}. High-quality motorcycle parts and accessories with fast shipping.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta property="og:title" content="Parts for ${bikeMake} ${bikeModel} ${bikeYear}">
-  <meta property="og:description" content="Find compatible Renthal motorcycle parts and accessories">
+  <meta property="og:title" content="Parts for ${bikeMake} ${bikeModel} ${yearRange}">
+  <meta property="og:description" content="Find compatible motorcycle parts and accessories for ${bikeMake} ${bikeModel} ${yearRange}">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://${shop}/apps/fit-my-bike/?bikeid=${motorcycle.recid}">
+  <link rel="canonical" href="https://${shop}/apps/fit-my-bike/?bikeid=${motorcycle.recid}">
+  
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "${bikeMake} ${bikeModel} ${yearRange} Parts",
+    "description": "Compatible parts for ${bikeMake} ${bikeModel} ${yearRange}",
+    "category": "Motorcycle Parts",
+    "brand": {
+      "@type": "Brand",
+      "name": "${bikeMake}"
+    }
+  }
+  </script>
   <style>
+    ${themeElements.css}
+    
+    /* App-specific styles */
     * { box-sizing: border-box; }
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      margin: 0; padding: 20px; 
+      margin: 0; 
       background: #f8f9fa; 
       color: #333;
     }
+    .main-content { padding: 20px; }
     .container { max-width: 1200px; margin: 0 auto; }
     .header { 
       background: linear-gradient(135deg, #e74c3c, #c0392b); 
@@ -228,16 +368,19 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="breadcrumb">
-      <a href="${escapeHtml(shop)}">Home</a> > 
-      <a href="${baseUrl}">Find Parts</a> > 
-      ${bikeMake} ${bikeModel} ${bikeYear}
+  ${themeElements.header}
+  
+  <div class="main-content">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="${escapeHtml(shop)}">Home</a> > 
+        <a href="${baseUrl}">Find Parts</a> > 
+        ${bikeMake} ${bikeModel} ${yearRange}
     </div>
     
     <div class="header">
       <h1>Parts for ${bikeMake} ${bikeModel}</h1>
-      <p>${bikeYear} • ${bikeEngine}</p>
+      <p>${yearRange} • ${bikeEngine}</p>
     </div>
 
     <div class="search-widget">
@@ -512,12 +655,17 @@ function generateMotorcyclePage(motorcycle: any, compatibleParts: any[], shop: s
       init();
     }
   </script>
+  </div>
+  
+  ${themeElements.footer}
 </body>
 </html>
   `;
 }
 
-function generateSearchPage(shop: string): string {
+async function generateSearchPage(shop: string): Promise<string> {
+  // Fetch theme elements for integration
+  const themeElements = await fetchShopifyThemeElements(shop);
   const baseUrl = `/apps/fit-my-bike`;
   
   return `
@@ -528,14 +676,18 @@ function generateSearchPage(shop: string): string {
   <meta name="description" content="Find compatible Renthal parts for your motorcycle. Search by year, make, and model to discover high-quality motorcycle parts and accessories.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    ${themeElements.css}
+    
+    /* App-specific styles */
     * { box-sizing: border-box; }
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      margin: 0; padding: 20px; 
+      margin: 0; 
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       color: #333;
     }
+    .main-content { padding: 20px; }
     .container { max-width: 800px; margin: 0 auto; padding-top: 50px; }
     .header { 
       text-align: center; 
@@ -671,7 +823,10 @@ function generateSearchPage(shop: string): string {
   </style>
 </head>
 <body>
-  <div class="container">
+  ${themeElements.header}
+  
+  <div class="main-content">
+    <div class="container">
     <div class="header">
       <h1>🏍️ Find Your Parts</h1>
       <p>Discover compatible Renthal parts for your motorcycle</p>
@@ -1184,6 +1339,9 @@ function generateSearchPage(shop: string): string {
       }
     });
   </script>
+  </div>
+  
+  ${themeElements.footer}
 </body>
 </html>
   `;
@@ -3098,8 +3256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Main app proxy route - handles customer-facing pages
   app.get("/api/proxy", appProxySecurityMiddleware, async (req, res) => {
     try {
-      const { bikeid } = req.query;
-      const shop = req.shopifyShop;
+      const { bikeid, shop } = req.query;
       
       res.set('Content-Type', 'text/html; charset=utf-8');
       
@@ -3145,14 +3302,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .map(mapping => shopifyProducts.find(p => p.id.toString() === mapping.shopifyProductId))
             .filter(Boolean);
           
-          return res.send(generateMotorcyclePage(motorcycle, compatibleShopifyProducts, shop as string));
+          const motorcyclePage = await generateMotorcyclePage(motorcycle, compatibleShopifyProducts, shop as string);
+          return res.send(motorcyclePage);
         } catch (error) {
           console.error('Error loading motorcycle page:', error);
           return res.status(500).send("Error loading motorcycle data");
         }
       } else {
         // Show search page
-        return res.send(generateSearchPage(shop as string));
+        const searchPage = await generateSearchPage(shop as string);
+        return res.send(searchPage);
       }
     } catch (error) {
       console.error('App proxy error:', error);
