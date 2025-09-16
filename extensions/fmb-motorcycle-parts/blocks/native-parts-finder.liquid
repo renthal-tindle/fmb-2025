@@ -1,0 +1,598 @@
+{% comment %}
+  FMB Native Motorcycle Parts Finder
+  
+  This block renders natively within the Shopify theme and handles:
+  - Main finder page at /pages/fit-my-bike
+  - Specific motorcycle pages at /pages/fit-my-bike?bikeid=1001
+{% endcomment %}
+
+{%- liquid
+  assign block_id = block.id
+  assign api_base_url = block.settings.api_base_url
+  assign widget_title = block.settings.widget_title | default: 'Find Your Motorcycle Parts'
+  assign show_header = block.settings.show_header | default: true
+  assign auto_detect_page = block.settings.auto_detect_page | default: true
+-%}
+
+<div class="fmb-native-parts-finder" id="fmb-native-finder-{{ block_id }}" {{ block.shopify_attributes }}>
+  {% if show_header %}
+    <div class="fmb-native-header">
+      {% if widget_title != blank %}
+        <h1 class="fmb-native-title">{{ widget_title }}</h1>
+      {% endif %}
+      {% if block.settings.widget_description != blank %}
+        <p class="fmb-native-description">{{ block.settings.widget_description }}</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="fmb-native-content" id="fmb-native-content-{{ block_id }}">
+    <div class="fmb-native-loading">
+      <div class="fmb-loading-spinner"></div>
+      <p>Loading motorcycle parts finder...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const blockId = '{{ block_id }}';
+    const containerId = 'fmb-native-content-' + blockId;
+    const container = document.getElementById(containerId);
+    
+    if (!container) return;
+
+    const config = {
+      apiBaseUrl: '{{ api_base_url | default: "" }}' || window.location.origin,
+      shopDomain: window.Shopify?.shop || '{{ shop.permanent_domain }}',
+      autoDetectPage: {{ auto_detect_page }},
+      blockId: blockId
+    };
+
+    // Check if we're on a fit-my-bike page and extract bikeid
+    const currentPath = window.location.pathname;
+    const urlParams = new URLSearchParams(window.location.search);
+    const bikeid = urlParams.get('bikeid');
+    
+    let pageType = 'finder';
+    if (currentPath.includes('/pages/fit-my-bike') || currentPath.includes('/fit-my-bike')) {
+      pageType = bikeid ? 'motorcycle-parts' : 'finder';
+    }
+
+    // Initialize the appropriate widget
+    if (pageType === 'motorcycle-parts' && bikeid) {
+      initializeMotorcyclePage(config, bikeid, container);
+    } else {
+      initializeFinderPage(config, container);
+    }
+
+    function initializeFinderPage(config, container) {
+      // Load the main motorcycle finder
+      fetch(`${config.apiBaseUrl}/api/motorcycles/makes`)
+        .then(response => response.json())
+        .then(makes => {
+          container.innerHTML = generateFinderHTML(makes, config);
+          setupFinderInteractions(config, container);
+        })
+        .catch(error => {
+          console.error('Error loading finder:', error);
+          container.innerHTML = `
+            <div class="fmb-native-error">
+              <p>Unable to load motorcycle finder. Please try again later.</p>
+            </div>
+          `;
+        });
+    }
+
+    function initializeMotorcyclePage(config, bikeid, container) {
+      // Load specific motorcycle data and compatible parts
+      Promise.all([
+        fetch(`${config.apiBaseUrl}/api/motorcycles?recid=${bikeid}`).then(r => r.json()),
+        fetch(`${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/compatible-parts`).then(r => r.json())
+      ])
+      .then(([motorcycles, parts]) => {
+        const motorcycle = motorcycles[0];
+        if (!motorcycle) {
+          throw new Error('Motorcycle not found');
+        }
+        
+        container.innerHTML = generateMotorcyclePageHTML(motorcycle, parts, config);
+        setupPartInteractions(config, container);
+      })
+      .catch(error => {
+        console.error('Error loading motorcycle page:', error);
+        container.innerHTML = `
+          <div class="fmb-native-error">
+            <p>Unable to load motorcycle parts. Please try again later.</p>
+          </div>
+        `;
+      });
+    }
+
+    function generateFinderHTML(makes, config) {
+      return `
+        <div class="fmb-finder-form">
+          <div class="fmb-form-grid">
+            <div class="fmb-form-group">
+              <label for="make-select-${config.blockId}">Year</label>
+              <select id="year-select-${config.blockId}" class="fmb-select">
+                <option value="">Select Year</option>
+              </select>
+            </div>
+            
+            <div class="fmb-form-group">
+              <label for="make-select-${config.blockId}">Make</label>
+              <select id="make-select-${config.blockId}" class="fmb-select">
+                <option value="">Select Make</option>
+                ${makes.map(make => `<option value="${make}">${make}</option>`).join('')}
+              </select>
+            </div>
+            
+            <div class="fmb-form-group">
+              <label for="model-select-${config.blockId}">Model</label>
+              <select id="model-select-${config.blockId}" class="fmb-select" disabled>
+                <option value="">Select Model</option>
+              </select>
+            </div>
+          </div>
+          
+          <button id="find-parts-btn-${config.blockId}" class="fmb-find-button" disabled>
+            Find Compatible Parts
+          </button>
+          
+          <div id="results-${config.blockId}" class="fmb-results"></div>
+        </div>
+      `;
+    }
+
+    function generateMotorcyclePageHTML(motorcycle, parts, config) {
+      return `
+        <div class="fmb-motorcycle-page">
+          <div class="fmb-motorcycle-header">
+            <h2>${motorcycle.bikemake} ${motorcycle.bikemodel} (${motorcycle.bikeyear})</h2>
+            <p class="fmb-motorcycle-engine">Engine: ${motorcycle.bikeengine || 'All Engines'}</p>
+            <a href="/pages/fit-my-bike" class="fmb-back-link">← Search for Different Motorcycle</a>
+          </div>
+          
+          <div class="fmb-parts-grid">
+            ${parts.map(part => `
+              <div class="fmb-part-card">
+                <div class="fmb-part-image">
+                  ${part.images && part.images[0] ? 
+                    `<img src="${part.images[0]}" alt="${part.title}" loading="lazy">` : 
+                    '<div class="fmb-part-placeholder">No Image</div>'
+                  }
+                </div>
+                <div class="fmb-part-info">
+                  <h3 class="fmb-part-title">${part.title}</h3>
+                  <p class="fmb-part-price">$${part.price}</p>
+                  <button class="fmb-add-to-cart" data-variant-id="${part.variant_id}">
+                    Add to Cart
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function setupFinderInteractions(config, container) {
+      const yearSelect = container.querySelector(`#year-select-${config.blockId}`);
+      const makeSelect = container.querySelector(`#make-select-${config.blockId}`);
+      const modelSelect = container.querySelector(`#model-select-${config.blockId}`);
+      const findButton = container.querySelector(`#find-parts-btn-${config.blockId}`);
+      const results = container.querySelector(`#results-${config.blockId}`);
+
+      // Load years
+      fetch(`${config.apiBaseUrl}/api/motorcycles/years`)
+        .then(response => response.json())
+        .then(years => {
+          years.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+          });
+        });
+
+      // Handle cascading dropdowns
+      makeSelect.addEventListener('change', function() {
+        const selectedMake = this.value;
+        modelSelect.innerHTML = '<option value="">Select Model</option>';
+        modelSelect.disabled = !selectedMake;
+        
+        if (selectedMake) {
+          fetch(`${config.apiBaseUrl}/api/motorcycles?bikemake=${encodeURIComponent(selectedMake)}`)
+            .then(response => response.json())
+            .then(motorcycles => {
+              const models = [...new Set(motorcycles.map(m => m.bikemodel))];
+              models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                modelSelect.appendChild(option);
+              });
+            });
+        }
+        updateFindButton();
+      });
+
+      yearSelect.addEventListener('change', updateFindButton);
+      modelSelect.addEventListener('change', updateFindButton);
+
+      function updateFindButton() {
+        const hasSelections = yearSelect.value && makeSelect.value && modelSelect.value;
+        findButton.disabled = !hasSelections;
+      }
+
+      findButton.addEventListener('click', function() {
+        const year = yearSelect.value;
+        const make = makeSelect.value;
+        const model = modelSelect.value;
+        
+        if (!year || !make || !model) return;
+        
+        // Find the specific motorcycle
+        fetch(`${config.apiBaseUrl}/api/motorcycles?bikemake=${encodeURIComponent(make)}&bikemodel=${encodeURIComponent(model)}&bikeyear=${year}`)
+          .then(response => response.json())
+          .then(motorcycles => {
+            if (motorcycles.length > 0) {
+              const motorcycle = motorcycles[0];
+              // Navigate to the specific motorcycle page
+              window.location.href = `/pages/fit-my-bike?bikeid=${motorcycle.recid}`;
+            } else {
+              results.innerHTML = '<p class="fmb-no-results">No matching motorcycle found.</p>';
+            }
+          })
+          .catch(error => {
+            console.error('Error finding motorcycle:', error);
+            results.innerHTML = '<p class="fmb-error">Error searching for motorcycle. Please try again.</p>';
+          });
+      });
+    }
+
+    function setupPartInteractions(config, container) {
+      // Handle add to cart buttons
+      container.addEventListener('click', function(e) {
+        if (e.target.classList.contains('fmb-add-to-cart')) {
+          const variantId = e.target.dataset.variantId;
+          if (variantId && window.Shopify) {
+            // Add to Shopify cart
+            fetch('/cart/add.js', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                id: variantId,
+                quantity: 1
+              })
+            })
+            .then(response => response.json())
+            .then(() => {
+              e.target.textContent = 'Added!';
+              e.target.disabled = true;
+              setTimeout(() => {
+                e.target.textContent = 'Add to Cart';
+                e.target.disabled = false;
+              }, 2000);
+              
+              // Trigger cart refresh
+              if (window.Shopify && window.Shopify.onItemAdded) {
+                window.Shopify.onItemAdded();
+              }
+            })
+            .catch(error => {
+              console.error('Error adding to cart:', error);
+              e.target.textContent = 'Error';
+              setTimeout(() => {
+                e.target.textContent = 'Add to Cart';
+              }, 2000);
+            });
+          }
+        }
+      });
+    }
+  });
+</script>
+
+<style>
+  .fmb-native-parts-finder {
+    font-family: var(--font-body-family, -apple-system, BlinkMacSystemFont, sans-serif);
+    margin: 2rem 0;
+  }
+
+  .fmb-native-header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .fmb-native-title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: rgb(var(--color-foreground, 0 0 0));
+  }
+
+  .fmb-native-description {
+    font-size: 1.1rem;
+    color: rgba(var(--color-foreground, 0 0 0), 0.7);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .fmb-finder-form {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .fmb-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .fmb-form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: rgb(var(--color-foreground, 0 0 0));
+  }
+
+  .fmb-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+    border-radius: 4px;
+    background: rgb(var(--color-background, 255 255 255));
+    color: rgb(var(--color-foreground, 0 0 0));
+    font-size: 1rem;
+  }
+
+  .fmb-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .fmb-find-button {
+    display: block;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    background: rgb(var(--color-button, 0 123 255));
+    color: rgb(var(--color-button-text, 255 255 255));
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .fmb-find-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .fmb-find-button:not(:disabled):hover {
+    opacity: 0.9;
+  }
+
+  .fmb-motorcycle-page {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .fmb-motorcycle-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+  }
+
+  .fmb-motorcycle-header h2 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    color: rgb(var(--color-foreground, 0 0 0));
+  }
+
+  .fmb-motorcycle-engine {
+    color: rgba(var(--color-foreground, 0 0 0), 0.7);
+    margin-bottom: 1rem;
+  }
+
+  .fmb-back-link {
+    color: rgb(var(--color-button, 0 123 255));
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .fmb-back-link:hover {
+    text-decoration: underline;
+  }
+
+  .fmb-parts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .fmb-part-card {
+    border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgb(var(--color-background, 255 255 255));
+    transition: box-shadow 0.2s;
+  }
+
+  .fmb-part-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .fmb-part-image {
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: rgba(var(--color-foreground, 0 0 0), 0.05);
+  }
+
+  .fmb-part-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .fmb-part-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(var(--color-foreground, 0 0 0), 0.5);
+    font-size: 0.9rem;
+  }
+
+  .fmb-part-info {
+    padding: 1rem;
+  }
+
+  .fmb-part-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: rgb(var(--color-foreground, 0 0 0));
+    line-height: 1.3;
+  }
+
+  .fmb-part-price {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: rgb(var(--color-button, 0 123 255));
+    margin-bottom: 1rem;
+  }
+
+  .fmb-add-to-cart {
+    width: 100%;
+    padding: 0.75rem;
+    background: rgb(var(--color-button, 0 123 255));
+    color: rgb(var(--color-button-text, 255 255 255));
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .fmb-add-to-cart:hover {
+    opacity: 0.9;
+  }
+
+  .fmb-add-to-cart:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .fmb-native-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: rgba(var(--color-foreground, 0 0 0), 0.6);
+  }
+
+  .fmb-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+    border-top: 3px solid rgb(var(--color-button, 0 123 255));
+    border-radius: 50%;
+    animation: fmb-spinner-spin 1s linear infinite;
+    margin-bottom: 1rem;
+  }
+
+  @keyframes fmb-spinner-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .fmb-native-error, .fmb-no-results, .fmb-error {
+    text-align: center;
+    padding: 2rem;
+    color: rgba(var(--color-foreground, 0 0 0), 0.7);
+  }
+
+  @media screen and (max-width: 768px) {
+    .fmb-form-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .fmb-parts-grid {
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+    
+    .fmb-native-title {
+      font-size: 1.5rem;
+    }
+  }
+</style>
+
+{{ 'fmb-motorcycle-parts-finder.css' | asset_url | stylesheet_tag }}
+
+{% schema %}
+{
+  "name": "FMB Native Parts Finder",
+  "target": "section",
+  "category": "Apps",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Content Settings"
+    },
+    {
+      "type": "text",
+      "id": "widget_title",
+      "label": "Widget Title",
+      "default": "Find Your Motorcycle Parts"
+    },
+    {
+      "type": "textarea",
+      "id": "widget_description",
+      "label": "Widget Description",
+      "default": "Search by year, make, and model to find compatible parts for your motorcycle"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_header",
+      "label": "Show Header",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Configuration"
+    },
+    {
+      "type": "url",
+      "id": "api_base_url",
+      "label": "API Base URL",
+      "info": "Leave blank to use current domain, or specify your FMB service URL",
+      "default": ""
+    },
+    {
+      "type": "checkbox",
+      "id": "auto_detect_page",
+      "label": "Auto-detect Page Type",
+      "info": "Automatically detect if this is a fit-my-bike page and show appropriate content",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Motorcycle Parts Finder",
+      "category": "Apps"
+    }
+  ]
+}
+{% endschema %}

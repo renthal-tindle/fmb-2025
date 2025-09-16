@@ -279,6 +279,98 @@ async function renderStorefrontShell(shop: string): Promise<{
   }
 }
 
+// ==========================================
+// NATIVE PAGE GENERATORS
+// ==========================================
+
+async function generateNativeMotorcyclePage(shop: string, motorcycle: any): Promise<string> {
+  const bikeMake = escapeHtml(motorcycle.bikemake || 'Unknown');
+  const bikeModel = escapeHtml(motorcycle.bikemodel || 'Unknown');
+  const bikeYear = motorcycle.bikeyear || 'Unknown';
+  const bikeEngine = escapeHtml(motorcycle.bikeengine || 'All Engines');
+  
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parts for ${bikeMake} ${bikeModel} ${bikeYear} | ${shop}</title>
+  <meta name="description" content="Find compatible parts for your ${bikeMake} ${bikeModel} ${bikeYear}. Browse our selection of high-quality motorcycle parts and accessories.">
+  
+  <!-- Theme integration will be handled by Shopify theme liquid -->
+  <script>
+    // Configuration for the native page
+    window.FMB_PAGE_CONFIG = {
+      type: 'motorcycle-parts',
+      bikeid: ${motorcycle.recid},
+      motorcycle: {
+        make: '${bikeMake}',
+        model: '${bikeModel}',
+        year: ${bikeYear},
+        engine: '${bikeEngine}'
+      },
+      shop: '${shop}',
+      apiBaseUrl: '${process.env.REPLIT_APP_DOMAIN || 'https://56e00a98-ad08-48da-8c00-1d8f49a92d07-00-32mevip0hcwqx.spock.replit.dev'}'
+    };
+  </script>
+</head>
+<body>
+  <!-- Content will be injected by theme liquid file -->
+  <div id="fmb-native-content"></div>
+  
+  <!-- Core motorcycle parts functionality -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.FMB_PAGE_CONFIG) {
+        // This will be handled by the theme app extension
+        console.log('FMB Native page ready:', window.FMB_PAGE_CONFIG);
+      }
+    });
+  </script>
+</body>
+</html>
+  `;
+}
+
+async function generateNativeFinder(shop: string): Promise<string> {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motorcycle Parts Finder | ${shop}</title>
+  <meta name="description" content="Find compatible motorcycle parts by selecting your bike's year, make, and model. Browse our comprehensive parts catalog.">
+  
+  <!-- Theme integration will be handled by Shopify theme liquid -->
+  <script>
+    // Configuration for the native page
+    window.FMB_PAGE_CONFIG = {
+      type: 'parts-finder',
+      shop: '${shop}',
+      apiBaseUrl: '${process.env.REPLIT_APP_DOMAIN || 'https://56e00a98-ad08-48da-8c00-1d8f49a92d07-00-32mevip0hcwqx.spock.replit.dev'}'
+    };
+  </script>
+</head>
+<body>
+  <!-- Content will be injected by theme liquid file -->
+  <div id="fmb-native-content"></div>
+  
+  <!-- Core motorcycle finder functionality -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.FMB_PAGE_CONFIG) {
+        // This will be handled by the theme app extension
+        console.log('FMB Native finder ready:', window.FMB_PAGE_CONFIG);
+      }
+    });
+  </script>
+</body>
+</html>
+  `;
+}
+
 function extractBrandColor(themeContent: string): string {
   // Try to extract brand color from theme content
   const colorMatch = themeContent.match(/--color-accent[^:]*:\s*([^;]+)/);
@@ -3445,6 +3537,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Product sync error:", error);
       res.status(500).json({ message: "Failed to sync products from Shopify" });
+    }
+  });
+
+  // ==========================================
+  // NATIVE SHOPIFY PAGE ROUTES  
+  // ==========================================
+
+  // Generate native page content for /pages/fit-my-bike?bikeid=####
+  app.get('/api/page/fit-my-bike', async (req, res) => {
+    try {
+      const bikeid = req.query.bikeid as string;
+      const shop = req.query.shop as string || req.headers['x-shop-domain'] as string;
+      
+      if (!shop) {
+        return res.status(400).json({ error: 'Shop domain required' });
+      }
+
+      // If bikeid is provided, generate specific motorcycle page
+      if (bikeid) {
+        const motorcycle = await storage.getMotorcycleByRecid(parseInt(bikeid));
+        if (!motorcycle) {
+          return res.status(404).json({ error: 'Motorcycle not found' });
+        }
+        
+        const pageContent = await generateNativeMotorcyclePage(shop, motorcycle);
+        res.setHeader('Content-Type', 'text/html');
+        res.send(pageContent);
+      } else {
+        // Generate main finder page
+        const pageContent = await generateNativeFinder(shop);
+        res.setHeader('Content-Type', 'text/html');
+        res.send(pageContent);
+      }
+      
+    } catch (error) {
+      console.error('Error generating native page:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Get native page configuration for theme liquid files
+  app.get('/api/page/config', async (req, res) => {
+    try {
+      const bikeid = req.query.bikeid as string;
+      const shop = req.query.shop as string || req.headers['x-shop-domain'] as string;
+      
+      const config = {
+        shop,
+        bikeid,
+        apiEndpoint: `/api/page/fit-my-bike`,
+        hasMotorcycle: !!bikeid,
+        timestamp: Date.now()
+      };
+
+      res.json(config);
+      
+    } catch (error) {
+      console.error('Error generating page config:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
