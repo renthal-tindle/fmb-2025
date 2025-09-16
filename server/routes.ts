@@ -37,8 +37,18 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
       return false;
     }
     
-    const queryString = originalUrl.substring(queryIndex + 1);
-    console.log('🔍 Query string:', queryString);
+    const rawQueryString = originalUrl.substring(queryIndex + 1);
+    
+    // Decode HTML entities that may be present
+    const queryString = rawQueryString
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'");
+      
+    console.log('🔍 Raw query string:', rawQueryString);
+    console.log('🔍 Decoded query string:', queryString);
     
     // Parse to extract signature and path_prefix
     const params = new URLSearchParams(queryString);
@@ -53,26 +63,10 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
     console.log('🔍 Signature from request:', signature);
     console.log('🔍 Path prefix:', pathPrefix);
     
-    // Remove signature parameter from the raw query string while preserving exact encoding
-    const signatureParam = `signature=${signature}`;
-    let queryStringWithoutSignature = queryString;
-    
-    // Handle signature at the beginning
-    if (queryString.startsWith(signatureParam + '&')) {
-      queryStringWithoutSignature = queryString.substring(signatureParam.length + 1);
-    }
-    // Handle signature at the end  
-    else if (queryString.endsWith('&' + signatureParam)) {
-      queryStringWithoutSignature = queryString.substring(0, queryString.length - signatureParam.length - 1);
-    }
-    // Handle signature in the middle
-    else if (queryString.includes('&' + signatureParam + '&')) {
-      queryStringWithoutSignature = queryString.replace('&' + signatureParam + '&', '&');
-    }
-    // Handle signature as only parameter
-    else if (queryString === signatureParam) {
-      queryStringWithoutSignature = '';
-    }
+    // Remove signature AND path_prefix from query string (path_prefix is used to build path, not signed in query)
+    params.delete('signature');
+    params.delete('path_prefix');
+    const queryStringWithoutSignature = params.toString();
     
     console.log('🔍 Query string without signature:', queryStringWithoutSignature);
     
