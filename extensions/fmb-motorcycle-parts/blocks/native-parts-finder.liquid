@@ -233,32 +233,46 @@
     function generateFinderHTML(makes, config) {
       return `
         <div class="fmb-finder-form">
+          <!-- Quick Search Section -->
+          <div class="fmb-quick-search">
+            <h3>💨 Quick Search</h3>
+            <p>Search directly for your motorcycle model</p>
+            <div class="fmb-search-input-group">
+              <input type="text" id="quick-search-${config.blockId}" class="fmb-search-input" 
+                     placeholder="e.g., Honda CRF450R 2023" 
+                     autocomplete="off">
+              <div id="suggestions-dropdown-${config.blockId}" class="fmb-suggestions-dropdown"></div>
+            </div>
+          </div>
+          
+          <!-- Filter Search Section -->
+          <h3>Search by Make, Model & Year</h3>
           <div class="fmb-form-grid">
             <div class="fmb-form-group">
-              <label for="make-select-${config.blockId}">Year</label>
-              <select id="year-select-${config.blockId}" class="fmb-select">
-                <option value="">Select Year</option>
-              </select>
-            </div>
-            
-            <div class="fmb-form-group">
-              <label for="make-select-${config.blockId}">Make</label>
+              <label for="make-select-${config.blockId}">🏭 Make</label>
               <select id="make-select-${config.blockId}" class="fmb-select">
-                <option value="">Select Make</option>
+                <option value="">Choose your bike make</option>
                 ${makes.map(make => `<option value="${make}">${make}</option>`).join('')}
               </select>
             </div>
             
             <div class="fmb-form-group">
-              <label for="model-select-${config.blockId}">Model</label>
+              <label for="model-select-${config.blockId}">🏍️ Model</label>
               <select id="model-select-${config.blockId}" class="fmb-select" disabled>
-                <option value="">Select Model</option>
+                <option value="">Choose your bike model</option>
+              </select>
+            </div>
+            
+            <div class="fmb-form-group">
+              <label for="year-select-${config.blockId}">📅 Year</label>
+              <select id="year-select-${config.blockId}" class="fmb-select" disabled>
+                <option value="">Choose your bike year</option>
               </select>
             </div>
           </div>
           
           <button id="find-parts-btn-${config.blockId}" class="fmb-find-button" disabled>
-            Find Compatible Parts
+            🔍 Find Compatible Parts
           </button>
           
           <div id="results-${config.blockId}" class="fmb-results"></div>
@@ -299,77 +313,150 @@
     }
 
     function setupFinderInteractions(config, container) {
-      const yearSelect = container.querySelector(`#year-select-${config.blockId}`);
+      const quickSearch = container.querySelector(`#quick-search-${config.blockId}`);
+      const suggestionsDropdown = container.querySelector(`#suggestions-dropdown-${config.blockId}`);
       const makeSelect = container.querySelector(`#make-select-${config.blockId}`);
       const modelSelect = container.querySelector(`#model-select-${config.blockId}`);
+      const yearSelect = container.querySelector(`#year-select-${config.blockId}`);
       const findButton = container.querySelector(`#find-parts-btn-${config.blockId}`);
       const results = container.querySelector(`#results-${config.blockId}`);
 
-      // Load years
-      fetch(`${config.apiBaseUrl}/api/motorcycles/years`)
+      let motorcycleData = [];
+
+      // Load all motorcycle data for quick search
+      fetch(`${config.apiBaseUrl}/api/motorcycles`)
         .then(response => response.json())
-        .then(years => {
-          years.forEach(year => {
+        .then(motorcycles => {
+          motorcycleData = motorcycles;
+        })
+        .catch(error => console.error('Error loading motorcycles:', error));
+
+      // Quick search functionality
+      let searchTimeout;
+      quickSearch.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+          suggestionsDropdown.style.display = 'none';
+          return;
+        }
+        
+        searchTimeout = setTimeout(() => {
+          const matches = motorcycleData.filter(bike => {
+            const searchText = `${bike.bikemake} ${bike.bikemodel} ${bike.bikeyear}`.toLowerCase();
+            return searchText.includes(query.toLowerCase());
+          }).slice(0, 10);
+          
+          if (matches.length > 0) {
+            suggestionsDropdown.innerHTML = matches.map(bike => 
+              `<div class="fmb-suggestion-item" data-bikeid="${bike.recid}">
+                ${bike.bikemake} ${bike.bikemodel} (${bike.bikeyear})
+              </div>`
+            ).join('');
+            suggestionsDropdown.style.display = 'block';
+          } else {
+            suggestionsDropdown.style.display = 'none';
+          }
+        }, 300);
+      });
+
+      // Handle suggestion clicks
+      suggestionsDropdown.addEventListener('click', function(e) {
+        if (e.target.classList.contains('fmb-suggestion-item')) {
+          const bikeid = e.target.dataset.bikeid;
+          window.location.href = `/pages/fit-my-bike?bikeid=${bikeid}`;
+        }
+      });
+
+      // Hide suggestions when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!quickSearch.contains(e.target) && !suggestionsDropdown.contains(e.target)) {
+          suggestionsDropdown.style.display = 'none';
+        }
+      });
+
+      // Handle cascading dropdowns: Make → Model → Year
+      makeSelect.addEventListener('change', function() {
+        const selectedMake = this.value;
+        
+        // Reset model and year
+        modelSelect.innerHTML = '<option value="">Choose your bike model</option>';
+        modelSelect.disabled = !selectedMake;
+        yearSelect.innerHTML = '<option value="">Choose your bike year</option>';
+        yearSelect.disabled = true;
+        
+        if (selectedMake) {
+          const models = [...new Set(motorcycleData
+            .filter(m => m.bikemake === selectedMake)
+            .map(m => m.bikemodel)
+          )].sort();
+          
+          models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model;
+            modelSelect.appendChild(option);
+          });
+        }
+        updateFindButton();
+      });
+
+      modelSelect.addEventListener('change', function() {
+        const selectedMake = makeSelect.value;
+        const selectedModel = this.value;
+        
+        // Reset year
+        yearSelect.innerHTML = '<option value="">Choose your bike year</option>';
+        yearSelect.disabled = !selectedModel;
+        
+        if (selectedMake && selectedModel) {
+          const years = new Set();
+          motorcycleData
+            .filter(m => m.bikemake === selectedMake && m.bikemodel === selectedModel)
+            .forEach(m => {
+              for (let year = m.firstyear; year <= m.lastyear; year++) {
+                years.add(year);
+              }
+            });
+          
+          [...years].sort((a, b) => b - a).forEach(year => {
             const option = document.createElement('option');
             option.value = year;
             option.textContent = year;
             yearSelect.appendChild(option);
           });
-        });
-
-      // Handle cascading dropdowns
-      makeSelect.addEventListener('change', function() {
-        const selectedMake = this.value;
-        modelSelect.innerHTML = '<option value="">Select Model</option>';
-        modelSelect.disabled = !selectedMake;
-        
-        if (selectedMake) {
-          fetch(`${config.apiBaseUrl}/api/motorcycles?bikemake=${encodeURIComponent(selectedMake)}`)
-            .then(response => response.json())
-            .then(motorcycles => {
-              const models = [...new Set(motorcycles.map(m => m.bikemodel))];
-              models.forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                modelSelect.appendChild(option);
-              });
-            });
         }
         updateFindButton();
       });
 
       yearSelect.addEventListener('change', updateFindButton);
-      modelSelect.addEventListener('change', updateFindButton);
 
       function updateFindButton() {
-        const hasSelections = yearSelect.value && makeSelect.value && modelSelect.value;
+        const hasSelections = makeSelect.value && modelSelect.value && yearSelect.value;
         findButton.disabled = !hasSelections;
       }
 
       findButton.addEventListener('click', function() {
-        const year = yearSelect.value;
         const make = makeSelect.value;
         const model = modelSelect.value;
+        const year = parseInt(yearSelect.value);
         
-        if (!year || !make || !model) return;
+        if (!make || !model || !year) return;
         
         // Find the specific motorcycle
-        fetch(`${config.apiBaseUrl}/api/motorcycles?bikemake=${encodeURIComponent(make)}&bikemodel=${encodeURIComponent(model)}&bikeyear=${year}`)
-          .then(response => response.json())
-          .then(motorcycles => {
-            if (motorcycles.length > 0) {
-              const motorcycle = motorcycles[0];
-              // Navigate to the specific motorcycle page
-              window.location.href = `/pages/fit-my-bike?bikeid=${motorcycle.recid}`;
-            } else {
-              results.innerHTML = '<p class="fmb-no-results">No matching motorcycle found.</p>';
-            }
-          })
-          .catch(error => {
-            console.error('Error finding motorcycle:', error);
-            results.innerHTML = '<p class="fmb-error">Error searching for motorcycle. Please try again.</p>';
-          });
+        const motorcycle = motorcycleData.find(m => 
+          m.bikemake === make && 
+          m.bikemodel === model && 
+          year >= m.firstyear && 
+          year <= m.lastyear
+        );
+        
+        if (motorcycle) {
+          window.location.href = `/pages/fit-my-bike?bikeid=${motorcycle.recid}`;
+        } else {
+          results.innerHTML = '<p class="fmb-no-results">No matching motorcycle found.</p>';
+        }
       });
     }
 
@@ -446,6 +533,76 @@
   .fmb-finder-form {
     max-width: 800px;
     margin: 0 auto;
+  }
+
+  .fmb-quick-search {
+    margin-bottom: 30px;
+    padding-bottom: 30px;
+    border-bottom: 2px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+  }
+  
+  .fmb-quick-search h3 {
+    margin: 0 0 10px 0;
+    color: rgb(var(--color-foreground, 0 0 0));
+    font-size: 1.3rem;
+  }
+  
+  .fmb-quick-search p {
+    color: rgba(var(--color-foreground, 0 0 0), 0.7);
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+  }
+  
+  .fmb-search-input-group {
+    position: relative;
+    display: flex;
+    gap: 15px;
+  }
+  
+  .fmb-search-input {
+    flex: 1;
+    padding: 15px;
+    border: 2px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.2s;
+  }
+  
+  .fmb-search-input:focus {
+    border-color: rgb(var(--color-button, 0 123 255));
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--color-button, 0 123 255), 0.1);
+  }
+  
+  .fmb-suggestions-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: rgb(var(--color-background, 255 255 255));
+    border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-top: 4px;
+  }
+  
+  .fmb-suggestion-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+    transition: background-color 0.2s;
+  }
+  
+  .fmb-suggestion-item:hover {
+    background: rgba(var(--color-button, 0 123 255), 0.1);
+  }
+  
+  .fmb-suggestion-item:last-child {
+    border-bottom: none;
   }
 
   .fmb-form-grid {
