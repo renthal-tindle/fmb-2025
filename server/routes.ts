@@ -686,7 +686,7 @@ function generateSearchPage(shop: string): string {
           <input type="text" id="quick-search" placeholder="e.g., Honda CRF450R 2023" 
                  aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" autocomplete="off">
           <div id="suggestions-dropdown" role="listbox" 
-               style="display: none; position: absolute; background: white; border: 1px solid #ccc; border-radius: 8px; max-height: 300px; overflow-y: auto; z-index: 1000; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"></div>
+               style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-radius: 8px; max-height: 300px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 4px;"></div>
         </div>
       </div>
 
@@ -953,9 +953,8 @@ function generateSearchPage(shop: string): string {
         
         const { motorcycles } = await response.json();
         
-        // Show suggestions (top 8) and results (all)
+        // Only show suggestions (top 8) in dropdown, not in main results
         showSuggestions(motorcycles.slice(0, 8), query);
-        showSearchResults(motorcycles);
       } catch (error) {
         if (error.name !== 'AbortError') {
           console.error('Auto search failed:', error);
@@ -974,7 +973,28 @@ function generateSearchPage(shop: string): string {
         return;
       }
 
-      motorcycles.forEach((bike, index) => {
+      // Group motorcycles by make + model to show year ranges
+      const grouped = {};
+      motorcycles.forEach(bike => {
+        const key = \`\${bike.bikemake}|\${bike.bikemodel}\`;
+        if (!grouped[key]) {
+          grouped[key] = {
+            bikemake: bike.bikemake,
+            bikemodel: bike.bikemodel,
+            years: [bike.bikeyear],
+            engines: [bike.bikeengine || 'Standard Engine'],
+            recid: bike.recid // Use first bike's ID for navigation
+          };
+        } else {
+          grouped[key].years.push(bike.bikeyear);
+          if (bike.bikeengine && !grouped[key].engines.includes(bike.bikeengine)) {
+            grouped[key].engines.push(bike.bikeengine);
+          }
+        }
+      });
+
+      // Display grouped suggestions with year ranges
+      Object.values(grouped).slice(0, 8).forEach((group, index) => {
         const item = document.createElement('div');
         item.setAttribute('role', 'option');
         item.setAttribute('id', \`suggestion-\${index}\`);
@@ -982,11 +1002,17 @@ function generateSearchPage(shop: string): string {
         
         const title = document.createElement('div');
         title.style.cssText = 'font-weight: 600; color: #2c3e50; margin-bottom: 3px;';
-        title.textContent = \`\${bike.bikemake} \${bike.bikemodel}\`;
+        
+        // Create year range display
+        const minYear = Math.min(...group.years);
+        const maxYear = Math.max(...group.years);
+        const yearRange = minYear === maxYear ? minYear.toString() : \`\${minYear}-\${maxYear}\`;
+        title.textContent = \`\${group.bikemake} \${group.bikemodel} (\${yearRange})\`;
         
         const details = document.createElement('div');
         details.style.cssText = 'color: #666; font-size: 0.9em;';
-        details.textContent = \`\${bike.bikeyear} • \${bike.bikeengine || 'Standard Engine'}\`;
+        const uniqueEngines = [...new Set(group.engines)];
+        details.textContent = uniqueEngines.join(', ');
         
         item.appendChild(title);
         item.appendChild(details);
@@ -998,7 +1024,7 @@ function generateSearchPage(shop: string): string {
           item.style.backgroundColor = 'white';
         });
         item.addEventListener('click', () => {
-          window.top.location.href = \`\${baseUrl}?bikeid=\${bike.recid}\`;
+          window.top.location.href = \`\${baseUrl}?bikeid=\${group.recid}\`;
         });
         
         dropdown.appendChild(item);
