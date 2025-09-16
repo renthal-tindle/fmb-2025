@@ -463,10 +463,14 @@
               }
             });
           
-          [...years].sort((a, b) => b - a).forEach(year => {
+          // Group consecutive years into ranges
+          const sortedYears = [...years].sort((a, b) => b - a);
+          const yearRanges = groupYearsIntoRanges(sortedYears);
+          
+          yearRanges.forEach(yearRange => {
             const option = document.createElement('option');
-            option.value = year;
-            option.textContent = year;
+            option.value = yearRange;
+            option.textContent = yearRange;
             yearSelect.appendChild(option);
           });
         }
@@ -479,19 +483,64 @@
         }
       });
 
+      function groupYearsIntoRanges(years) {
+        if (years.length === 0) return [];
+        if (years.length === 1) return [years[0].toString()];
+        
+        const ranges = [];
+        let rangeStart = years[0];
+        let rangeEnd = years[0];
+        
+        for (let i = 1; i < years.length; i++) {
+          // Since years are sorted descending, consecutive means current year is rangeStart - 1
+          if (years[i] === rangeStart - 1) {
+            // Extend the current range
+            rangeStart = years[i];
+          } else {
+            // End the current range and add it to results
+            if (rangeStart === rangeEnd) {
+              ranges.push(rangeEnd.toString());
+            } else {
+              ranges.push(`${rangeStart}-${rangeEnd}`);
+            }
+            
+            // Start a new range
+            rangeStart = years[i];
+            rangeEnd = years[i];
+          }
+        }
+        
+        // Add the final range
+        if (rangeStart === rangeEnd) {
+          ranges.push(rangeEnd.toString());
+        } else {
+          ranges.push(`${rangeStart}-${rangeEnd}`);
+        }
+        
+        return ranges;
+      }
+
       function performAutoSearch() {
         const make = makeSelect.value;
         const model = modelSelect.value;
-        const year = parseInt(yearSelect.value);
+        const yearRange = yearSelect.value;
         
-        if (!make || !model || !year) return;
+        if (!make || !model || !yearRange) return;
+        
+        // Parse year or year range - take the first year from the range
+        let searchYear;
+        if (yearRange.includes('-')) {
+          searchYear = parseInt(yearRange.split('-')[0]);
+        } else {
+          searchYear = parseInt(yearRange);
+        }
         
         // Find the specific motorcycle
         const motorcycle = motorcycleData.find(m => 
           m.bikemake === make && 
           m.bikemodel === model && 
-          year >= m.firstyear && 
-          year <= m.lastyear
+          searchYear >= m.firstyear && 
+          searchYear <= m.lastyear
         );
         
         if (motorcycle) {
