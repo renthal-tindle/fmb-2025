@@ -629,8 +629,8 @@
     top: 100%;
     left: 0;
     right: 0;
-    background: rgb(var(--color-background, 255 255 255));
-    border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+    background: #ffffff;
+    border: 1px solid #e1e8ed;
     border-radius: 8px;
     max-height: 300px;
     overflow-y: auto;
@@ -642,12 +642,15 @@
   .fmb-suggestion-item {
     padding: 12px 16px;
     cursor: pointer;
-    border-bottom: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+    border-bottom: 1px solid #f1f1f1;
     transition: background-color 0.2s;
+    color: #333333;
+    font-size: 14px;
   }
   
   .fmb-suggestion-item:hover {
-    background: rgba(var(--color-button, 0 123 255), 0.1);
+    background: #f8f9fa;
+    color: #000000;
   }
   
   .fmb-suggestion-item:last-child {
@@ -671,16 +674,24 @@
   .fmb-select {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+    border: 1px solid #e1e8ed;
     border-radius: 4px;
-    background: rgb(var(--color-background, 255 255 255));
-    color: rgb(var(--color-foreground, 0 0 0));
+    background: #ffffff;
+    color: #333333;
     font-size: 1rem;
+  }
+
+  .fmb-select:focus {
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
 
   .fmb-select:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    background: #f8f9fa;
+    color: #666666;
   }
 
   .fmb-find-button {
