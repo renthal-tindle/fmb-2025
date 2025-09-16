@@ -715,18 +715,19 @@
 
   .fmb-select {
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #e1e8ed;
-    border-radius: 4px;
+    padding: 15px;
+    border: 2px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+    border-radius: 8px;
     background: #ffffff;
     color: #333333;
-    font-size: 1rem;
+    font-size: 16px;
+    transition: border-color 0.2s;
   }
 
   .fmb-select:focus {
-    border-color: #667eea;
+    border-color: rgb(var(--color-button, 0 123 255));
     outline: none;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 0 0 3px rgba(var(--color-button, 0 123 255), 0.1);
   }
 
   .fmb-select:disabled {
