@@ -928,14 +928,41 @@ function generateSearchPage(shop: string): string {
       }, 300);
     }
 
+    function parseYearFromQuery(query) {
+      // Extract 4-digit years from the search query (between 1900-2050)
+      const yearMatch = query.match(/\\b(19\\d{2}|20[0-4]\\d|2050)\\b/);
+      if (yearMatch) {
+        return {
+          year: parseInt(yearMatch[1]),
+          cleanQuery: query.replace(yearMatch[0], '').replace(/\\s+/g, ' ').trim()
+        };
+      }
+      return { year: null, cleanQuery: query };
+    }
+
     async function performAutoSearch(query) {
       try {
         abortController = new AbortController();
         
+        // Parse year from search query if present
+        const { year: parsedYear, cleanQuery } = parseYearFromQuery(query);
+        
         // Get current filter values
         const make = document.getElementById('make-select').value;
         const model = document.getElementById('model-select').value;
-        const year = document.getElementById('year-select').value;
+        const selectedYear = document.getElementById('year-select').value;
+        
+        // Use parsed year if found, otherwise use selected year
+        const finalYear = parsedYear || selectedYear || undefined;
+
+        console.log('🔍 Auto search:', { 
+          originalQuery: query, 
+          cleanQuery, 
+          parsedYear, 
+          finalYear,
+          make,
+          model
+        });
 
         // Include app proxy params in search request
         const params = new URLSearchParams(window.location.search);
@@ -943,15 +970,17 @@ function generateSearchPage(shop: string): string {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            searchQuery: query,
+            searchQuery: cleanQuery, // Use cleaned query without year
             make: make || undefined,
             model: model || undefined, 
-            year: year || undefined
+            year: finalYear
           }),
           signal: abortController.signal
         });
         
         const { motorcycles } = await response.json();
+        
+        console.log('🔍 Auto search results:', motorcycles.length, 'motorcycles found');
         
         // Only show suggestions (top 8) in dropdown, not in main results
         showSuggestions(motorcycles.slice(0, 8), query);
