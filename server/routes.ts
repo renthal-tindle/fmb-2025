@@ -151,118 +151,74 @@ async function fetchShopifyThemeElements(shop: string): Promise<{header: string,
     // Get the clean shop domain
     const shopDomain = shop.replace(/^https?:\/\//, '').replace(/\/$/, '');
     
-    // Try to get theme info using Shopify Admin API
-    const sessions = Array.from(inMemorySessionStorage.values());
-    const activeSession = sessions.find((session: any) => session?.accessToken && session?.shop === shopDomain);
+    console.log(`🎨 Fetching ACTUAL website content from: https://${shopDomain}`);
     
-    if (activeSession) {
-      console.log(`🎨 Fetching theme data for ${shopDomain} using Admin API`);
-      
-      const client = new shopify.clients.Rest({ session: activeSession });
-      
-      // Get the published theme
-      const themesResponse = await client.get({
-        path: 'themes',
-        query: { role: 'main' }
-      });
-      
-      const themes = (themesResponse.body as any).themes;
-      const publishedTheme = themes.find((theme: any) => theme.role === 'main');
-      
-      if (publishedTheme) {
-        // Get theme assets for layout
-        const assetsResponse = await client.get({
-          path: `themes/${publishedTheme.id}/assets`,
-          query: { 'asset[key]': 'layout/theme.liquid' }
-        });
-        
-        const themeLayout = (assetsResponse.body as any).asset?.value || '';
-        
-        // Extract brand colors and basic styling from the theme
-        const brandColor = extractBrandColor(themeLayout);
-        const storeName = await getStoreName(activeSession);
-        
-        console.log(`✅ Successfully fetched theme data for ${shopDomain}`);
-        
-        return {
-          header: generateThemeHeader(storeName, brandColor, shopDomain),
-          footer: generateThemeFooter(storeName, brandColor),
-          css: generateThemeCSS(brandColor)
-        };
-      }
+    // Fetch the actual HTML from the live store
+    const response = await fetch(`https://${shopDomain}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; FMB-App-Proxy/1.0)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      },
+      timeout: 10000
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
     
-    console.warn(`⚠️ Could not fetch theme via Admin API, trying direct approach`);
-    throw new Error('Admin API not available');
+    const html = await response.text();
+    console.log(`✅ Successfully fetched ${html.length} chars of HTML from live store`);
+    
+    // Extract the actual header and footer from the HTML
+    const headerMatch = html.match(/<header[^>]*>[\s\S]*?<\/header>/i);
+    const footerMatch = html.match(/<footer[^>]*>[\s\S]*?<\/footer>/i);
+    
+    // Also extract any header-related sections like shopify-section-header
+    const shopifyHeaderMatch = html.match(/<[^>]*shopify-section[^>]*header[^>]*>[\s\S]*?<\/[^>]*>/i);
+    const shopifyFooterMatch = html.match(/<[^>]*shopify-section[^>]*footer[^>]*>[\s\S]*?<\/[^>]*>/i);
+    
+    // Extract CSS from the HTML
+    const styleMatches = html.match(/<style[^>]*>[\s\S]*?<\/style>/gi) || [];
+    const linkMatches = html.match(/<link[^>]*rel=["\']stylesheet["\'][^>]*>/gi) || [];
+    
+    let extractedCSS = '';
+    styleMatches.forEach(style => {
+      extractedCSS += style + '\n';
+    });
+    
+    // Use the extracted content or fall back to a simpler approach
+    const actualHeader = shopifyHeaderMatch?.[0] || headerMatch?.[0] || '';
+    const actualFooter = shopifyFooterMatch?.[0] || footerMatch?.[0] || '';
+    
+    console.log(`📋 Extracted header: ${actualHeader.length} chars`);
+    console.log(`📋 Extracted footer: ${actualFooter.length} chars`);
+    console.log(`📋 Extracted CSS: ${extractedCSS.length} chars`);
+    
+    return {
+      header: actualHeader || `<!-- No header found in ${shopDomain} -->`,
+      footer: actualFooter || `<!-- No footer found in ${shopDomain} -->`,
+      css: extractedCSS + `
+        /* App-specific styles to ensure content displays properly */
+        .main-content { 
+          min-height: 60vh; 
+          padding: 2rem 0;
+        }
+        .shopify-section { width: 100%; }
+      `
+    };
     
   } catch (error) {
-    console.error(`❌ Theme fetch failed for ${shop}:`, error);
+    console.error(`❌ Failed to fetch actual website content from ${shop}:`, error);
     
-    // Enhanced fallback that looks more integrated
+    // Return minimal content instead of fake content
     return {
-      header: `
-        <div id="shopify-section-header" class="shopify-section theme-header">
-          <header class="site-header" role="banner">
-            <div class="page-width">
-              <div class="header-layout">
-                <div class="header__inline-menu">
-                  <a href="https://${shop}" class="header__heading-link logo-link">
-                    <span class="h2 header__heading">Renthal</span>
-                  </a>
-                </div>
-                <nav class="header__inline-menu site-nav" role="navigation">
-                  <a href="https://${shop}" class="site-nav__link">Home</a>
-                  <a href="https://${shop}/collections" class="site-nav__link">Shop</a>
-                  <a href="https://${shop}/apps/fit-my-bike" class="site-nav__link site-nav__link--active">Find My Parts</a>
-                  <a href="https://${shop}/pages/about" class="site-nav__link">About</a>
-                </nav>
-              </div>
-            </div>
-          </header>
-        </div>
-      `,
-      footer: `
-        <div id="shopify-section-footer" class="shopify-section">
-          <footer class="site-footer" role="contentinfo">
-            <div class="page-width">
-              <div class="footer-block">
-                <p>&copy; 2024 Renthal. All rights reserved.</p>
-                <div class="footer-links">
-                  <a href="https://${shop}/pages/privacy-policy">Privacy Policy</a>
-                  <a href="https://${shop}/pages/terms-of-service">Terms of Service</a>
-                </div>
-              </div>
-            </div>
-          </footer>
-        </div>
-      `,
+      header: `<!-- Could not fetch header from ${shop} -->`,
+      footer: `<!-- Could not fetch footer from ${shop} -->`, 
       css: `
-        /* Enhanced theme integration styles */
+        /* Minimal fallback styles */
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        .main-content { padding: 2rem; min-height: 60vh; }
         .shopify-section { width: 100%; }
-        .theme-header { background: #ffffff; border-bottom: 1px solid #e1e3e5; position: sticky; top: 0; z-index: 100; }
-        .site-header { padding: 1rem 0; }
-        .page-width { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
-        .header-layout { display: flex; align-items: center; justify-content: space-between; }
-        .header__heading { margin: 0; font-size: 1.8rem; color: #000; font-weight: 700; }
-        .header__heading-link { text-decoration: none; color: inherit; }
-        .site-nav { display: flex; gap: 2rem; }
-        .site-nav__link { text-decoration: none; color: #333; font-weight: 500; padding: 0.5rem 0; }
-        .site-nav__link:hover { color: #e60012; }
-        .site-nav__link--active { color: #e60012; font-weight: 600; }
-        .site-footer { background: #f8f9fa; border-top: 1px solid #e1e3e5; padding: 2rem 0; }
-        .footer-block { text-align: center; }
-        .footer-links { margin-top: 1rem; }
-        .footer-links a { margin: 0 1rem; text-decoration: none; color: #666; }
-        .footer-links a:hover { color: #e60012; }
-        .main-content { min-height: calc(100vh - 200px); }
-        
-        /* Renthal brand colors */
-        :root {
-          --brand-primary: #e60012;
-          --brand-secondary: #000000;
-          --text-color: #333333;
-          --background-color: #ffffff;
-        }
       `
     };
   }
