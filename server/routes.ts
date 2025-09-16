@@ -55,7 +55,7 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
     console.log('🔍 Decoded query string:', queryString);
     console.log('🔍 String changed after decoding:', rawQueryString !== queryString);
     
-    // Parse to extract signature and path_prefix
+    // Parse to extract signature and path_prefix (for extraction only, not reconstruction)
     const params = new URLSearchParams(queryString);
     const signature = params.get('signature');
     const pathPrefix = decodeURIComponent(params.get('path_prefix') || '');
@@ -68,10 +68,29 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
     console.log('🔍 Signature from request:', signature);
     console.log('🔍 Path prefix:', pathPrefix);
     
-    // Remove signature AND path_prefix from query string (path_prefix is used to build path, not signed in query)
-    params.delete('signature');
-    params.delete('path_prefix');
-    const queryStringWithoutSignature = params.toString();
+    // Manually remove signature and path_prefix while preserving exact encoding
+    // This avoids URLSearchParams.toString() re-encoding issues
+    let queryStringWithoutSignature = queryString;
+    
+    // Remove signature parameter
+    const signatureParam = `signature=${signature}`;
+    if (queryStringWithoutSignature.includes('&' + signatureParam)) {
+      queryStringWithoutSignature = queryStringWithoutSignature.replace('&' + signatureParam, '');
+    } else if (queryStringWithoutSignature.startsWith(signatureParam + '&')) {
+      queryStringWithoutSignature = queryStringWithoutSignature.substring(signatureParam.length + 1);
+    } else if (queryStringWithoutSignature === signatureParam) {
+      queryStringWithoutSignature = '';
+    }
+    
+    // Remove path_prefix parameter  
+    const pathPrefixParam = `path_prefix=${encodeURIComponent('/apps/fit-my-bike')}`;
+    if (queryStringWithoutSignature.includes('&' + pathPrefixParam)) {
+      queryStringWithoutSignature = queryStringWithoutSignature.replace('&' + pathPrefixParam, '');
+    } else if (queryStringWithoutSignature.startsWith(pathPrefixParam + '&')) {
+      queryStringWithoutSignature = queryStringWithoutSignature.substring(pathPrefixParam.length + 1);
+    } else if (queryStringWithoutSignature === pathPrefixParam) {
+      queryStringWithoutSignature = '';
+    }
     
     console.log('🔍 Query string without signature:', queryStringWithoutSignature);
     
