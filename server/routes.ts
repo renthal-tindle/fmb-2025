@@ -678,6 +678,15 @@ function generateSearchPage(shop: string): string {
     </div>
 
     <div class="search-card">
+      <div class="quick-text-search">
+        <h3>💨 Quick Search</h3>
+        <p style="color: #666; margin-bottom: 15px;">Search directly for your motorcycle model</p>
+        <div class="search-input-group">
+          <input type="text" id="quick-search" placeholder="e.g., Honda CRF450R 2023">
+          <div id="suggestions-dropdown" style="display: none; position: absolute; background: white; border: 1px solid #ccc; border-radius: 8px; max-height: 300px; overflow-y: auto; z-index: 1000; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"></div>
+        </div>
+      </div>
+
       <h2>Search by Make, Model & Year</h2>
       <div class="search-form">
         <div class="form-group">
@@ -703,15 +712,6 @@ function generateSearchPage(shop: string): string {
           <input type="text" id="model-input" placeholder="e.g., CRF450R, YZ250F, KX450">
         </div>
         <button class="search-btn" onclick="searchMotorcycles()">🔍 Find Compatible Parts</button>
-      </div>
-
-      <div class="quick-text-search">
-        <h3>💨 Quick Search</h3>
-        <p style="color: #666; margin-bottom: 15px;">Or search directly for your motorcycle model</p>
-        <div class="search-input-group">
-          <input type="text" id="quick-search" placeholder="e.g., Honda CRF450R 2023">
-          <button onclick="quickSearch()">Search</button>
-        </div>
       </div>
 
       <div id="search-results"></div>
@@ -903,10 +903,151 @@ function generateSearchPage(shop: string): string {
       resultsDiv.appendChild(grid);
     }
     
+    // Auto-suggest functionality with debounced search
+    let searchTimeout = null;
+    let abortController = null;
+
+    function debounceSearch(query) {
+      // Clear previous timeout and abort request
+      clearTimeout(searchTimeout);
+      if (abortController) {
+        abortController.abort();
+      }
+
+      if (!query.trim()) {
+        hideSuggestions();
+        clearResults();
+        return;
+      }
+
+      searchTimeout = setTimeout(() => {
+        performAutoSearch(query);
+      }, 300);
+    }
+
+    async function performAutoSearch(query) {
+      try {
+        abortController = new AbortController();
+        
+        // Get current filter values
+        const make = document.getElementById('make-select').value;
+        const model = document.getElementById('model-select').value;
+        const year = document.getElementById('year-select').value;
+
+        // Include app proxy params in search request
+        const params = new URLSearchParams(window.location.search);
+        const response = await fetch(\`/apps/fit-my-bike/search?\${params.toString()}\`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            searchQuery: query,
+            make: make || undefined,
+            model: model || undefined, 
+            year: year || undefined
+          }),
+          signal: abortController.signal
+        });
+        
+        const { motorcycles } = await response.json();
+        
+        // Show suggestions (top 8) and results (all)
+        showSuggestions(motorcycles.slice(0, 8), query);
+        showSearchResults(motorcycles);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Auto search failed:', error);
+        }
+      }
+    }
+
+    function showSuggestions(motorcycles, query) {
+      const dropdown = document.getElementById('suggestions-dropdown');
+      dropdown.innerHTML = '';
+      
+      if (motorcycles.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      motorcycles.forEach(bike => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s;';
+        
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight: 600; color: #2c3e50; margin-bottom: 3px;';
+        title.textContent = \`\${bike.bikemake} \${bike.bikemodel}\`;
+        
+        const details = document.createElement('div');
+        details.style.cssText = 'color: #666; font-size: 0.9em;';
+        details.textContent = \`\${bike.bikeyear} • \${bike.bikeengine || 'Standard Engine'}\`;
+        
+        item.appendChild(title);
+        item.appendChild(details);
+        
+        item.addEventListener('mouseenter', () => {
+          item.style.backgroundColor = '#f8f9fa';
+        });
+        item.addEventListener('mouseleave', () => {
+          item.style.backgroundColor = 'white';
+        });
+        item.addEventListener('click', () => {
+          window.top.location.href = \`\${baseUrl}?bikeid=\${bike.recid}\`;
+        });
+        
+        dropdown.appendChild(item);
+      });
+      
+      dropdown.style.display = 'block';
+    }
+
+    function hideSuggestions() {
+      document.getElementById('suggestions-dropdown').style.display = 'none';
+    }
+
+    function clearResults() {
+      document.getElementById('search-results').innerHTML = '';
+    }
+
     // Initialize everything on page load with proper timing
     function init() {
       console.log('🚀 Main search page loaded, initializing...');
       loadSearchOptions();
+      
+      // Set up auto-suggest for quick search
+      const quickSearchInput = document.getElementById('quick-search');
+      if (quickSearchInput && !quickSearchInput.hasAttribute('data-initialized')) {
+        quickSearchInput.setAttribute('data-initialized', 'true');
+        
+        quickSearchInput.addEventListener('input', function() {
+          debounceSearch(this.value);
+        });
+        
+        quickSearchInput.addEventListener('focus', function() {
+          if (this.value.trim()) {
+            debounceSearch(this.value);
+          }
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+          if (!e.target.closest('.search-input-group')) {
+            hideSuggestions();
+          }
+        });
+        
+        // Handle keyboard navigation in suggestions
+        quickSearchInput.addEventListener('keydown', function(e) {
+          const dropdown = document.getElementById('suggestions-dropdown');
+          const items = dropdown.querySelectorAll('div[style*="padding: 12px"]');
+          
+          if (e.key === 'ArrowDown' && items.length > 0) {
+            e.preventDefault();
+            items[0].focus();
+          } else if (e.key === 'Escape') {
+            hideSuggestions();
+          }
+        });
+      }
       
       // Set up event handlers for cascading dropdowns (only once)
       const makeSelect = document.getElementById('make-select');
@@ -923,6 +1064,12 @@ function generateSearchPage(shop: string): string {
             document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
             document.getElementById('year-select').disabled = true;
           }
+          
+          // Trigger auto-search if quick search has content
+          const quickSearch = document.getElementById('quick-search').value;
+          if (quickSearch.trim()) {
+            debounceSearch(quickSearch);
+          }
         });
       }
 
@@ -930,15 +1077,21 @@ function generateSearchPage(shop: string): string {
       if (modelSelect && !modelSelect.hasAttribute('data-initialized')) {
         modelSelect.setAttribute('data-initialized', 'true');
         modelSelect.addEventListener('change', function() {
-        const make = document.getElementById('make-select').value;
-        const model = this.value;
-        if (make && model) {
-          loadYearsForMakeModel(make, model);
-        } else {
-          // Reset year dropdown
-          document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
-          document.getElementById('year-select').disabled = true;
-        }
+          const make = document.getElementById('make-select').value;
+          const model = this.value;
+          if (make && model) {
+            loadYearsForMakeModel(make, model);
+          } else {
+            // Reset year dropdown
+            document.getElementById('year-select').innerHTML = '<option value="">Choose your bike year</option>';
+            document.getElementById('year-select').disabled = true;
+          }
+          
+          // Trigger auto-search if quick search has content
+          const quickSearch = document.getElementById('quick-search').value;
+          if (quickSearch.trim()) {
+            debounceSearch(quickSearch);
+          }
         });
       }
     }
