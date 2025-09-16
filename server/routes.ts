@@ -4,11 +4,22 @@ import { storage } from "./storage";
 import { insertMotorcycleSchema, insertPartMappingSchema, insertImportHistorySchema, insertPartCategoryTagsSchema } from "@shared/schema";
 import { z } from "zod";
 import { getAuthUrl, validateAuthCallback, verifyShop, fetchShopifyProducts, inMemorySessionStorage } from "./shopify-auth";
+import { shopify } from "./shopify-auth";
 import multer from 'multer';
 import { parse as parseCsv } from 'csv-parse';
 import { Readable } from 'stream';
 import { promisify } from 'util';
 import crypto from 'crypto';
+
+// Augment Express Request type
+declare global {
+  namespace Express {
+    interface Request {
+      shopifyShop?: string;
+      shopifySession?: any;
+    }
+  }
+}
 
 // ==========================================
 // SECURITY UTILITIES
@@ -1772,11 +1783,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const csvString = csvBuffer.toString('utf-8');
 
       // Parse CSV with error handling
-      const parsePromise = promisify(parseCsv);
-      const records = await parsePromise(csvString, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true,
+      const records = await new Promise((resolve, reject) => {
+        parseCsv(csvString, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+        }, (err: any, records: any) => {
+          if (err) reject(err);
+          else resolve(records);
+        });
       });
 
       if (!Array.isArray(records) || records.length === 0) {
@@ -2682,7 +2697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Map compatible parts to Shopify products
           const compatibleShopifyProducts = compatibleParts
-            .map(mapping => shopifyProducts.find(p => p.id.toString() === mapping.shopifyProductId))
+            .map((mapping: any) => shopifyProducts.find((p: any) => p.id.toString() === mapping.shopifyProductId))
             .filter(Boolean);
           
           // Check for rollback parameter
