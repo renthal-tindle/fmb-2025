@@ -332,7 +332,7 @@ export class MemStorage implements IStorage {
         if (rangeStart === rangeEnd) {
           ranges.push(rangeEnd.toString());
         } else {
-          ranges.push(`${rangeEnd}-${rangeStart}`);
+          ranges.push(`${rangeStart}-${rangeEnd}`);
         }
         
         // Start a new range
@@ -345,7 +345,7 @@ export class MemStorage implements IStorage {
     if (rangeStart === rangeEnd) {
       ranges.push(rangeEnd.toString());
     } else {
-      ranges.push(`${rangeEnd}-${rangeStart}`);
+      ranges.push(`${rangeStart}-${rangeEnd}`);
     }
     
     return ranges;
