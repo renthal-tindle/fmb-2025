@@ -85,10 +85,10 @@
     }
 
     function initializeMotorcyclePage(config, bikeid, container) {
-      // Load specific motorcycle data and compatible parts
+      // Load specific motorcycle data and compatible parts via app proxy
       Promise.all([
-        fetch(`${config.apiBaseUrl}/api/motorcycles?recid=${bikeid}`).then(r => r.json()),
-        fetch(`${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/compatible-parts`).then(r => r.json())
+        fetch(`${config.apiBaseUrl}/apps/fit-my-bike/api/motorcycles?recid=${bikeid}`).then(r => r.json()),
+        fetch(`${config.apiBaseUrl}/apps/fit-my-bike/api/customer/motorcycles/${bikeid}/compatible-parts`).then(r => r.json())
       ])
       .then(([motorcycles, parts]) => {
         const motorcycle = motorcycles.find(m => m.recid == bikeid);

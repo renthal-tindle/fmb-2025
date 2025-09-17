@@ -3859,6 +3859,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==========================================
+  // APP PROXY API ROUTES
+  // ==========================================
+  // These routes allow the Theme App Extension to make API calls through the app proxy
+  
+  // App proxy route for motorcycles data (used by Theme App Extension)
+  app.get("/api/proxy/api/motorcycles", appProxySecurityMiddleware, async (req, res) => {
+    try {
+      const { search, bikemake, firstyear, lastyear, biketype, recid } = req.query;
+      
+      if (recid) {
+        // Single motorcycle by recid
+        const motorcycle = await storage.getMotorcycle(parseInt(recid as string));
+        if (!motorcycle) {
+          return res.status(404).json({ error: "Motorcycle not found" });
+        }
+        res.json([motorcycle]); // Return as array for consistency with frontend expectations
+      } else {
+        // Multiple motorcycles with filters
+        const results = await storage.getMotorcycles({
+          search: search as string,
+          bikemake: bikemake as string,
+          firstyear: firstyear ? parseInt(firstyear as string) : undefined,
+          lastyear: lastyear ? parseInt(lastyear as string) : undefined,
+          biketype: biketype ? parseInt(biketype as string) : undefined
+        });
+        res.json(results);
+      }
+    } catch (error) {
+      console.error("Error fetching motorcycles via app proxy:", error);
+      res.status(500).json({ error: "Failed to fetch motorcycles" });
+    }
+  });
+  
+  // App proxy route for compatible parts (used by Theme App Extension)
+  app.get("/api/proxy/api/customer/motorcycles/:recid/compatible-parts", appProxySecurityMiddleware, async (req, res) => {
+    try {
+      const recid = parseInt(req.params.recid);
+      if (isNaN(recid)) {
+        return res.status(400).json({ message: "Invalid motorcycle ID" });
+      }
+
+      // Get the motorcycle first to verify it exists
+      const motorcycle = await storage.getMotorcycle(recid);
+      if (!motorcycle) {
+        return res.status(404).json({ message: "Motorcycle not found" });
+      }
+
+      // Get all products and check which ones have compatible parts for this motorcycle
+      // Use the same logic as the original route
+      const [allProducts, categoryTags] = await Promise.all([
+        storage.getShopifyProducts(),
+        storage.getPartCategoryTags()
+      ]);
+
+      const compatibleProducts = [];
+
+      // Check each product's compatibility by looking at motorcycle column values
+      for (const product of allProducts) {
+        let isCompatible = false;
+
+        // Check each part category to see if this motorcycle has a matching part
+        for (const category of categoryTags) {
+          const columnName = category.categoryValue.toLowerCase();
+          const motorcycleValue = (motorcycle as any)[columnName];
+          
+          // If motorcycle has a value for this part category, check if product matches
+          if (motorcycleValue && motorcycleValue.trim() !== '') {
+            // Parse product tags to see if it matches the motorcycle's part value
+            try {
+              const productTags = JSON.parse(category.productTags) as string[];
+              
+              // Check if any product tag matches the motorcycle's part value
+              if (productTags.some(tag => 
+                product.tags?.toLowerCase().includes(tag.toLowerCase()) ||
+                product.title?.toLowerCase().includes(tag.toLowerCase()) ||
+                product.sku?.toLowerCase().includes(tag.toLowerCase())
+              )) {
+                isCompatible = true;
+                break;
+              }
+            } catch (e) {
+              // Skip if JSON parsing fails
+              continue;
+            }
+          }
+        }
+
+        if (isCompatible) {
+          compatibleProducts.push({
+            ...product,
+            compatibility: `Compatible with ${motorcycle.bikemake} ${motorcycle.bikemodel} (${motorcycle.firstyear}-${motorcycle.lastyear})`
+          });
+        }
+      }
+
+      res.json(compatibleProducts);
+    } catch (error) {
+      console.error("Error fetching compatible parts via app proxy:", error);
+      res.status(500).json({ error: "Failed to fetch compatible parts" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
