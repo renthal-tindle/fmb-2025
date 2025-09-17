@@ -312,6 +312,67 @@
       `;
     }
 
+    function categorizePart(part) {
+      const title = part.title?.toLowerCase() || '';
+      const sku = part.sku?.toLowerCase() || '';
+      const category = part.category?.toLowerCase() || '';
+      const tags = part.tags?.toLowerCase() || '';
+      
+      // Direct Replacement (exact OE replacement parts)
+      if (sku.includes('-oe') || title.includes('oem') || title.includes('replacement') || 
+          category.includes('direct replacement') || tags.includes('direct replacement')) {
+        return { main: 'Direct Replacement', sub: null };
+      }
+      
+      // Control category
+      if (title.includes('handlebar') && !title.includes('fatbar36') && !title.includes('mount')) {
+        return { main: 'Control', sub: 'Handlebars' };
+      }
+      if (title.includes('fatbar36') || sku.includes('fatbar36') || tags.includes('fatbar36')) {
+        return { main: 'Control', sub: 'Fatbar36' };
+      }
+      if (title.includes('bar mount') || title.includes('handlebar mount') || 
+          category.includes('bar mount') || tags.includes('bar mount')) {
+        return { main: 'Control', sub: 'Bar Mounts' };
+      }
+      
+      // Final Drive category
+      if (title.includes('front sprocket') || category.includes('front sprocket') || 
+          tags.includes('front sprocket')) {
+        return { main: 'Final Drive', sub: 'Front Sprockets' };
+      }
+      if (title.includes('rear sprocket') || category.includes('rear sprocket') || 
+          tags.includes('rear sprocket')) {
+        return { main: 'Final Drive', sub: 'Rear Sprockets' };
+      }
+      if (title.includes('chain') && !title.includes('sprocket') || 
+          category.includes('chain') || tags.includes('chain')) {
+        return { main: 'Final Drive', sub: 'Chain' };
+      }
+      
+      // Others category
+      if (title.includes('brake pad') || category.includes('brake pad') || 
+          tags.includes('brake pad')) {
+        return { main: 'Others', sub: 'Brake Pads' };
+      }
+      if (title.includes('throttle cam') || title.includes('lock-on throttle') || 
+          category.includes('throttle cam') || tags.includes('throttle cam')) {
+        return { main: 'Others', sub: 'Lock-On Throttle Cam' };
+      }
+      
+      // Fallback based on general categories
+      if (title.includes('sprocket') || category.includes('sprocket') || tags.includes('sprocket')) {
+        return { main: 'Final Drive', sub: 'Front Sprockets' }; // Default to front if unclear
+      }
+      if (title.includes('fatbar') || title.includes('handlebar') || 
+          category.includes('handlebar') || tags.includes('handlebar')) {
+        return { main: 'Control', sub: 'Handlebars' };
+      }
+      
+      // Default to Others if no clear category
+      return { main: 'Others', sub: null };
+    }
+
     function generateMotorcyclePageHTML(motorcycle, parts, config) {
       // Calculate year range
       const bikeYear = motorcycle.firstyear && motorcycle.lastyear 
@@ -319,6 +380,128 @@
             ? motorcycle.firstyear.toString() 
             : `${motorcycle.firstyear}-${motorcycle.lastyear}`)
         : 'Unknown';
+      
+      // Categorize parts
+      const categorizedParts = {
+        'Direct Replacement': [],
+        'Control': {
+          'Handlebars': [],
+          'Fatbar36': [],
+          'Bar Mounts': []
+        },
+        'Final Drive': {
+          'Front Sprockets': [],
+          'Rear Sprockets': [],
+          'Chain': []
+        },
+        'Others': {
+          'Brake Pads': [],
+          'Lock-On Throttle Cam': [],
+          'Uncategorized': []
+        }
+      };
+      
+      parts.forEach(part => {
+        const category = categorizePart(part);
+        if (category.main === 'Direct Replacement') {
+          categorizedParts['Direct Replacement'].push(part);
+        } else if (category.main === 'Control' && category.sub) {
+          categorizedParts['Control'][category.sub].push(part);
+        } else if (category.main === 'Final Drive' && category.sub) {
+          categorizedParts['Final Drive'][category.sub].push(part);
+        } else if (category.main === 'Others') {
+          if (category.sub) {
+            categorizedParts['Others'][category.sub].push(part);
+          } else {
+            categorizedParts['Others']['Uncategorized'].push(part);
+          }
+        } else {
+          categorizedParts['Others']['Uncategorized'].push(part);
+        }
+      });
+      
+      function renderPartCard(part) {
+        // Parse variants to get proper variant data
+        let variants = [];
+        let defaultVariantId = null;
+        try {
+          if (typeof part.variants === 'string') {
+            variants = JSON.parse(part.variants);
+          } else if (Array.isArray(part.variants)) {
+            variants = part.variants;
+          }
+          
+          // Get the first available variant or just the first variant
+          const availableVariant = variants.find(v => v.inventory_quantity > 0) || variants[0];
+          defaultVariantId = availableVariant ? availableVariant.id : null;
+        } catch (e) {
+          console.warn('Error parsing variants for part:', part.title);
+        }
+        
+        return `
+          <div class="fmb-part-card">
+            <div class="fmb-part-image">
+              ${part.images && part.images[0] ? 
+                `<img src="${part.images[0].src || part.images[0]}" alt="${part.title}" loading="lazy">` : 
+                '<div class="fmb-part-placeholder">No Image</div>'
+              }
+            </div>
+            <div class="fmb-part-info">
+              <h3 class="fmb-part-title">${part.title}</h3>
+              <p class="fmb-part-sku">SKU: ${part.sku}</p>
+              <p class="fmb-part-price">$${part.price}</p>
+              ${variants.length > 1 ? `
+                <div class="fmb-variant-selector">
+                  <label>Options:</label>
+                  <select class="fmb-variant-select" data-part-id="${part.id}">
+                    ${variants.map(variant => `
+                      <option value="${variant.id}" data-price="${variant.price}">
+                        ${variant.title} - $${variant.price}
+                      </option>
+                    `).join('')}
+                  </select>
+                </div>
+              ` : ''}
+              <button class="fmb-add-to-cart" data-variant-id="${defaultVariantId}" data-part-title="${part.title}">
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      
+      function renderCategory(categoryName, items) {
+        if (!items || items.length === 0) return '';
+        
+        return `
+          <div class="fmb-category-section">
+            <h3 class="fmb-category-title">${categoryName}</h3>
+            <div class="fmb-parts-grid">
+              ${items.map(renderPartCard).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      function renderSubcategories(mainCategory, subcategories) {
+        const hasAnyParts = Object.values(subcategories).some(items => 
+          Array.isArray(items) ? items.length > 0 : false
+        );
+        
+        if (!hasAnyParts) return '';
+        
+        return `
+          <div class="fmb-main-category">
+            <h2 class="fmb-main-category-title">${mainCategory}</h2>
+            ${Object.entries(subcategories).map(([subName, items]) => {
+              if (Array.isArray(items) && items.length > 0) {
+                return renderCategory(subName, items);
+              }
+              return '';
+            }).join('')}
+          </div>
+        `;
+      }
         
       return `
         <div class="fmb-motorcycle-page">
@@ -328,24 +511,11 @@
             <a href="/pages/fit-my-bike" class="fmb-back-link">← Search for Different Motorcycle</a>
           </div>
           
-          <div class="fmb-parts-grid">
-            ${parts.map(part => `
-              <div class="fmb-part-card">
-                <div class="fmb-part-image">
-                  ${part.images && part.images[0] ? 
-                    `<img src="${part.images[0]}" alt="${part.title}" loading="lazy">` : 
-                    '<div class="fmb-part-placeholder">No Image</div>'
-                  }
-                </div>
-                <div class="fmb-part-info">
-                  <h3 class="fmb-part-title">${part.title}</h3>
-                  <p class="fmb-part-price">$${part.price}</p>
-                  <button class="fmb-add-to-cart" data-variant-id="${part.variant_id}">
-                    Add to Cart
-                  </button>
-                </div>
-              </div>
-            `).join('')}
+          <div class="fmb-categorized-parts">
+            ${renderCategory('Direct Replacement', categorizedParts['Direct Replacement'])}
+            ${renderSubcategories('Control', categorizedParts['Control'])}
+            ${renderSubcategories('Final Drive', categorizedParts['Final Drive'])}
+            ${renderSubcategories('Others', categorizedParts['Others'])}
           </div>
         </div>
       `;
@@ -595,11 +765,44 @@
     }
 
     function setupPartInteractions(config, container) {
+      // Handle variant selector changes
+      container.addEventListener('change', function(e) {
+        if (e.target.classList.contains('fmb-variant-select')) {
+          const select = e.target;
+          const selectedOption = select.options[select.selectedIndex];
+          const newPrice = selectedOption.dataset.price;
+          const variantId = selectedOption.value;
+          
+          // Find the corresponding part card
+          const partCard = select.closest('.fmb-part-card');
+          if (partCard) {
+            // Update price display
+            const priceElement = partCard.querySelector('.fmb-part-price');
+            if (priceElement && newPrice) {
+              priceElement.textContent = `$${newPrice}`;
+            }
+            
+            // Update add to cart button variant ID
+            const addToCartButton = partCard.querySelector('.fmb-add-to-cart');
+            if (addToCartButton && variantId) {
+              addToCartButton.dataset.variantId = variantId;
+            }
+          }
+        }
+      });
+      
       // Handle add to cart buttons
       container.addEventListener('click', function(e) {
         if (e.target.classList.contains('fmb-add-to-cart')) {
           const variantId = e.target.dataset.variantId;
+          const partTitle = e.target.dataset.partTitle || 'Product';
+          
           if (variantId && window.Shopify) {
+            // Show loading state
+            const originalText = e.target.textContent;
+            e.target.textContent = 'Adding...';
+            e.target.disabled = true;
+            
             // Add to Shopify cart
             fetch('/cart/add.js', {
               method: 'POST',
@@ -611,27 +814,55 @@
                 quantity: 1
               })
             })
-            .then(response => response.json())
+            .then(response => {
+              if (!response.ok) {
+                throw new Error('Failed to add to cart');
+              }
+              return response.json();
+            })
             .then(() => {
               e.target.textContent = 'Added!';
-              e.target.disabled = true;
+              
+              // Show success briefly, then reset
               setTimeout(() => {
-                e.target.textContent = 'Add to Cart';
+                e.target.textContent = originalText;
                 e.target.disabled = false;
               }, 2000);
               
-              // Trigger cart refresh
-              if (window.Shopify && window.Shopify.onItemAdded) {
-                window.Shopify.onItemAdded();
+              // Trigger cart refresh events
+              if (window.Shopify) {
+                // Try various cart refresh methods
+                if (window.Shopify.onItemAdded) {
+                  window.Shopify.onItemAdded();
+                }
+                
+                // Dispatch custom cart update event
+                window.dispatchEvent(new CustomEvent('cart:updated'));
+                document.dispatchEvent(new CustomEvent('cart:updated'));
+                
+                // Update cart count if drawer exists
+                const cartCount = document.querySelector('[data-cart-count]');
+                if (cartCount) {
+                  fetch('/cart.js')
+                    .then(r => r.json())
+                    .then(cart => {
+                      cartCount.textContent = cart.item_count;
+                    })
+                    .catch(() => {});
+                }
               }
             })
             .catch(error => {
               console.error('Error adding to cart:', error);
-              e.target.textContent = 'Error';
+              e.target.textContent = 'Error - Try Again';
+              
               setTimeout(() => {
-                e.target.textContent = 'Add to Cart';
+                e.target.textContent = originalText;
+                e.target.disabled = false;
               }, 2000);
             });
+          } else {
+            console.warn('No variant ID found for add to cart button');
           }
         }
       });
@@ -895,6 +1126,75 @@
     font-weight: bold;
     color: rgb(var(--color-button, 0 123 255));
     margin-bottom: 1rem;
+  }
+
+  /* Categorized Layout Styles */
+  .fmb-categorized-parts {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .fmb-main-category {
+    margin-bottom: 3rem;
+  }
+
+  .fmb-main-category-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: rgb(var(--color-foreground, 0 0 0));
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 3px solid rgb(var(--color-button, 0 123 255));
+    text-align: left;
+  }
+
+  .fmb-category-section {
+    margin-bottom: 2rem;
+  }
+
+  .fmb-category-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: rgba(var(--color-foreground, 0 0 0), 0.8);
+    margin-bottom: 1rem;
+    padding-left: 1rem;
+    border-left: 4px solid rgba(var(--color-button, 0 123 255), 0.5);
+    text-align: left;
+  }
+
+  .fmb-part-sku {
+    font-size: 0.9rem;
+    color: rgba(var(--color-foreground, 0 0 0), 0.6);
+    margin-bottom: 0.5rem;
+    font-family: monospace;
+  }
+
+  .fmb-variant-selector {
+    margin-bottom: 1rem;
+  }
+
+  .fmb-variant-selector label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(var(--color-foreground, 0 0 0), 0.8);
+    margin-bottom: 0.5rem;
+  }
+
+  .fmb-variant-select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+    border-radius: 4px;
+    background: white;
+    font-size: 0.9rem;
+    color: rgb(var(--color-foreground, 0 0 0));
+  }
+
+  .fmb-variant-select:focus {
+    border-color: rgb(var(--color-button, 0 123 255));
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(var(--color-button, 0 123 255), 0.1);
   }
 
   .fmb-add-to-cart {
