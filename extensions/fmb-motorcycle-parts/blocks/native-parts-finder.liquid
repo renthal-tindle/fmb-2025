@@ -98,17 +98,27 @@
       Promise.all([
         fetch(url1).then(r => {
           console.log('🔧 FMB Debug: Motorcycle API response status:', r.status);
+          if (!r.ok) {
+            throw new Error(`Motorcycle API failed with status ${r.status}`);
+          }
           return r.json();
         }),
         fetch(url2).then(r => {
           console.log('🔧 FMB Debug: Parts API response status:', r.status);
+          if (!r.ok) {
+            throw new Error(`Parts API failed with status ${r.status}`);
+          }
           return r.json();
         })
       ])
       .then(([motorcycles, parts]) => {
         console.log('🔧 FMB Debug: Received motorcycles:', motorcycles);
         console.log('🔧 FMB Debug: Received parts:', parts);
+        console.log('🔧 FMB Debug: Motorcycles type:', typeof motorcycles, 'Length:', Array.isArray(motorcycles) ? motorcycles.length : 'not array');
+        console.log('🔧 FMB Debug: Parts type:', typeof parts, 'Length:', Array.isArray(parts) ? parts.length : 'not array');
+        
         const motorcycle = motorcycles.find(m => m.recid == bikeid);
+        console.log('🔧 FMB Debug: Found motorcycle:', motorcycle);
         if (!motorcycle) {
           throw new Error('Motorcycle not found');
         }
