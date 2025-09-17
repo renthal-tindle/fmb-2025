@@ -101,6 +101,20 @@
       console.log('🔧 FMB Debug: Starting motorcycle page initialization');
       console.log('🔧 FMB Debug: bikeid =', bikeid);
       console.log('🔧 FMB Debug: apiBaseUrl =', config.apiBaseUrl);
+
+      // Show debug info in container
+      container.innerHTML = `
+        <div style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; margin: 10px 0; font-family: monospace; font-size: 12px;">
+          <strong>🔧 FMB Debug Info:</strong><br>
+          • bikeid: ${bikeid}<br>
+          • apiBaseUrl: ${config.apiBaseUrl}<br>
+          • About to call APIs...<br>
+        </div>
+        <div class="fmb-native-loading">
+          <div class="fmb-loading-spinner"></div>
+          <p>Loading motorcycle parts...</p>
+        </div>
+      `;
       
       const url1 = `${config.apiBaseUrl}/api/motorcycles?recid=${bikeid}`;
       const url2 = `${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/compatible-parts`;
@@ -143,6 +157,16 @@
         console.log('🔧 FMB Debug: Received parts:', parts);
         console.log('🔧 FMB Debug: Motorcycles type:', typeof motorcycles, 'Length:', Array.isArray(motorcycles) ? motorcycles.length : 'not array');
         console.log('🔧 FMB Debug: Parts type:', typeof parts, 'Length:', Array.isArray(parts) ? parts.length : 'not array');
+
+        // Update debug display
+        container.querySelector('.fmb-native-loading').innerHTML = `
+          <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 10px; margin: 5px 0; font-family: monospace; font-size: 11px;">
+            ✅ <strong>API Success!</strong><br>
+            • Motorcycles: ${Array.isArray(motorcycles) ? motorcycles.length : 'Invalid'}<br>
+            • Parts: ${Array.isArray(parts) ? parts.length : 'Invalid'}<br>
+            • Rendering layout...<br>
+          </div>
+        `;
         
         const motorcycle = motorcycles.find(m => m.recid == bikeid);
         console.log('🔧 FMB Debug: Found motorcycle:', motorcycle);
@@ -159,7 +183,13 @@
       .catch(error => {
         console.error('Error loading motorcycle page:', error);
         container.innerHTML = `
-          <div class="fmb-native-error">
+          <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0;">
+            <strong>❌ FMB Debug Error:</strong><br>
+            <div style="font-family: monospace; font-size: 12px; margin-top: 10px;">
+              Error: ${error.message}<br>
+              Stack: ${error.stack ? error.stack.substring(0, 200) + '...' : 'No stack trace'}
+            </div>
+            <hr style="margin: 10px 0;">
             <p>Unable to load motorcycle parts. Please try again later.</p>
           </div>
         `;
