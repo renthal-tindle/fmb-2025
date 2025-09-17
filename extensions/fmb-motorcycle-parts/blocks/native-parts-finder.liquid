@@ -43,7 +43,7 @@
     if (!container) return;
 
     const config = {
-      apiBaseUrl: '{{ api_base_url | default: "" }}' || window.location.origin,
+      apiBaseUrl: '{{ api_base_url | default: "" }}' || 'https://56e00a98-ad08-48da-8c00-1d8f49a92d07-00-32mevip0hcwqx.spock.replit.dev',
       shopDomain: window.Shopify?.shop || '{{ shop.permanent_domain }}',
       autoDetectPage: {{ auto_detect_page }},
       blockId: blockId
@@ -85,10 +85,10 @@
     }
 
     function initializeMotorcyclePage(config, bikeid, container) {
-      // Load specific motorcycle data and compatible parts via app proxy
+      // Load specific motorcycle data and compatible parts directly
       Promise.all([
-        fetch(`${config.apiBaseUrl}/apps/fit-my-bike/api/motorcycles?recid=${bikeid}`).then(r => r.json()),
-        fetch(`${config.apiBaseUrl}/apps/fit-my-bike/api/customer/motorcycles/${bikeid}/compatible-parts`).then(r => r.json())
+        fetch(`${config.apiBaseUrl}/api/motorcycles?recid=${bikeid}`).then(r => r.json()),
+        fetch(`${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/compatible-parts`).then(r => r.json())
       ])
       .then(([motorcycles, parts]) => {
         const motorcycle = motorcycles.find(m => m.recid == bikeid);
