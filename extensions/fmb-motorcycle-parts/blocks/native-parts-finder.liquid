@@ -100,6 +100,9 @@
       })
         .then(response => {
           console.log('🔧 FMB Finder: Makes API response status:', response.status);
+          console.log('🔧 FMB Finder: Response headers:', response.headers);
+          console.log('🔧 FMB Finder: Response content-type:', response.headers.get('content-type'));
+          
           if (response.status === 304) {
             // Handle 304 Not Modified - try again with cache reload
             return fetch(`${config.apiBaseUrl}/api/motorcycles/makes`, { cache: 'reload' }).then(r => r.json());
@@ -107,7 +110,18 @@
           if (!response.ok) {
             throw new Error(`Finder API failed with status ${response.status}`);
           }
-          return response.json();
+          
+          // Debug the actual response text before trying to parse as JSON
+          return response.text().then(text => {
+            console.log('🔧 FMB Finder: Raw response text:', text.substring(0, 500));
+            try {
+              return JSON.parse(text);
+            } catch (parseError) {
+              console.error('🔧 FMB Finder: JSON parse error:', parseError);
+              console.error('🔧 FMB Finder: Failed to parse text:', text);
+              throw new Error(`Invalid JSON response: ${parseError.message}`);
+            }
+          });
         })
         .then(makes => {
           console.log('🔧 FMB Finder: Received makes:', makes);
