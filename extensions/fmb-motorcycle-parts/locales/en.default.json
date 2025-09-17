@@ -1,0 +1,8 @@
+{
+  "name": "Native Bike Parts Finder",
+  "settings": {
+    "auto_detect_page": {
+      "label": "Auto-detect page type"
+    }
+  }
+}
