@@ -1,52 +1,48 @@
 /* FMB Motorcycle Parts Finder - Theme-Integrated Styles */
 
-/* Base container - inherits theme styles */
+/* Base container - clean and simple */
 [data-fmb] .fmb-native-parts-finder {
-  font-family: var(--font-body-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
-  color: rgb(var(--color-foreground, 33 37 41));
+  font-family: inherit;
+  color: inherit;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1rem;
 }
 
-/* Header styling - inherits theme typography */
+/* Header styling - clean and visible */
 [data-fmb] .fmb-native-title {
   font-size: 1.75rem;
-  font-weight: var(--font-heading-weight, 600);
+  font-weight: 600;
   margin-bottom: 0.5rem;
   text-align: center;
-  color: rgb(var(--color-foreground, 33 37 41));
-  line-height: 1.3;
+  color: inherit;
 }
 
 [data-fmb] .fmb-native-description {
-  color: rgba(var(--color-foreground, 33 37 41), 0.7);
+  color: inherit;
+  opacity: 0.8;
   text-align: center;
   margin-bottom: 2rem;
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
-  line-height: 1.5;
 }
 
-/* Loading states - theme integrated */
+/* Loading states - clean and visible */
 [data-fmb] .fmb-native-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background-color: rgb(var(--color-background, 255 255 255));
-  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
-  border-radius: var(--border-radius, 8px);
-  color: rgba(var(--color-foreground, 0 0 0), 0.6);
+  text-align: center;
 }
 
 [data-fmb] .fmb-loading-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(var(--color-foreground, 0 0 0), 0.1);
-  border-top: 3px solid rgb(var(--color-button, 13 110 253));
+  border: 3px solid #e0e0e0;
+  border-top: 3px solid #007bff;
   border-radius: 50%;
   animation: fmb-spin 1s linear infinite;
   margin-bottom: 1rem;
@@ -57,33 +53,31 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Form styling - theme-integrated */
+/* Form styling - clean and visible */
 [data-fmb] .fmb-finder-form {
-  background: rgb(var(--color-background, 255 255 255));
-  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
-  border-radius: var(--border-radius, 8px);
+  border: 1px solid #ddd;
+  border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 2rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 [data-fmb] .fmb-quick-search {
-  background: rgb(var(--color-background, 255 255 255));
-  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
-  border-radius: var(--border-radius, 6px);
+  border: 1px solid #ddd;
+  border-radius: 6px;
   padding: 1.25rem;
   margin-bottom: 1.5rem;
 }
 
 [data-fmb] .fmb-quick-search h3 {
   font-size: 1.125rem;
-  font-weight: var(--font-heading-weight, 600);
+  font-weight: 600;
   margin: 0 0 0.25rem 0;
-  color: rgb(var(--color-foreground, 33 37 41));
+  color: inherit;
 }
 
 [data-fmb] .fmb-quick-search p {
-  color: rgba(var(--color-foreground, 33 37 41), 0.7);
+  color: inherit;
+  opacity: 0.8;
   margin: 0 0 1rem 0;
   font-size: 0.9rem;
 }
@@ -97,26 +91,24 @@
 [data-fmb] .fmb-select {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
-  border-radius: var(--inputs-radius, var(--border-radius, 6px));
+  border: 1px solid #ccc;
+  border-radius: 6px;
   font-family: inherit;
   font-size: inherit;
-  color: rgb(var(--color-foreground, 33 37 41));
-  background-color: rgb(var(--color-background, 255 255 255));
+  color: inherit;
+  background-color: transparent;
   box-sizing: border-box;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition: border-color 0.15s ease-in-out;
 }
 
 [data-fmb] .fmb-search-input:focus,
 [data-fmb] .fmb-select:focus {
   outline: 0;
-  border-color: rgb(var(--color-button, 13 110 253));
-  box-shadow: 0 0 0 0.2rem rgba(var(--color-button, 13 110 253), 0.25);
+  border-color: #007bff;
 }
 
 [data-fmb] .fmb-select:disabled {
-  background-color: rgba(var(--color-foreground, 0 0 0), 0.05);
-  opacity: 0.65;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
