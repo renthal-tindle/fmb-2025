@@ -26,7 +26,7 @@
     </div>
   {% endif %}
 
-  <div class="fmb-debug-banner" style="background: #007bff; color: white; padding: 5px 10px; font-size: 12px; margin-bottom: 10px;">🔧 FMB v36 Native Block Active</div>
+  <div class="fmb-debug-banner" style="background: #007bff; color: white; padding: 5px 10px; font-size: 12px; margin-bottom: 10px;">🔧 FMB v37 Native Block Active - FINDER PAGE</div>
   <div class="fmb-native-content" id="fmb-native-content-{{ block_id }}">
     <div class="fmb-native-loading">
       <div class="fmb-loading-spinner"></div>
@@ -80,12 +80,26 @@
     }
 
     function initializeFinderPage(config, container) {
+      // Show debug info first
+      container.innerHTML = `
+        <div style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; margin: 10px 0; font-family: monospace; font-size: 12px;">
+          <strong>🔧 FMB Debug - Finder Page:</strong><br>
+          • apiBaseUrl: ${config.apiBaseUrl}<br>
+          • Loading motorcycle makes...<br>
+        </div>
+        <div class="fmb-native-loading">
+          <div class="fmb-loading-spinner"></div>
+          <p>Loading motorcycle finder...</p>
+        </div>
+      `;
+      
       // Load the main motorcycle finder
       fetch(`${config.apiBaseUrl}/api/motorcycles/makes`, { 
         cache: 'no-store', 
         headers: { 'Cache-Control': 'no-cache' } 
       })
         .then(response => {
+          console.log('🔧 FMB Finder: Makes API response status:', response.status);
           if (response.status === 304) {
             // Handle 304 Not Modified - try again with cache reload
             return fetch(`${config.apiBaseUrl}/api/motorcycles/makes`, { cache: 'reload' }).then(r => r.json());
@@ -96,13 +110,23 @@
           return response.json();
         })
         .then(makes => {
+          console.log('🔧 FMB Finder: Received makes:', makes);
+          console.log('🔧 FMB Finder: About to render finder HTML');
           container.innerHTML = generateFinderHTML(makes, config);
+          console.log('🔧 FMB Finder: Setting up interactions');
           setupFinderInteractions(config, container);
+          console.log('🔧 FMB Finder: Finder page setup complete');
         })
         .catch(error => {
           console.error('Error loading finder:', error);
           container.innerHTML = `
-            <div class="fmb-native-error">
+            <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0;">
+              <strong>❌ FMB Finder Error:</strong><br>
+              <div style="font-family: monospace; font-size: 12px; margin-top: 10px;">
+                Error: ${error.message}<br>
+                Stack: ${error.stack ? error.stack.substring(0, 200) + '...' : 'No stack trace'}
+              </div>
+              <hr style="margin: 10px 0;">
               <p>Unable to load motorcycle finder. Please try again later.</p>
             </div>
           `;
