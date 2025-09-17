@@ -66,30 +66,19 @@
       return bikeTypeMap[biketype] || 'OFF ROAD';
     }
 
-    // Check if we're on a fit-my-bike page and extract parameters
+    // Check if we're on a fit-my-bike page and extract bikeid
     const currentPath = window.location.pathname;
     const urlParams = new URLSearchParams(window.location.search);
     const bikeid = urlParams.get('bikeid');
-    const make = urlParams.get('make');
-    const model = urlParams.get('model');
-    const year = urlParams.get('year');
     
     let pageType = 'finder';
     if (currentPath.includes('/pages/fit-my-bike') || currentPath.includes('/fit-my-bike')) {
-      if (bikeid) {
-        pageType = 'motorcycle-parts';
-      } else if (make && model && year) {
-        pageType = 'search-results';
-      } else {
-        pageType = 'finder';
-      }
+      pageType = bikeid ? 'motorcycle-parts' : 'finder';
     }
 
     // Initialize the appropriate widget
     if (pageType === 'motorcycle-parts' && bikeid) {
       initializeMotorcyclePage(config, bikeid, container);
-    } else if (pageType === 'search-results' && make && model && year) {
-      initializeSearchResultsPage(config, { make, model, year }, container);
     } else {
       initializeFinderPage(config, container);
     }
@@ -755,7 +744,7 @@
           });
       });
 
-      // Year selection handler - automatically redirect to results page
+      // Year selection handler - find matching motorcycle and redirect to its bikeid
       yearSelect.addEventListener('change', function() {
         const selectedMake = makeSelect.value;
         const selectedModel = modelSelect.value;
@@ -765,109 +754,42 @@
           return;
         }
 
-        // Show loading state while redirecting
-        results.innerHTML = '<div class="fmb-loading"><p>Redirecting to results...</p></div>';
+        // Show loading state while finding motorcycle
+        results.innerHTML = '<div class="fmb-loading"><p>Finding your motorcycle...</p></div>';
 
-        // Create URL with search parameters for the results page
-        const searchParams = new URLSearchParams({
-          make: selectedMake,
-          model: selectedModel,
-          year: selectedYear
-        });
-        
-        // Redirect to the results page
-        window.location.href = `/pages/fit-my-bike?${searchParams.toString()}`;
+        // Search for the specific motorcycle that matches these criteria
+        fetch(`${config.apiBaseUrl}/search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          body: JSON.stringify({
+            make: selectedMake,
+            model: selectedModel,
+            year: selectedYear
+          })
+        })
+          .then(response => response.json())
+          .then(data => {
+            const motorcycles = data.motorcycles || [];
+            
+            if (motorcycles.length === 0) {
+              results.innerHTML = '<div class="fmb-error"><p>No motorcycle found for this combination.</p></div>';
+              return;
+            }
+
+            // Get the first matching motorcycle and redirect to its bikeid page
+            const motorcycle = motorcycles[0];
+            window.location.href = `/pages/fit-my-bike?bikeid=${motorcycle.recid}`;
+          })
+          .catch(error => {
+            console.error('Error finding motorcycle:', error);
+            results.innerHTML = '<div class="fmb-error"><p>Error finding motorcycle. Please try again.</p></div>';
+          });
       });
     }
 
-    function initializeSearchResultsPage(config, searchParams, container) {
-      const { make, model, year } = searchParams;
-      
-      // Show loading state while fetching results
-      container.innerHTML = `
-        <div class="fmb-search-results-page">
-          <div class="fmb-search-header">
-            <h2>Motorcycles for ${make} ${model} ${year}</h2>
-            <a href="/pages/fit-my-bike" class="fmb-back-link">← Back to Search</a>
-          </div>
-          <div class="fmb-loading"><p>Finding your motorcycles...</p></div>
-        </div>
-      `;
-
-      // Search for motorcycles matching the criteria
-      fetch(`${config.apiBaseUrl}/search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        },
-        body: JSON.stringify({
-          make: make,
-          model: model,
-          year: year
-        })
-      })
-        .then(response => response.json())
-        .then(data => {
-          const motorcycles = data.motorcycles || [];
-          
-          if (motorcycles.length === 0) {
-            container.innerHTML = `
-              <div class="fmb-search-results-page">
-                <div class="fmb-search-header">
-                  <h2>Motorcycles for ${make} ${model} ${year}</h2>
-                  <a href="/pages/fit-my-bike" class="fmb-back-link">← Back to Search</a>
-                </div>
-                <div class="fmb-no-results">
-                  <p>No motorcycles found for this combination.</p>
-                  <p>Try adjusting your search criteria.</p>
-                </div>
-              </div>
-            `;
-            return;
-          }
-
-          // Display the results
-          container.innerHTML = `
-            <div class="fmb-search-results-page">
-              <div class="fmb-search-header">
-                <h2>Found ${motorcycles.length} motorcycle${motorcycles.length > 1 ? 's' : ''} for ${make} ${model} ${year}</h2>
-                <a href="/pages/fit-my-bike" class="fmb-back-link">← Back to Search</a>
-              </div>
-              <div class="fmb-motorcycle-list">
-                ${motorcycles.map(bike => {
-                  const yearRange = bike.firstyear === bike.lastyear ? 
-                    bike.firstyear : 
-                    `${bike.firstyear}-${bike.lastyear}`;
-                  return `
-                    <div class="fmb-motorcycle-result">
-                      <h4>${bike.bikemake} ${bike.bikemodel}</h4>
-                      <p><strong>Years:</strong> ${yearRange}</p>
-                      ${bike.bikeengine ? `<p><strong>Engine:</strong> ${bike.bikeengine}cc</p>` : ''}
-                      ${bike.biketype ? `<p><strong>Type:</strong> ${getBikeTypeLabel(bike.biketype)}</p>` : ''}
-                      <a href="/pages/fit-my-bike?bikeid=${bike.recid}" class="fmb-view-parts-btn" data-testid="link-view-parts-${bike.recid}">View Compatible Parts</a>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            </div>
-          `;
-        })
-        .catch(error => {
-          console.error('Error loading search results:', error);
-          container.innerHTML = `
-            <div class="fmb-search-results-page">
-              <div class="fmb-search-header">
-                <h2>Motorcycles for ${make} ${model} ${year}</h2>
-                <a href="/pages/fit-my-bike" class="fmb-back-link">← Back to Search</a>
-              </div>
-              <div class="fmb-error">
-                <p>Error loading search results. Please try again.</p>
-              </div>
-            </div>
-          `;
-        });
-    }
 
     function setupPartInteractions(config, container) {
       // Handle add to cart buttons
