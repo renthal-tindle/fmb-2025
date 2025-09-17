@@ -3,7 +3,7 @@
   
   This block renders natively within the Shopify theme and handles:
   - Main finder page at /pages/fit-my-bike
-  - Specific motorcycle pages at /pages/fit-my-bike?bikeid=1001
+  - Specific motorcycle pages at /pages/fit-my-bike/?bikeid=1001
 {% endcomment %}
 
 {%- liquid
@@ -652,7 +652,7 @@
       suggestionsDropdown.addEventListener('click', function(e) {
         if (e.target.classList.contains('fmb-suggestion-item')) {
           const bikeid = e.target.getAttribute('data-bikeid');
-          window.location.href = `/pages/fit-my-bike?bikeid=${bikeid}`;
+          window.location.href = `/pages/fit-my-bike/?bikeid=${bikeid}`;
         }
       });
 
@@ -781,7 +781,7 @@
 
             // Get the first matching motorcycle and redirect to its bikeid page
             const motorcycle = motorcycles[0];
-            window.location.href = `/pages/fit-my-bike?bikeid=${motorcycle.recid}`;
+            window.location.href = `/pages/fit-my-bike/?bikeid=${motorcycle.recid}`;
           })
           .catch(error => {
             console.error('Error finding motorcycle:', error);
