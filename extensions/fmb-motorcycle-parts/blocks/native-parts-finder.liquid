@@ -299,26 +299,27 @@
           
           <!-- Filter Search Section -->
           <h3>Search by Make, Model & Year</h3>
+          <p style="color: inherit; opacity: 0.7; margin-bottom: 1.5rem; font-size: 0.9rem;">Select options in order: Make → Model → Year</p>
           <div class="fmb-form-grid">
             <div class="fmb-form-group">
-              <label for="make-select-${config.blockId}">Make</label>
+              <label for="make-select-${config.blockId}" data-step="1">Make</label>
               <select id="make-select-${config.blockId}" class="fmb-select">
                 <option value="">Choose your bike make</option>
                 ${makes.map(make => `<option value="${make}">${make}</option>`).join('')}
               </select>
             </div>
             
-            <div class="fmb-form-group">
-              <label for="model-select-${config.blockId}">Model</label>
+            <div class="fmb-form-group disabled">
+              <label for="model-select-${config.blockId}" data-step="2">Model</label>
               <select id="model-select-${config.blockId}" class="fmb-select" disabled>
-                <option value="">Choose your bike model</option>
+                <option value="">First select a make</option>
               </select>
             </div>
             
-            <div class="fmb-form-group">
-              <label for="year-select-${config.blockId}">Year</label>
+            <div class="fmb-form-group disabled">
+              <label for="year-select-${config.blockId}" data-step="3">Year</label>
               <select id="year-select-${config.blockId}" class="fmb-select" disabled>
-                <option value="">Choose your bike year</option>
+                <option value="">First select make & model</option>
               </select>
             </div>
           </div>
