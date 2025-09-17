@@ -25,6 +25,7 @@ import {
   type InsertSearchAnalytics
 } from "@shared/schema";
 import { IStorage } from "./storage";
+import { fetchShopifyProductsByIds, getCurrentSession } from "./shopify-auth";
 
 const sqlConnection = postgres(process.env.DATABASE_URL!, {
   prepare: false,
@@ -361,30 +362,60 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Compatible Parts
+  // Compatible Parts - Fetches live data from Shopify API
   async getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProduct[]> {
-    const result = await db
-      .select({
-        id: shopifyProducts.id,
-        title: shopifyProducts.title,
-        description: shopifyProducts.description,
-        price: shopifyProducts.price,
-        sku: shopifyProducts.sku,
-        imageUrl: shopifyProducts.imageUrl,
-        category: shopifyProducts.category,
-        tags: shopifyProducts.tags,
-        variants: shopifyProducts.variants,
-      })
-      .from(partMappings)
-      .innerJoin(shopifyProducts, eq(partMappings.shopifyProductId, shopifyProducts.id))
-      .where(
-        and(
-          eq(partMappings.motorcycleRecid, motorcycleRecid),
-          eq(partMappings.compatible, true)
-        )
-      );
-    
-    return result;
+    try {
+      // Step 1: Get the part mappings for this motorcycle (which products are compatible)
+      const mappings = await db
+        .select({
+          shopifyProductId: partMappings.shopifyProductId,
+        })
+        .from(partMappings)
+        .where(
+          and(
+            eq(partMappings.motorcycleRecid, motorcycleRecid),
+            eq(partMappings.compatible, true)
+          )
+        );
+      
+      if (mappings.length === 0) {
+        return [];
+      }
+      
+      // Step 2: Extract the Shopify product IDs
+      const productIds = mappings.map(m => m.shopifyProductId);
+      
+      // Step 3: Get the current Shopify session
+      const session = getCurrentSession();
+      if (!session) {
+        console.warn('No Shopify session available - falling back to empty results');
+        return [];
+      }
+      
+      // Step 4: Fetch live product data from Shopify API
+      const shopifyResponse = await fetchShopifyProductsByIds(session, productIds);
+      
+      // Step 5: Transform Shopify API response to match our expected format
+      const products: ShopifyProduct[] = shopifyResponse.products?.map((product: any) => ({
+        id: product.id.toString(),
+        title: product.title,
+        description: product.body_html || null,
+        price: product.variants?.[0]?.price || '0.00',
+        sku: product.variants?.[0]?.sku || null,
+        imageUrl: product.images?.[0]?.src || null,
+        category: product.product_type || null,
+        tags: product.tags || '', // Shopify returns tags as comma-separated string
+        variants: JSON.stringify(product.variants || [])
+      })) || [];
+      
+      console.log(`✅ LIVE DATA: Found ${products.length} compatible parts for motorcycle ${motorcycleRecid}`);
+      return products;
+      
+    } catch (error) {
+      console.error('Failed to fetch live compatible parts:', error);
+      // Return empty array instead of throwing to prevent complete failure
+      return [];
+    }
   }
 
   // Import History

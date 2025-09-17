@@ -213,6 +213,38 @@ export const fetchShopifyProducts = async (session: ShopifySession) => {
   }
 };
 
+// Fetch specific Shopify products by their IDs
+export const fetchShopifyProductsByIds = async (session: ShopifySession, productIds: string[]) => {
+  if (!session.accessToken) {
+    throw new Error('No access token available');
+  }
+  
+  if (productIds.length === 0) {
+    return { products: [] };
+  }
+  
+  const client = new shopify.clients.Rest({
+    session,
+  });
+  
+  try {
+    // Shopify REST API allows fetching multiple products by IDs
+    const idsParam = productIds.join(',');
+    const response = await client.get({
+      path: 'products',
+      query: { ids: idsParam, limit: 250 },
+    });
+    
+    const productsData = response.body as any;
+    console.log(`Fetched ${productsData.products?.length || 0} live products from Shopify for ${productIds.length} requested IDs`);
+    
+    return productsData;
+  } catch (error) {
+    console.error('Failed to fetch products by IDs:', error);
+    throw error;
+  }
+};
+
 // Verify request authenticity using HMAC
 export const verifyWebhook = (data: string, hmacHeader: string): boolean => {
   const crypto = require('crypto');
