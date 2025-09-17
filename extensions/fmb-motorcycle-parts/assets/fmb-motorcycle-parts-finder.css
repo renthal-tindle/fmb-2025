@@ -158,12 +158,17 @@
   padding: 0.75rem 1rem;
   cursor: pointer;
   border-bottom: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
-  transition: background-color 0.15s ease-in-out;
+  transition: all 0.15s ease-in-out;
+  color: rgb(var(--color-foreground, 33 37 41));
+  font-weight: 500;
+  font-size: inherit;
 }
 
 [data-fmb] .fmb-suggestion-item:hover,
 [data-fmb] .fmb-suggestion-item.selected {
   background-color: rgba(var(--color-button, 13 110 253), 0.1);
+  color: rgb(var(--color-button, 13 110 253));
+  font-weight: 600;
 }
 
 [data-fmb] .fmb-suggestion-item:last-child {
