@@ -3945,14 +3945,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json([motorcycle]); // Return as array for consistency with frontend expectations
       } else {
         // Multiple motorcycles with filters
-        const results = await storage.getMotorcycles({
-          search: search as string,
-          bikemake: bikemake as string,
-          firstyear: firstyear ? parseInt(firstyear as string) : undefined,
-          lastyear: lastyear ? parseInt(lastyear as string) : undefined,
-          biketype: biketype ? parseInt(biketype as string) : undefined
-        });
-        res.json(results);
+        if (bikemake || firstyear || lastyear || biketype) {
+          // Use filterMotorcycles for filtering by specific criteria
+          const results = await storage.filterMotorcycles({
+            bikemake: bikemake as string,
+            firstyear: firstyear ? parseInt(firstyear as string) : undefined,
+            lastyear: lastyear ? parseInt(lastyear as string) : undefined,
+            biketype: biketype ? parseInt(biketype as string) : undefined
+          });
+          res.json(results);
+        } else if (search) {
+          // Use searchMotorcycles for text search
+          const results = await storage.searchMotorcycles(search as string);
+          res.json(results);
+        } else {
+          // Get all motorcycles if no filters
+          const results = await storage.getMotorcycles();
+          res.json(results);
+        }
       }
     } catch (error) {
       console.error("Error fetching motorcycles via app proxy:", error);
