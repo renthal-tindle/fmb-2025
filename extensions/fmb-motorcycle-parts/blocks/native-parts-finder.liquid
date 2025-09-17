@@ -50,6 +50,18 @@
       blockId: blockId
     };
 
+    // Helper function to map biketype numbers to labels
+    function getBikeTypeLabel(biketype) {
+      const bikeTypeMap = {
+        1: 'ON ROAD',
+        2: 'OFF ROAD',
+        3: 'SUPERMOTO',
+        4: 'ENDURO',
+        5: 'MOTOCROSS'
+      };
+      return bikeTypeMap[biketype] || 'OFF ROAD';
+    }
+
     // Check if we're on a fit-my-bike page and extract bikeid
     const currentPath = window.location.pathname;
     const urlParams = new URLSearchParams(window.location.search);
@@ -667,7 +679,7 @@
       return `
         <div class="fmb-motorcycle-page">
           <div class="fmb-motorcycle-header">
-            <h1>${motorcycle.bikemake} ${motorcycle.bikemodel} (${motorcycle.biketype?.toUpperCase() || 'OFF ROAD'}) ${bikeYear}</h1>
+            <h1>${motorcycle.bikemake} ${motorcycle.bikemodel} (${getBikeTypeLabel(motorcycle.biketype)}) ${bikeYear}</h1>
             <a href="/pages/fit-my-bike" class="fmb-back-link">← Fit My Bike</a>
           </div>
           
