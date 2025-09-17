@@ -636,12 +636,14 @@
 
         if (!selectedMake) return;
 
-        fetch(`${config.apiBaseUrl}/search-data?type=models&make=${encodeURIComponent(selectedMake)}`, { 
+        fetch(`${config.apiBaseUrl}/api/motorcycles?bikemake=${encodeURIComponent(selectedMake)}`, { 
           cache: 'no-store', 
           headers: { 'Cache-Control': 'no-cache' } 
         })
           .then(response => response.json())
-          .then(models => {
+          .then(motorcycles => {
+            // Extract unique models from motorcycles
+            const models = [...new Set(motorcycles.map(m => m.bikemodel))].sort();
             models.forEach(model => {
               const option = document.createElement('option');
               option.value = model;
@@ -667,13 +669,26 @@
 
         if (!selectedMake || !selectedModel) return;
 
-        fetch(`${config.apiBaseUrl}/search-data?type=years&make=${encodeURIComponent(selectedMake)}&model=${encodeURIComponent(selectedModel)}`, { 
+        fetch(`${config.apiBaseUrl}/api/motorcycles?bikemake=${encodeURIComponent(selectedMake)}`, { 
           cache: 'no-store', 
           headers: { 'Cache-Control': 'no-cache' } 
         })
           .then(response => response.json())
-          .then(years => {
-            years.forEach(year => {
+          .then(motorcycles => {
+            // Filter motorcycles by model and extract unique years
+            const filteredMotorcycles = motorcycles.filter(m => 
+              m.bikemodel.toLowerCase() === selectedModel.toLowerCase()
+            );
+            const allYears = new Set();
+            filteredMotorcycles.forEach(motorcycle => {
+              // Add all years in the range from firstyear to lastyear
+              for (let year = motorcycle.firstyear; year <= motorcycle.lastyear; year++) {
+                allYears.add(year);
+              }
+            });
+            // Convert to sorted array (newest first)
+            const sortedYears = Array.from(allYears).sort((a, b) => b - a);
+            sortedYears.forEach(year => {
               const option = document.createElement('option');
               option.value = year;
               option.textContent = year;
