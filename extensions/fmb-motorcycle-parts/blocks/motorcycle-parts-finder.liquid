@@ -7,7 +7,7 @@
 
 {%- liquid
   assign block_id = block.id
-  assign api_base_url = block.settings.api_base_url | default: 'https://56e00a98-ad08-48da-8c00-1d8f49a92d07-00-32mevip0hcwqx.spock.replit.dev'
+  assign api_base_url = block.settings.api_base_url | default: '/apps/fit-my-bike'
   assign compact_mode = block.settings.compact_mode | default: false
   assign max_results = block.settings.max_results | default: 12
   assign theme_style = block.settings.theme_style | default: 'light'
@@ -27,6 +27,7 @@
     </div>
   {% endif %}
 
+  <div class="fmb-debug-banner" style="background: #28a745; color: white; padding: 5px 10px; font-size: 12px; margin-bottom: 10px;">🔧 FMB v33 Iframe Block Active</div>
   <div class="fmb-motorcycle-parts-finder-content">
     <div id="fmb-motorcycle-widget-{{ block_id }}" class="fmb-motorcycle-widget-container">
       <!-- Widget will be loaded here via JavaScript -->

@@ -26,6 +26,7 @@
     </div>
   {% endif %}
 
+  <div class="fmb-debug-banner" style="background: #007bff; color: white; padding: 5px 10px; font-size: 12px; margin-bottom: 10px;">🔧 FMB v33 Native Block Active</div>
   <div class="fmb-native-content" id="fmb-native-content-{{ block_id }}">
     <div class="fmb-native-loading">
       <div class="fmb-loading-spinner"></div>
@@ -43,7 +44,7 @@
     if (!container) return;
 
     const config = {
-      apiBaseUrl: window.location.origin + '/apps/fit-my-bike',
+      apiBaseUrl: '/apps/fit-my-bike',
       shopDomain: window.Shopify?.shop || '{{ shop.permanent_domain }}',
       autoDetectPage: {{ auto_detect_page }},
       blockId: blockId
