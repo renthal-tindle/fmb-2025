@@ -1,157 +1,415 @@
-/* FMB Motorcycle Parts Finder App Block Styles */
+/* FMB Motorcycle Parts Finder - Theme-Integrated Styles */
 
-.fmb-motorcycle-parts-finder-block {
-  margin: 2rem 0;
-  padding: 0;
+/* Base container - inherits theme styles */
+[data-fmb] .fmb-native-parts-finder {
   font-family: var(--font-body-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  color: rgb(var(--color-foreground, 33 37 41));
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
 }
 
-.fmb-motorcycle-parts-finder-header {
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-.fmb-motorcycle-parts-finder-title {
-  font-size: 1.5rem;
-  font-weight: bold;
+/* Header styling - inherits theme typography */
+[data-fmb] .fmb-native-title {
+  font-size: 1.75rem;
+  font-weight: var(--font-heading-weight, 600);
   margin-bottom: 0.5rem;
-  color: rgb(var(--color-foreground, 0 0 0));
+  text-align: center;
+  color: rgb(var(--color-foreground, 33 37 41));
   line-height: 1.3;
 }
 
-.fmb-motorcycle-parts-finder-description {
-  font-size: 1rem;
-  color: rgba(var(--color-foreground, 0 0 0), 0.7);
-  margin-bottom: 0;
-  line-height: 1.5;
+[data-fmb] .fmb-native-description {
+  color: rgba(var(--color-foreground, 33 37 41), 0.7);
+  text-align: center;
+  margin-bottom: 2rem;
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
+  line-height: 1.5;
 }
 
-.fmb-motorcycle-widget-container {
-  width: 100%;
-  min-height: 400px;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.fmb-motorcycle-widget-container.compact {
-  min-height: 200px;
-}
-
-.fmb-motorcycle-widget-loading {
+/* Loading states - theme integrated */
+[data-fmb] .fmb-native-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
+  padding: 2rem;
   background-color: rgb(var(--color-background, 255 255 255));
   border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
-  border-radius: 8px;
+  border-radius: var(--border-radius, 8px);
   color: rgba(var(--color-foreground, 0 0 0), 0.6);
 }
 
-.fmb-motorcycle-widget-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  background-color: rgb(var(--color-background, 255 255 255));
-  border: 1px solid rgba(220, 53, 69, 0.3);
-  border-radius: 8px;
-  color: rgb(220, 53, 69);
-  padding: 2rem;
-  text-align: center;
-}
-
-.fmb-loading-spinner {
+[data-fmb] .fmb-loading-spinner {
   width: 40px;
   height: 40px;
   border: 3px solid rgba(var(--color-foreground, 0 0 0), 0.1);
-  border-top: 3px solid rgb(var(--color-button, 0 123 255));
+  border-top: 3px solid rgb(var(--color-button, 13 110 253));
   border-radius: 50%;
-  animation: fmb-motorcycle-spinner-spin 1s linear infinite;
+  animation: fmb-spin 1s linear infinite;
   margin-bottom: 1rem;
 }
 
-@keyframes fmb-motorcycle-spinner-spin {
+@keyframes fmb-spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
 
-/* Responsive Design */
-@media screen and (max-width: 749px) {
-  .fmb-motorcycle-parts-finder-block {
-    margin: 1rem 0;
+/* Form styling - theme-integrated */
+[data-fmb] .fmb-finder-form {
+  background: rgb(var(--color-background, 255 255 255));
+  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+  border-radius: var(--border-radius, 8px);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+[data-fmb] .fmb-quick-search {
+  background: rgb(var(--color-background, 255 255 255));
+  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+  border-radius: var(--border-radius, 6px);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+[data-fmb] .fmb-quick-search h3 {
+  font-size: 1.125rem;
+  font-weight: var(--font-heading-weight, 600);
+  margin: 0 0 0.25rem 0;
+  color: rgb(var(--color-foreground, 33 37 41));
+}
+
+[data-fmb] .fmb-quick-search p {
+  color: rgba(var(--color-foreground, 33 37 41), 0.7);
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+}
+
+/* Search inputs - inherit theme input styling */
+[data-fmb] .fmb-search-input-group {
+  position: relative;
+}
+
+[data-fmb] .fmb-search-input,
+[data-fmb] .fmb-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+  border-radius: var(--inputs-radius, var(--border-radius, 6px));
+  font-family: inherit;
+  font-size: inherit;
+  color: rgb(var(--color-foreground, 33 37 41));
+  background-color: rgb(var(--color-background, 255 255 255));
+  box-sizing: border-box;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+[data-fmb] .fmb-search-input:focus,
+[data-fmb] .fmb-select:focus {
+  outline: 0;
+  border-color: rgb(var(--color-button, 13 110 253));
+  box-shadow: 0 0 0 0.2rem rgba(var(--color-button, 13 110 253), 0.25);
+}
+
+[data-fmb] .fmb-select:disabled {
+  background-color: rgba(var(--color-foreground, 0 0 0), 0.05);
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Suggestions dropdown - theme integrated */
+[data-fmb] .fmb-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgb(var(--color-background, 255 255 255));
+  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+  border-top: none;
+  border-radius: 0 0 var(--inputs-radius, var(--border-radius, 6px)) var(--inputs-radius, var(--border-radius, 6px));
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+[data-fmb] .fmb-suggestions-dropdown.active {
+  display: block;
+}
+
+[data-fmb] .fmb-suggestion-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+  transition: background-color 0.15s ease-in-out;
+}
+
+[data-fmb] .fmb-suggestion-item:hover,
+[data-fmb] .fmb-suggestion-item.selected {
+  background-color: rgba(var(--color-button, 13 110 253), 0.1);
+}
+
+[data-fmb] .fmb-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+/* Form grid layout */
+[data-fmb] .fmb-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+[data-fmb] .fmb-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-fmb] .fmb-form-group label {
+  font-weight: var(--font-body-weight-bold, 600);
+  color: rgb(var(--color-foreground, 33 37 41));
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Results styling - theme integrated */
+[data-fmb] .fmb-finder-results {
+  margin-top: 1.5rem;
+}
+
+[data-fmb] .fmb-results-header {
+  background: rgb(var(--color-button, 13 110 253));
+  color: rgb(var(--color-button-text, 255 255 255));
+  padding: 1rem;
+  border-radius: var(--border-radius, 8px) var(--border-radius, 8px) 0 0;
+  font-weight: var(--font-body-weight-bold, 600);
+}
+
+[data-fmb] .fmb-results-table,
+[data-fmb] .fmb-parts-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgb(var(--color-background, 255 255 255));
+  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+  border-radius: 0 0 var(--border-radius, 8px) var(--border-radius, 8px);
+  overflow: hidden;
+}
+
+[data-fmb] .fmb-results-table th,
+[data-fmb] .fmb-parts-table th {
+  background-color: rgba(var(--color-foreground, 0 0 0), 0.05);
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: var(--font-body-weight-bold, 600);
+  color: rgb(var(--color-foreground, 33 37 41));
+  border-bottom: 2px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+  font-size: 0.875rem;
+}
+
+[data-fmb] .fmb-results-table td,
+[data-fmb] .fmb-parts-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+  vertical-align: middle;
+}
+
+[data-fmb] .fmb-results-table tr:hover,
+[data-fmb] .fmb-parts-table tr:hover {
+  background-color: rgba(var(--color-button, 13 110 253), 0.05);
+}
+
+[data-fmb] .fmb-results-table tr:last-child td,
+[data-fmb] .fmb-parts-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Parts-specific styling - theme integrated */
+[data-fmb] .fmb-parts-container {
+  background: rgb(var(--color-background, 255 255 255));
+  border-radius: var(--border-radius, 8px);
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+}
+
+[data-fmb] .fmb-parts-header {
+  background: rgb(var(--color-button, 13 110 253));
+  color: rgb(var(--color-button-text, 255 255 255));
+  padding: 1.5rem;
+  text-align: center;
+}
+
+[data-fmb] .fmb-parts-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: var(--font-heading-weight, 600);
+}
+
+[data-fmb] .fmb-parts-header .bike-details {
+  margin: 0.5rem 0 0 0;
+  opacity: 0.9;
+  font-size: 1rem;
+}
+
+[data-fmb] .fmb-part-image {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: var(--border-radius, 4px);
+  border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+}
+
+[data-fmb] .fmb-part-title {
+  font-weight: var(--font-body-weight-bold, 600);
+  color: rgb(var(--color-foreground, 33 37 41));
+  margin-bottom: 0.25rem;
+}
+
+[data-fmb] .fmb-part-sku {
+  color: rgba(var(--color-foreground, 33 37 41), 0.6);
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Menlo, monospace;
+}
+
+[data-fmb] .fmb-part-price {
+  font-weight: var(--font-body-weight-bold, 600);
+  font-size: 1.125rem;
+  color: rgb(var(--color-foreground, 33 37 41));
+}
+
+/* Buttons - inherit theme button styling */
+[data-fmb] .fmb-view-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--buttons-radius, var(--border-radius, 6px));
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: var(--font-body-weight-bold, 600);
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  
+  background-color: rgb(var(--color-button, 13 110 253));
+  color: rgb(var(--color-button-text, 255 255 255));
+}
+
+[data-fmb] .fmb-view-button:hover {
+  background-color: rgba(var(--color-button, 13 110 253), 0.9);
+  color: rgb(var(--color-button-text, 255 255 255));
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+/* Utility classes - theme integrated */
+[data-fmb] .fmb-bike-type {
+  display: inline-block;
+  background-color: rgba(var(--color-button, 13 110 253), 0.1);
+  color: rgb(var(--color-button, 13 110 253));
+  padding: 0.25rem 0.5rem;
+  border-radius: calc(var(--border-radius, 6px) * 2);
+  font-size: 0.75rem;
+  font-weight: var(--font-body-weight-bold, 600);
+  text-transform: uppercase;
+}
+
+[data-fmb] .fmb-native-error {
+  background-color: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  color: rgb(220, 53, 69);
+  padding: 1rem;
+  border-radius: var(--border-radius, 6px);
+  text-align: center;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  [data-fmb] .fmb-native-parts-finder {
+    padding: 1rem;
   }
   
-  .fmb-motorcycle-parts-finder-title {
-    font-size: 1.25rem;
+  [data-fmb] .fmb-form-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
   
-  .fmb-motorcycle-parts-finder-description {
-    font-size: 0.9rem;
+  [data-fmb] .fmb-parts-table th,
+  [data-fmb] .fmb-parts-table td {
+    padding: 0.5rem;
+    font-size: 0.875rem;
   }
   
-  .fmb-motorcycle-widget-container {
-    min-height: 350px;
+  [data-fmb] .fmb-part-image {
+    width: 50px;
+    height: 50px;
   }
   
-  .fmb-motorcycle-widget-container.compact {
-    min-height: 180px;
+  [data-fmb] .fmb-native-title {
+    font-size: 1.5rem;
   }
 }
 
-@media screen and (max-width: 480px) {
-  .fmb-motorcycle-parts-finder-block {
-    margin: 0.5rem 0;
+@media (max-width: 480px) {
+  [data-fmb] .fmb-finder-form,
+  [data-fmb] .fmb-quick-search {
+    padding: 1rem;
   }
   
-  .fmb-motorcycle-parts-finder-header {
-    margin-bottom: 1rem;
+  [data-fmb] .fmb-parts-table {
+    font-size: 0.75rem;
   }
   
-  .fmb-motorcycle-widget-container {
-    min-height: 300px;
-    border-radius: 6px;
+  [data-fmb] .fmb-parts-table th,
+  [data-fmb] .fmb-parts-table td {
+    padding: 0.5rem 0.25rem;
   }
 }
 
 /* Dark theme support */
 @media (prefers-color-scheme: dark) {
-  .fmb-motorcycle-widget-loading {
-    background-color: rgba(var(--color-background, 18 18 18));
+  [data-fmb] .fmb-native-loading {
+    background-color: rgb(var(--color-background, 18 18 18));
     border-color: rgba(var(--color-foreground, 255 255 255), 0.1);
   }
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-  .fmb-motorcycle-widget-container {
-    border: 2px solid rgb(var(--color-foreground, 0 0 0));
+  [data-fmb] .fmb-finder-form,
+  [data-fmb] .fmb-parts-container {
+    border-width: 2px;
   }
   
-  .fmb-motorcycle-widget-loading {
+  [data-fmb] .fmb-search-input,
+  [data-fmb] .fmb-select {
     border-width: 2px;
   }
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .fmb-loading-spinner {
+  [data-fmb] .fmb-loading-spinner {
     animation: none;
   }
   
-  /* Show a pulsing effect instead */
-  .fmb-loading-spinner {
-    animation: fmb-motorcycle-pulse 2s ease-in-out infinite;
+  [data-fmb] .fmb-loading-spinner {
+    animation: fmb-pulse 2s ease-in-out infinite;
   }
   
-  @keyframes fmb-motorcycle-pulse {
+  @keyframes fmb-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+  }
+  
+  [data-fmb] .fmb-view-button:hover {
+    transform: none;
   }
 }
