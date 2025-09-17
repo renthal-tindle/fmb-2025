@@ -11,7 +11,6 @@
 
 /* Header styling - clean and visible */
 [data-fmb] .fmb-native-title {
-  font-size: 1.75rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
   text-align: center;
@@ -66,7 +65,6 @@
 }
 
 [data-fmb] .fmb-quick-search h3 {
-  font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
   color: inherit;
@@ -76,7 +74,6 @@
   color: inherit;
   opacity: 0.7;
   margin: 0 0 1.25rem 0;
-  font-size: 0.95rem;
 }
 
 /* Search inputs - inherit theme input styling */
@@ -90,7 +87,6 @@
   border: 1px solid rgba(128, 128, 128, 0.2);
   border-radius: 6px;
   font-family: inherit;
-  font-size: inherit;
   color: inherit;
   background-color: rgba(255, 255, 255, 0.1);
   box-sizing: border-box;
@@ -104,7 +100,6 @@
   border-bottom: 2px solid rgba(128, 128, 128, 0.3);
   border-radius: 0;
   font-family: inherit;
-  font-size: inherit;
   color: inherit;
   background-color: transparent;
   box-sizing: border-box;
@@ -176,7 +171,6 @@
 
 /* Filter search section */
 [data-fmb] .fmb-finder-form h3 {
-  font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 1rem 0;
   color: inherit;
@@ -199,7 +193,6 @@
   font-weight: 600;
   color: inherit;
   margin-bottom: 0.75rem;
-  font-size: 1.1rem;
 }
 
 [data-fmb] .fmb-form-group.disabled label {
@@ -237,7 +230,6 @@
   font-weight: var(--font-body-weight-bold, 600);
   color: rgb(var(--color-foreground, 33 37 41));
   border-bottom: 2px solid rgba(var(--color-foreground, 0 0 0), 0.1);
-  font-size: 0.875rem;
 }
 
 [data-fmb] .fmb-results-table td,
@@ -275,14 +267,12 @@
 
 [data-fmb] .fmb-parts-header h2 {
   margin: 0;
-  font-size: 1.5rem;
   font-weight: var(--font-heading-weight, 600);
 }
 
 [data-fmb] .fmb-parts-header .bike-details {
   margin: 0.5rem 0 0 0;
   opacity: 0.9;
-  font-size: 1rem;
 }
 
 [data-fmb] .fmb-part-image {
@@ -301,13 +291,11 @@
 
 [data-fmb] .fmb-part-sku {
   color: rgba(var(--color-foreground, 33 37 41), 0.6);
-  font-size: 0.75rem;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Menlo, monospace;
 }
 
 [data-fmb] .fmb-part-price {
   font-weight: var(--font-body-weight-bold, 600);
-  font-size: 1.125rem;
   color: rgb(var(--color-foreground, 33 37 41));
 }
 
@@ -320,7 +308,6 @@
   border: 1px solid transparent;
   border-radius: var(--buttons-radius, var(--border-radius, 6px));
   font-family: inherit;
-  font-size: 0.875rem;
   font-weight: var(--font-body-weight-bold, 600);
   text-decoration: none;
   text-align: center;
@@ -345,7 +332,6 @@
   color: rgb(var(--color-button, 13 110 253));
   padding: 0.25rem 0.5rem;
   border-radius: calc(var(--border-radius, 6px) * 2);
-  font-size: 0.75rem;
   font-weight: var(--font-body-weight-bold, 600);
   text-transform: uppercase;
 }
@@ -373,7 +359,6 @@
   [data-fmb] .fmb-parts-table th,
   [data-fmb] .fmb-parts-table td {
     padding: 0.5rem;
-    font-size: 0.875rem;
   }
   
   [data-fmb] .fmb-part-image {
@@ -382,7 +367,7 @@
   }
   
   [data-fmb] .fmb-native-title {
-    font-size: 1.5rem;
+    /* inherit theme title size */
   }
 }
 
@@ -393,7 +378,7 @@
   }
   
   [data-fmb] .fmb-parts-table {
-    font-size: 0.75rem;
+    /* inherit theme font size */
   }
   
   [data-fmb] .fmb-parts-table th,
