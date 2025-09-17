@@ -161,7 +161,7 @@
   transition: all 0.15s ease-in-out;
   font-weight: 500;
   font-size: inherit;
-  color: #FFF;
+  color: #000;
 }
 
 [data-fmb] .fmb-suggestion-item:hover,
