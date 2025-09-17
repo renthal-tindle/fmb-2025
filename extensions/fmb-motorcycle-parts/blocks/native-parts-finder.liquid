@@ -68,8 +68,20 @@
 
     function initializeFinderPage(config, container) {
       // Load the main motorcycle finder
-      fetch(`${config.apiBaseUrl}/api/motorcycles/makes`)
-        .then(response => response.json())
+      fetch(`${config.apiBaseUrl}/api/motorcycles/makes`, { 
+        cache: 'no-store', 
+        headers: { 'Cache-Control': 'no-cache' } 
+      })
+        .then(response => {
+          if (response.status === 304) {
+            // Handle 304 Not Modified - try again with cache reload
+            return fetch(`${config.apiBaseUrl}/api/motorcycles/makes`, { cache: 'reload' }).then(r => r.json());
+          }
+          if (!response.ok) {
+            throw new Error(`Finder API failed with status ${response.status}`);
+          }
+          return response.json();
+        })
         .then(makes => {
           container.innerHTML = generateFinderHTML(makes, config);
           setupFinderInteractions(config, container);
@@ -96,15 +108,29 @@
       
       // Load specific motorcycle data and compatible parts directly
       Promise.all([
-        fetch(url1).then(r => {
+        fetch(url1, { 
+          cache: 'no-store', 
+          headers: { 'Cache-Control': 'no-cache' } 
+        }).then(r => {
           console.log('🔧 FMB Debug: Motorcycle API response status:', r.status);
+          if (r.status === 304) {
+            // Handle 304 Not Modified - try again with cache reload
+            return fetch(url1, { cache: 'reload' }).then(rr => rr.json());
+          }
           if (!r.ok) {
             throw new Error(`Motorcycle API failed with status ${r.status}`);
           }
           return r.json();
         }),
-        fetch(url2).then(r => {
+        fetch(url2, { 
+          cache: 'no-store', 
+          headers: { 'Cache-Control': 'no-cache' } 
+        }).then(r => {
           console.log('🔧 FMB Debug: Parts API response status:', r.status);
+          if (r.status === 304) {
+            // Handle 304 Not Modified - try again with cache reload
+            return fetch(url2, { cache: 'reload' }).then(rr => rr.json());
+          }
           if (!r.ok) {
             throw new Error(`Parts API failed with status ${r.status}`);
           }
