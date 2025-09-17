@@ -3933,6 +3933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // App proxy route for motorcycles data (used by Theme App Extension)
   app.get("/api/proxy/api/motorcycles", appProxySecurityMiddleware, async (req, res) => {
     try {
+      console.log('🔍 Motorcycles proxy request query:', req.query);
       const { search, bikemake, firstyear, lastyear, biketype, recid } = req.query;
       
       if (recid) {
