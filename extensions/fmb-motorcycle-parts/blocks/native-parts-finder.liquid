@@ -636,7 +636,7 @@
 
         if (!selectedMake) return;
 
-        fetch(`${config.apiBaseUrl}/api/motorcycles/makes/${selectedMake}/models`, { 
+        fetch(`${config.apiBaseUrl}/api/proxy/api/motorcycles/makes/${selectedMake}/models`, { 
           cache: 'no-store', 
           headers: { 'Cache-Control': 'no-cache' } 
         })
@@ -666,7 +666,7 @@
 
         if (!selectedMake || !selectedModel) return;
 
-        fetch(`${config.apiBaseUrl}/api/motorcycles/makes/${selectedMake}/models/${selectedModel}/years`, { 
+        fetch(`${config.apiBaseUrl}/api/proxy/api/motorcycles/makes/${selectedMake}/models/${selectedModel}/years`, { 
           cache: 'no-store', 
           headers: { 'Cache-Control': 'no-cache' } 
         })
@@ -699,7 +699,7 @@
 
         results.innerHTML = '<div class="fmb-loading"><p>Finding your motorcycle...</p></div>';
 
-        fetch(`${config.apiBaseUrl}/api/motorcycles/search?make=${selectedMake}&model=${selectedModel}&year=${selectedYear}`, { 
+        fetch(`${config.apiBaseUrl}/api/proxy/api/motorcycles/search?make=${selectedMake}&model=${selectedModel}&year=${selectedYear}`, { 
           cache: 'no-store', 
           headers: { 'Cache-Control': 'no-cache' } 
         })
