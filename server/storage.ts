@@ -621,5 +621,11 @@ export class MemStorage implements IStorage {
 
 // Use database storage for persistent data
 import { DatabaseStorage } from "./database-storage";
+import { loadPersistedSessions } from "./shopify-auth";
 
 export const storage = new DatabaseStorage();
+
+// Load Shopify sessions after storage is initialized
+loadPersistedSessions().catch(error => {
+  console.error('Failed to load sessions on startup:', error);
+});

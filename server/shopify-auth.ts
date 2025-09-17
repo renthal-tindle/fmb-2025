@@ -117,8 +117,8 @@ const loadPersistedSessions = async () => {
   }
 };
 
-// Load sessions on startup
-loadPersistedSessions();
+// Export the function to be called after storage is initialized
+export { loadPersistedSessions };
 
 // Export inMemorySessionStorage for use in other modules
 export { inMemorySessionStorage };
