@@ -232,7 +232,14 @@
               "@type": "Offer",
               "price": part.price,
               "priceCurrency": "{{ shop.currency }}",
-              "availability": (part.variants && part.variants.length > 0 && part.variants.some(v => v.available)) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+              "availability": (() => {
+                try {
+                  const variants = typeof part.variants === 'string' ? JSON.parse(part.variants) : part.variants;
+                  return (variants && variants.length > 0 && variants.some(v => v.available)) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
+                } catch (e) {
+                  return "https://schema.org/OutOfStock";
+                }
+              })()
             }
           }
         }))
