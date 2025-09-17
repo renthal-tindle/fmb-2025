@@ -59,7 +59,7 @@ export const shopifyProducts = pgTable("_shopify_products", {
 
 export const partMappings = pgTable("part_mappings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  shopifyProductId: varchar("shopify_product_id").notNull().references(() => shopifyProducts.id),
+  shopifyProductId: varchar("shopify_product_id").notNull(), // Shopify product ID - fetched live from API
   motorcycleRecid: integer("motorcycle_recid").notNull().references(() => motorcycles.recid),
   compatible: boolean("compatible").notNull().default(true),
 });
