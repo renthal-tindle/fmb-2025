@@ -45,7 +45,7 @@ export const motorcycles = pgTable("motorcycles", {
   active_handlecompare: text("active_handlecompare"),
 });
 
-export const shopifyProducts = pgTable("shopify_products", {
+export const shopifyProducts = pgTable("_shopify_products", {
   id: varchar("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
