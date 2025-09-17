@@ -374,56 +374,132 @@
     }
 
     function generateMotorcyclePageHTML(motorcycle, parts, config) {
-      // Calculate year range
+      // Calculate year range  
       const bikeYear = motorcycle.firstyear && motorcycle.lastyear 
         ? (motorcycle.firstyear === motorcycle.lastyear 
             ? motorcycle.firstyear.toString() 
             : `${motorcycle.firstyear}-${motorcycle.lastyear}`)
         : 'Unknown';
       
-      // Categorize parts
+      // Categorize parts for the original Renthal layout structure
       const categorizedParts = {
-        'Direct Replacement': [],
-        'Control': {
-          'Handlebars': [],
-          'Fatbar36': [],
-          'Bar Mounts': []
+        directReplacement: [],
+        oeHandlebar: [],
+        fatbar: [],
+        twinwall: [],
+        fatbar36: [],
+        barMounts28: [],
+        barMounts36: [],
+        frontChainwheels: {
+          oe: [],
+          ultralight: [],
+          grooved: [],
+          standard: []
         },
-        'Final Drive': {
-          'Front Sprockets': [],
-          'Rear Sprockets': [],
-          'Chain': []
+        rearChainwheels: {
+          oe: [],
+          ultralight: [],
+          grooved: [],
+          standard: []
         },
-        'Others': {
-          'Brake Pads': [],
-          'Lock-On Throttle Cam': [],
-          'Uncategorized': []
-        }
+        chains: [],
+        brakePads: {
+          front: [],
+          rear: []
+        },
+        throttleCams: []
       };
       
+      // Categorize each part based on the original Renthal structure
       parts.forEach(part => {
         const category = categorizePart(part);
-        if (category.main === 'Direct Replacement') {
-          categorizedParts['Direct Replacement'].push(part);
-        } else if (category.main === 'Control' && category.sub) {
-          categorizedParts['Control'][category.sub].push(part);
-        } else if (category.main === 'Final Drive' && category.sub) {
-          categorizedParts['Final Drive'][category.sub].push(part);
-        } else if (category.main === 'Others') {
-          if (category.sub) {
-            categorizedParts['Others'][category.sub].push(part);
+        const title = part.title?.toLowerCase() || '';
+        const sku = part.sku?.toLowerCase() || '';
+        
+        // Direct replacement parts (main table)
+        if (sku.includes('-oe') || title.includes('oem') || category.isOE) {
+          categorizedParts.directReplacement.push({...part, categoryLabel: category.label});
+        }
+        
+        // Handlebars
+        if (title.includes('handlebar') || title.includes('839-01')) {
+          categorizedParts.oeHandlebar.push(part);
+        }
+        if ((title.includes('fatbar') && !title.includes('fatbar36')) || sku.includes('821-01')) {
+          categorizedParts.fatbar.push(part);
+        }
+        if (title.includes('twinwall') || sku.includes('997-01')) {
+          categorizedParts.twinwall.push(part);
+        }
+        if (title.includes('fatbar36') || title.includes('933-01')) {
+          categorizedParts.fatbar36.push(part);
+        }
+        
+        // Bar Mounts
+        if (title.includes('bar mount') || title.includes('28.6mm') || sku.includes('cl0')) {
+          if (title.includes('36mm') || sku.includes('cl05')) {
+            categorizedParts.barMounts36.push(part);
           } else {
-            categorizedParts['Others']['Uncategorized'].push(part);
+            categorizedParts.barMounts28.push(part);
           }
-        } else {
-          categorizedParts['Others']['Uncategorized'].push(part);
+        }
+        
+        // Chainwheels
+        if (title.includes('front') && (title.includes('sprocket') || title.includes('chainwheel'))) {
+          if (title.includes('ultralight')) {
+            categorizedParts.frontChainwheels.ultralight.push(part);
+          } else if (title.includes('grooved')) {
+            categorizedParts.frontChainwheels.grooved.push(part);
+          } else if (title.includes('standard')) {
+            categorizedParts.frontChainwheels.standard.push(part);
+          } else {
+            categorizedParts.frontChainwheels.oe.push(part);
+          }
+        }
+        
+        if (title.includes('rear') && (title.includes('sprocket') || title.includes('chainwheel'))) {
+          if (title.includes('ultralight')) {
+            categorizedParts.rearChainwheels.ultralight.push(part);
+          } else if (title.includes('grooved')) {
+            categorizedParts.rearChainwheels.grooved.push(part);
+          } else if (title.includes('standard')) {
+            categorizedParts.rearChainwheels.standard.push(part);
+          } else {
+            categorizedParts.rearChainwheels.oe.push(part);
+          }
+        }
+        
+        // Chains
+        if (title.includes('chain') && !title.includes('chainwheel')) {
+          categorizedParts.chains.push(part);
+        }
+        
+        // Brake Pads
+        if (title.includes('brake pad')) {
+          if (title.includes('front') || sku.includes('bp-100')) {
+            categorizedParts.brakePads.front.push(part);
+          } else if (title.includes('rear') || sku.includes('bp-101')) {
+            categorizedParts.brakePads.rear.push(part);
+          }
+        }
+        
+        // Throttle Cams
+        if (title.includes('throttle cam') || title.includes('lock-on')) {
+          categorizedParts.throttleCams.push(part);
         }
       });
       
-      function renderPartCard(part) {
-        // Parse variants to get proper variant data
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+      
+      function renderTableRow(part, showCategory = false) {
         let variants = [];
         let defaultVariantId = null;
+        let isAvailable = true;
+        
         try {
           if (typeof part.variants === 'string') {
             variants = JSON.parse(part.variants);
@@ -431,91 +507,148 @@
             variants = part.variants;
           }
           
-          // Get the first available variant or just the first variant
           const availableVariant = variants.find(v => v.inventory_quantity > 0) || variants[0];
           defaultVariantId = availableVariant ? availableVariant.id : null;
+          isAvailable = variants.some(v => v.inventory_quantity > 0);
         } catch (e) {
           console.warn('Error parsing variants for part:', part.title);
         }
         
+        const partNumber = escapeHtml(part.sku || '');
+        const partName = escapeHtml(part.title || '');
+        const categoryCell = showCategory ? `<td class="fmb-table-category">${escapeHtml(part.categoryLabel || 'Other')}</td>` : '';
+        
         return `
-          <div class="fmb-part-card">
-            <div class="fmb-part-image">
-              ${part.images && part.images[0] ? 
-                `<img src="${part.images[0].src || part.images[0]}" alt="${part.title}" loading="lazy">` : 
-                '<div class="fmb-part-placeholder">No Image</div>'
+          <tr class="fmb-table-row">
+            ${categoryCell}
+            <td class="fmb-table-part-number">
+              <a href="/products/${part.sku?.toLowerCase()}" class="fmb-part-link">${partNumber}</a>
+            </td>
+            <td class="fmb-table-name">${partName}</td>
+            <td class="fmb-table-info">
+              <a href="/products/${part.sku?.toLowerCase()}" class="fmb-view-product">View Product</a>
+            </td>
+            <td class="fmb-table-cart">
+              ${isAvailable ? 
+                `<button class="fmb-add-to-cart-btn" data-variant-id="${defaultVariantId}" data-part-title="${partName}">Add to Cart</button>` :
+                `<span class="fmb-unavailable">Currently Unavailable</span>`
               }
-            </div>
-            <div class="fmb-part-info">
-              <h3 class="fmb-part-title">${part.title}</h3>
-              <p class="fmb-part-sku">SKU: ${part.sku}</p>
-              <p class="fmb-part-price">$${part.price}</p>
-              ${variants.length > 1 ? `
-                <div class="fmb-variant-selector">
-                  <label>Options:</label>
-                  <select class="fmb-variant-select" data-part-id="${part.id}">
-                    ${variants.map(variant => `
-                      <option value="${variant.id}" data-price="${variant.price}">
-                        ${variant.title} - $${variant.price}
-                      </option>
-                    `).join('')}
-                  </select>
-                </div>
-              ` : ''}
-              <button class="fmb-add-to-cart" data-variant-id="${defaultVariantId}" data-part-title="${part.title}">
-                Add to Cart
-              </button>
-            </div>
+            </td>
+          </tr>
+        `;
+      }
+      
+      function renderTable(parts, showCategory = false) {
+        if (!parts || parts.length === 0) return '';
+        
+        const categoryHeader = showCategory ? '<th>Category</th>' : '';
+        
+        return `
+          <table class="fmb-parts-table">
+            <thead>
+              <tr>
+                ${categoryHeader}
+                <th>Part Number</th>
+                <th>Name</th>
+                <th>More Info</th>
+                <th>Add to Cart</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${parts.map(part => renderTableRow(part, showCategory)).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+      
+      function renderSection(title, description, parts, id = '') {
+        if (!parts || parts.length === 0) return '';
+        
+        return `
+          <div class="fmb-section" ${id ? `id="${id}"` : ''}>
+            <h2 class="fmb-section-title">${escapeHtml(title)}</h2>
+            ${description ? `<p class="fmb-section-description">${description}</p>` : ''}
+            ${renderTable(parts)}
+            <hr class="fmb-section-divider">
           </div>
         `;
       }
       
-      function renderCategory(categoryName, items) {
-        if (!items || items.length === 0) return '';
-        
-        return `
-          <div class="fmb-category-section">
-            <h3 class="fmb-category-title">${categoryName}</h3>
-            <div class="fmb-parts-grid">
-              ${items.map(renderPartCard).join('')}
-            </div>
-          </div>
-        `;
-      }
+      // Navigation menu
+      const navigationMenu = `
+        <nav class="fmb-navigation">
+          <ul class="fmb-nav-list">
+            <li><a href="#quicklist">Direct Replacement</a></li>
+            <li class="fmb-nav-group">Control</li>
+            <li><a href="#handlebars">Handlebars</a></li>
+            <li><a href="#fb36">Fatbar®36</a></li>
+            <li><a href="#barmounts">Bar Mounts</a></li>
+            <li class="fmb-nav-group">Final Drive</li>
+            <li><a href="#fcw">Front Chainwheels</a></li>
+            <li><a href="#rcw">Rear Chainwheels</a></li>
+            <li><a href="#chains">Chains</a></li>
+            <li class="fmb-nav-group">Other</li>
+            <li><a href="#brakepads">Brake Pads</a></li>
+            <li><a href="#cams">Lock-On Throttle Cam</a></li>
+          </ul>
+        </nav>
+      `;
       
-      function renderSubcategories(mainCategory, subcategories) {
-        const hasAnyParts = Object.values(subcategories).some(items => 
-          Array.isArray(items) ? items.length > 0 : false
-        );
-        
-        if (!hasAnyParts) return '';
-        
-        return `
-          <div class="fmb-main-category">
-            <h2 class="fmb-main-category-title">${mainCategory}</h2>
-            ${Object.entries(subcategories).map(([subName, items]) => {
-              if (Array.isArray(items) && items.length > 0) {
-                return renderCategory(subName, items);
-              }
-              return '';
-            }).join('')}
-          </div>
-        `;
-      }
-        
       return `
         <div class="fmb-motorcycle-page">
           <div class="fmb-motorcycle-header">
-            <h2>${motorcycle.bikemake} ${motorcycle.bikemodel} (${bikeYear})</h2>
-            <p class="fmb-motorcycle-engine">Engine: ${motorcycle.bikeengine || 'All Engines'}</p>
-            <a href="/pages/fit-my-bike" class="fmb-back-link">← Search for Different Motorcycle</a>
+            <h1>${motorcycle.bikemake} ${motorcycle.bikemodel} (${motorcycle.biketype?.toUpperCase() || 'OFF ROAD'}) ${bikeYear}</h1>
+            <a href="/pages/fit-my-bike" class="fmb-back-link">← Fit My Bike</a>
           </div>
           
-          <div class="fmb-categorized-parts">
-            ${renderCategory('Direct Replacement', categorizedParts['Direct Replacement'])}
-            ${renderSubcategories('Control', categorizedParts['Control'])}
-            ${renderSubcategories('Final Drive', categorizedParts['Final Drive'])}
-            ${renderSubcategories('Others', categorizedParts['Others'])}
+          ${navigationMenu}
+          
+          <div class="fmb-intro-text">
+            <p>Below you will find a list of Renthal® parts that are designed as direct replacements for the OE specified parts. If you are looking to upgrade and improve your motorcycle explore the tabs above and find the Renthal® Parts to enhance your ride.</p>
+          </div>
+          
+          <div class="fmb-parts-content">
+            ${categorizedParts.directReplacement.length > 0 ? `
+              <div class="fmb-section" id="quicklist">
+                ${renderTable(categorizedParts.directReplacement, true)}
+              </div>
+            ` : ''}
+            
+            ${renderSection('OE Handlebar', 
+              'The OE bend is the manufactures best option to please a large portion of consumers and not always the best fit for you. If you\'re interested in looking at alternative bends that might fit your requirements better, check out <a href="https://renthal.com/worksfit">Renthal WorksFit™ Handlebar Comparison Tool</a>.',
+              categorizedParts.oeHandlebar, 'handlebars')}
+            
+            ${renderSection('Fatbar',
+              'The championship proven Renthal® Fatbar® continues to set the industry standard in an unbraced tapered mx handlebar. The oversized (1-1/8in | 28.6mm) clamping diameter uses computer aided profiling, tapering down to (7/8in | 22.2mm) to accept standard controls.',
+              categorizedParts.fatbar)}
+            
+            ${renderSection('Twinwall',
+              'The Renthal® Twinwall® motocross handlebar features a patented tube within a tube design borrowed from aircraft design principles to achieve the highest strength possible in a moto handlebar.',
+              categorizedParts.twinwall)}
+            
+            ${renderSection('Fatbar 36',
+              'Upgrading to Renthal® R-Works Fatbar36 is the ultimate way to reduce weight from your motorcycle. Utilizing Renthal\'s all-new 36mm clamping diameter and proprietary Zarilium® material, this innovative motocross handlebar boasts exceptional vibration reduction qualities while preserving Renthal\'s signature MX handlebar strength.',
+              categorizedParts.fatbar36, 'fb36')}
+            
+            ${renderSection('28mm/ 1-1/8in Bar Mounts',
+              'Renthal\'s 1-1/8in (28.6mm) handlebar clamps are designed to allow the mounting of oversized 1-1/8in handlebars, such as the Twinwall and Fatbar to motorcycles which are equipped with 7/8" handlebars as standard.',
+              categorizedParts.barMounts28, 'barmounts')}
+            
+            ${renderSection('36mm Bar Mounts',
+              '36TECH™ is a new handlebar standard developed by Renthal to push the boundaries of handlebar technology. It uses a 36mm clamping diameter. 36Tech™ bar mounts are designed to be used in conjunction with Renthal 36mm handlebars to create the ultimate rider control.',
+              categorizedParts.barMounts36)}
+            
+            ${renderSection('OE Front Chainwheel', '', categorizedParts.frontChainwheels.oe, 'fcw')}
+            
+            ${renderSection('OE Rear Chainwheel', '', categorizedParts.rearChainwheels.oe, 'rcw')}
+            
+            ${renderSection('Chains', '', categorizedParts.chains, 'chains')}
+            
+            ${renderSection('Front Brake Pads', '', categorizedParts.brakePads.front, 'brakepads')}
+            
+            ${renderSection('Rear Brake Pads', '', categorizedParts.brakePads.rear)}
+            
+            ${renderSection('Lock-On Throttle Cam', '', categorizedParts.throttleCams, 'cams')}
           </div>
         </div>
       `;
@@ -765,35 +898,9 @@
     }
 
     function setupPartInteractions(config, container) {
-      // Handle variant selector changes
-      container.addEventListener('change', function(e) {
-        if (e.target.classList.contains('fmb-variant-select')) {
-          const select = e.target;
-          const selectedOption = select.options[select.selectedIndex];
-          const newPrice = selectedOption.dataset.price;
-          const variantId = selectedOption.value;
-          
-          // Find the corresponding part card
-          const partCard = select.closest('.fmb-part-card');
-          if (partCard) {
-            // Update price display
-            const priceElement = partCard.querySelector('.fmb-part-price');
-            if (priceElement && newPrice) {
-              priceElement.textContent = `$${newPrice}`;
-            }
-            
-            // Update add to cart button variant ID
-            const addToCartButton = partCard.querySelector('.fmb-add-to-cart');
-            if (addToCartButton && variantId) {
-              addToCartButton.dataset.variantId = variantId;
-            }
-          }
-        }
-      });
-      
-      // Handle add to cart buttons
+      // Handle add to cart buttons (updated for new table layout)
       container.addEventListener('click', function(e) {
-        if (e.target.classList.contains('fmb-add-to-cart')) {
+        if (e.target.classList.contains('fmb-add-to-cart-btn')) {
           const variantId = e.target.dataset.variantId;
           const partTitle = e.target.dataset.partTitle || 'Product';
           
@@ -863,6 +970,18 @@
             });
           } else {
             console.warn('No variant ID found for add to cart button');
+          }
+        }
+      });
+      
+      // Handle navigation menu smooth scrolling
+      container.addEventListener('click', function(e) {
+        if (e.target.closest('.fmb-navigation a[href^="#"]')) {
+          e.preventDefault();
+          const targetId = e.target.getAttribute('href').substring(1);
+          const targetElement = document.getElementById(targetId);
+          if (targetElement) {
+            targetElement.scrollIntoView({ behavior: 'smooth' });
           }
         }
       });
@@ -1128,73 +1247,194 @@
     margin-bottom: 1rem;
   }
 
-  /* Categorized Layout Styles */
-  .fmb-categorized-parts {
-    max-width: 1200px;
-    margin: 0 auto;
+  /* Original Renthal Layout - Navigation Menu */
+  .fmb-navigation {
+    margin: 2rem 0;
+    border-top: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+    border-bottom: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+    padding: 1rem 0;
   }
 
-  .fmb-main-category {
-    margin-bottom: 3rem;
+  .fmb-nav-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 2rem;
   }
 
-  .fmb-main-category-title {
+  .fmb-nav-list li {
+    margin: 0;
+  }
+
+  .fmb-nav-group {
+    font-weight: bold;
+    color: rgb(var(--color-foreground, 0 0 0));
+  }
+
+  .fmb-nav-list a {
+    color: rgb(var(--color-button, 0 123 255));
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+
+  .fmb-nav-list a:hover {
+    text-decoration: underline;
+  }
+
+  /* Intro Text */
+  .fmb-intro-text {
+    margin: 2rem 0;
+    color: rgba(var(--color-foreground, 0 0 0), 0.8);
+    line-height: 1.6;
+  }
+
+  /* Table Styles - Matching Original Renthal Design */
+  .fmb-parts-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    background: rgb(var(--color-background, 255 255 255));
+    border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+  }
+
+  .fmb-parts-table thead {
+    background: rgba(var(--color-foreground, 0 0 0), 0.05);
+  }
+
+  .fmb-parts-table th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: rgb(var(--color-foreground, 0 0 0));
+    border-bottom: 2px solid rgba(var(--color-foreground, 0 0 0), 0.2);
+    font-size: 0.9rem;
+  }
+
+  .fmb-parts-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+    vertical-align: middle;
+    font-size: 0.9rem;
+  }
+
+  .fmb-table-row:hover {
+    background: rgba(var(--color-button, 0 123 255), 0.02);
+  }
+
+  .fmb-table-category {
+    font-weight: 500;
+    color: rgba(var(--color-foreground, 0 0 0), 0.8);
+  }
+
+  .fmb-table-part-number {
+    font-family: monospace;
+    font-weight: 600;
+  }
+
+  .fmb-part-link {
+    color: rgb(var(--color-button, 0 123 255));
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .fmb-part-link:hover {
+    text-decoration: underline;
+  }
+
+  .fmb-table-name {
+    color: rgb(var(--color-foreground, 0 0 0));
+    line-height: 1.4;
+  }
+
+  .fmb-view-product {
+    color: rgb(var(--color-button, 0 123 255));
+    text-decoration: none;
+    font-size: 0.85rem;
+  }
+
+  .fmb-view-product:hover {
+    text-decoration: underline;
+  }
+
+  .fmb-add-to-cart-btn {
+    background: rgb(var(--color-button, 0 123 255));
+    color: rgb(var(--color-button-text, 255 255 255));
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .fmb-add-to-cart-btn:hover {
+    opacity: 0.9;
+  }
+
+  .fmb-add-to-cart-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .fmb-unavailable {
+    color: rgba(var(--color-foreground, 0 0 0), 0.5);
+    font-style: italic;
+    font-size: 0.85rem;
+  }
+
+  /* Section Styling */
+  .fmb-section {
+    margin: 3rem 0;
+  }
+
+  .fmb-section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgb(var(--color-foreground, 0 0 0));
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid rgba(var(--color-foreground, 0 0 0), 0.1);
+  }
+
+  .fmb-section-description {
+    color: rgba(var(--color-foreground, 0 0 0), 0.8);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+
+  .fmb-section-description a {
+    color: rgb(var(--color-button, 0 123 255));
+    text-decoration: none;
+  }
+
+  .fmb-section-description a:hover {
+    text-decoration: underline;
+  }
+
+  .fmb-section-divider {
+    border: none;
+    height: 1px;
+    background: rgba(var(--color-foreground, 0 0 0), 0.2);
+    margin: 3rem 0;
+  }
+
+  /* Header Updates */
+  .fmb-motorcycle-header h1 {
     font-size: 1.75rem;
     font-weight: 700;
     color: rgb(var(--color-foreground, 0 0 0));
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 3px solid rgb(var(--color-button, 0 123 255));
-    text-align: left;
+    margin-bottom: 0.5rem;
+    text-align: center;
   }
 
-  .fmb-category-section {
+  .fmb-motorcycle-header {
+    text-align: center;
     margin-bottom: 2rem;
-  }
-
-  .fmb-category-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: rgba(var(--color-foreground, 0 0 0), 0.8);
-    margin-bottom: 1rem;
-    padding-left: 1rem;
-    border-left: 4px solid rgba(var(--color-button, 0 123 255), 0.5);
-    text-align: left;
-  }
-
-  .fmb-part-sku {
-    font-size: 0.9rem;
-    color: rgba(var(--color-foreground, 0 0 0), 0.6);
-    margin-bottom: 0.5rem;
-    font-family: monospace;
-  }
-
-  .fmb-variant-selector {
-    margin-bottom: 1rem;
-  }
-
-  .fmb-variant-selector label {
-    display: block;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: rgba(var(--color-foreground, 0 0 0), 0.8);
-    margin-bottom: 0.5rem;
-  }
-
-  .fmb-variant-select {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.2);
-    border-radius: 4px;
-    background: white;
-    font-size: 0.9rem;
-    color: rgb(var(--color-foreground, 0 0 0));
-  }
-
-  .fmb-variant-select:focus {
-    border-color: rgb(var(--color-button, 0 123 255));
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(var(--color-button, 0 123 255), 0.1);
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(var(--color-foreground, 0 0 0), 0.1);
   }
 
   .fmb-add-to-cart {
