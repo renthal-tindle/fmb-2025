@@ -85,12 +85,29 @@
     }
 
     function initializeMotorcyclePage(config, bikeid, container) {
+      console.log('🔧 FMB Debug: Starting motorcycle page initialization');
+      console.log('🔧 FMB Debug: bikeid =', bikeid);
+      console.log('🔧 FMB Debug: apiBaseUrl =', config.apiBaseUrl);
+      
+      const url1 = `${config.apiBaseUrl}/api/motorcycles?recid=${bikeid}`;
+      const url2 = `${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/compatible-parts`;
+      
+      console.log('🔧 FMB Debug: Fetching URLs:', url1, url2);
+      
       // Load specific motorcycle data and compatible parts directly
       Promise.all([
-        fetch(`${config.apiBaseUrl}/api/motorcycles?recid=${bikeid}`).then(r => r.json()),
-        fetch(`${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/compatible-parts`).then(r => r.json())
+        fetch(url1).then(r => {
+          console.log('🔧 FMB Debug: Motorcycle API response status:', r.status);
+          return r.json();
+        }),
+        fetch(url2).then(r => {
+          console.log('🔧 FMB Debug: Parts API response status:', r.status);
+          return r.json();
+        })
       ])
       .then(([motorcycles, parts]) => {
+        console.log('🔧 FMB Debug: Received motorcycles:', motorcycles);
+        console.log('🔧 FMB Debug: Received parts:', parts);
         const motorcycle = motorcycles.find(m => m.recid == bikeid);
         if (!motorcycle) {
           throw new Error('Motorcycle not found');
