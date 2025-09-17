@@ -321,56 +321,56 @@
       // Direct Replacement (exact OE replacement parts)
       if (sku.includes('-oe') || title.includes('oem') || title.includes('replacement') || 
           category.includes('direct replacement') || tags.includes('direct replacement')) {
-        return { main: 'Direct Replacement', sub: null };
+        return { main: 'Direct Replacement', sub: null, isOE: true, label: 'Direct Replacement' };
       }
       
       // Control category
       if (title.includes('handlebar') && !title.includes('fatbar36') && !title.includes('mount')) {
-        return { main: 'Control', sub: 'Handlebars' };
+        return { main: 'Control', sub: 'Handlebars', isOE: false, label: 'Control - Handlebars' };
       }
       if (title.includes('fatbar36') || sku.includes('fatbar36') || tags.includes('fatbar36')) {
-        return { main: 'Control', sub: 'Fatbar36' };
+        return { main: 'Control', sub: 'Fatbar36', isOE: false, label: 'Control - Fatbar36' };
       }
       if (title.includes('bar mount') || title.includes('handlebar mount') || 
           category.includes('bar mount') || tags.includes('bar mount')) {
-        return { main: 'Control', sub: 'Bar Mounts' };
+        return { main: 'Control', sub: 'Bar Mounts', isOE: false, label: 'Control - Bar Mounts' };
       }
       
       // Final Drive category
       if (title.includes('front sprocket') || category.includes('front sprocket') || 
           tags.includes('front sprocket')) {
-        return { main: 'Final Drive', sub: 'Front Sprockets' };
+        return { main: 'Final Drive', sub: 'Front Sprockets', isOE: false, label: 'Final Drive - Front Sprockets' };
       }
       if (title.includes('rear sprocket') || category.includes('rear sprocket') || 
           tags.includes('rear sprocket')) {
-        return { main: 'Final Drive', sub: 'Rear Sprockets' };
+        return { main: 'Final Drive', sub: 'Rear Sprockets', isOE: false, label: 'Final Drive - Rear Sprockets' };
       }
       if (title.includes('chain') && !title.includes('sprocket') || 
           category.includes('chain') || tags.includes('chain')) {
-        return { main: 'Final Drive', sub: 'Chain' };
+        return { main: 'Final Drive', sub: 'Chain', isOE: false, label: 'Final Drive - Chain' };
       }
       
       // Others category
       if (title.includes('brake pad') || category.includes('brake pad') || 
           tags.includes('brake pad')) {
-        return { main: 'Others', sub: 'Brake Pads' };
+        return { main: 'Others', sub: 'Brake Pads', isOE: false, label: 'Others - Brake Pads' };
       }
       if (title.includes('throttle cam') || title.includes('lock-on throttle') || 
           category.includes('throttle cam') || tags.includes('throttle cam')) {
-        return { main: 'Others', sub: 'Lock-On Throttle Cam' };
+        return { main: 'Others', sub: 'Lock-On Throttle Cam', isOE: false, label: 'Others - Lock-On Throttle Cam' };
       }
       
       // Fallback based on general categories
       if (title.includes('sprocket') || category.includes('sprocket') || tags.includes('sprocket')) {
-        return { main: 'Final Drive', sub: 'Front Sprockets' }; // Default to front if unclear
+        return { main: 'Final Drive', sub: 'Front Sprockets', isOE: false, label: 'Final Drive - Front Sprockets' }; // Default to front if unclear
       }
       if (title.includes('fatbar') || title.includes('handlebar') || 
           category.includes('handlebar') || tags.includes('handlebar')) {
-        return { main: 'Control', sub: 'Handlebars' };
+        return { main: 'Control', sub: 'Handlebars', isOE: false, label: 'Control - Handlebars' };
       }
       
       // Default to Others if no clear category
-      return { main: 'Others', sub: null };
+      return { main: 'Others', sub: null, isOE: false, label: 'Other' };
     }
 
     function generateMotorcyclePageHTML(motorcycle, parts, config) {
@@ -417,7 +417,7 @@
         const sku = part.sku?.toLowerCase() || '';
         
         // Direct replacement parts (main table)
-        if (sku.includes('-oe') || title.includes('oem') || category.isOE) {
+        if (sku.includes('-oe') || title.includes('oem') || title.includes('replacement') || category.isOE) {
           categorizedParts.directReplacement.push({...part, categoryLabel: category.label});
         }
         
@@ -518,15 +518,18 @@
         const partName = escapeHtml(part.title || '');
         const categoryCell = showCategory ? `<td class="fmb-table-category">${escapeHtml(part.categoryLabel || 'Other')}</td>` : '';
         
+        // Use proper Shopify product URL - prefer handle over SKU for URL construction
+        const productUrl = part.handle ? `/products/${part.handle}` : (part.online_store_url || `/products/${part.sku?.toLowerCase().replace(/\s+/g, '-')}`);
+        
         return `
           <tr class="fmb-table-row">
             ${categoryCell}
             <td class="fmb-table-part-number">
-              <a href="/products/${part.sku?.toLowerCase()}" class="fmb-part-link">${partNumber}</a>
+              <a href="${productUrl}" class="fmb-part-link">${partNumber}</a>
             </td>
             <td class="fmb-table-name">${partName}</td>
             <td class="fmb-table-info">
-              <a href="/products/${part.sku?.toLowerCase()}" class="fmb-view-product">View Product</a>
+              <a href="${productUrl}" class="fmb-view-product">View Product</a>
             </td>
             <td class="fmb-table-cart">
               ${isAvailable ? 
@@ -984,6 +987,301 @@
             targetElement.scrollIntoView({ behavior: 'smooth' });
           }
         }
+      });
+    }
+
+    function setupFinderInteractions(config, container) {
+      const makeSelect = container.querySelector(`#make-select-${config.blockId}`);
+      const modelSelect = container.querySelector(`#model-select-${config.blockId}`);
+      const yearSelect = container.querySelector(`#year-select-${config.blockId}`);
+      const resultsDiv = container.querySelector(`#results-${config.blockId}`);
+      const quickSearchInput = container.querySelector(`#quick-search-${config.blockId}`);
+      const suggestionsDropdown = container.querySelector(`#suggestions-dropdown-${config.blockId}`);
+
+      if (!makeSelect || !modelSelect || !yearSelect || !resultsDiv) return;
+
+      let motorcycleData = [];
+      let searchTimeout;
+
+      // Load all motorcycle data for search functionality
+      fetch(`${config.apiBaseUrl}/api/motorcycles`)
+        .then(response => response.json())
+        .then(data => {
+          motorcycleData = data;
+        })
+        .catch(error => console.error('Error loading motorcycle data:', error));
+
+      // Quick search functionality
+      if (quickSearchInput && suggestionsDropdown) {
+        quickSearchInput.addEventListener('input', function(e) {
+          clearTimeout(searchTimeout);
+          const query = e.target.value.trim();
+          
+          if (query.length < 2) {
+            suggestionsDropdown.style.display = 'none';
+            return;
+          }
+
+          searchTimeout = setTimeout(() => {
+            const matches = searchMotorcycles(motorcycleData, query).slice(0, 10);
+            
+            if (matches.length > 0) {
+              suggestionsDropdown.innerHTML = matches.map(bike => `
+                <div class="fmb-suggestion-item" data-recid="${bike.recid}">
+                  ${bike.bikemake} ${bike.bikemodel} (${bike.firstyear || bike.bikeyear}${bike.lastyear && bike.lastyear !== bike.firstyear ? '-' + bike.lastyear : ''})
+                </div>
+              `).join('');
+              suggestionsDropdown.style.display = 'block';
+            } else {
+              suggestionsDropdown.style.display = 'none';
+            }
+          }, 300);
+        });
+
+        // Handle suggestion clicks
+        suggestionsDropdown.addEventListener('click', function(e) {
+          const item = e.target.closest('.fmb-suggestion-item');
+          if (item) {
+            const recid = item.getAttribute('data-recid');
+            window.location.href = `/pages/fit-my-bike?bikeid=${recid}`;
+          }
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+          if (!quickSearchInput.contains(e.target) && !suggestionsDropdown.contains(e.target)) {
+            suggestionsDropdown.style.display = 'none';
+          }
+        });
+      }
+
+      // Make selection handler
+      makeSelect.addEventListener('change', function() {
+        const selectedMake = this.value;
+        modelSelect.disabled = true;
+        yearSelect.disabled = true;
+        modelSelect.innerHTML = '<option value="">Choose your bike model</option>';
+        yearSelect.innerHTML = '<option value="">Choose your bike year</option>';
+        resultsDiv.innerHTML = '';
+
+        if (!selectedMake) return;
+
+        fetch(`${config.apiBaseUrl}/api/motorcycles/makes/${selectedMake}/models`)
+          .then(response => response.json())
+          .then(models => {
+            models.forEach(model => {
+              const option = document.createElement('option');
+              option.value = model;
+              option.textContent = model;
+              modelSelect.appendChild(option);
+            });
+            modelSelect.disabled = false;
+          })
+          .catch(error => {
+            console.error('Error loading models:', error);
+            modelSelect.innerHTML = '<option value="">Error loading models</option>';
+          });
+      });
+
+      // Model selection handler
+      modelSelect.addEventListener('change', function() {
+        const selectedMake = makeSelect.value;
+        const selectedModel = this.value;
+        yearSelect.disabled = true;
+        yearSelect.innerHTML = '<option value="">Choose your bike year</option>';
+        resultsDiv.innerHTML = '';
+
+        if (!selectedMake || !selectedModel) return;
+
+        fetch(`${config.apiBaseUrl}/api/motorcycles/makes/${selectedMake}/models/${selectedModel}/years`)
+          .then(response => response.json())
+          .then(years => {
+            years.forEach(year => {
+              const option = document.createElement('option');
+              option.value = year;
+              option.textContent = year;
+              yearSelect.appendChild(option);
+            });
+            yearSelect.disabled = false;
+          })
+          .catch(error => {
+            console.error('Error loading years:', error);
+            yearSelect.innerHTML = '<option value="">Error loading years</option>';
+          });
+      });
+
+      // Year selection handler - show results
+      yearSelect.addEventListener('change', function() {
+        const selectedMake = makeSelect.value;
+        const selectedModel = modelSelect.value;
+        const selectedYear = this.value;
+
+        if (!selectedMake || !selectedModel || !selectedYear) {
+          resultsDiv.innerHTML = '';
+          return;
+        }
+
+        resultsDiv.innerHTML = '<div class="fmb-native-loading"><div class="fmb-loading-spinner"></div><p>Finding compatible motorcycles...</p></div>';
+
+        fetch(`${config.apiBaseUrl}/api/motorcycles?make=${selectedMake}&model=${selectedModel}&year=${selectedYear}`)
+          .then(response => response.json())
+          .then(motorcycles => {
+            if (motorcycles.length === 0) {
+              resultsDiv.innerHTML = '<div class="fmb-no-results"><p>No motorcycles found for the selected criteria.</p></div>';
+              return;
+            }
+
+            const resultsHTML = `
+              <div class="fmb-results-header">
+                <h3>Found ${motorcycles.length} matching motorcycle${motorcycles.length > 1 ? 's' : ''}:</h3>
+              </div>
+              <div class="fmb-motorcycles-list">
+                ${motorcycles.map(bike => {
+                  const bikeYear = bike.firstyear && bike.lastyear 
+                    ? (bike.firstyear === bike.lastyear 
+                        ? bike.firstyear.toString() 
+                        : `${bike.firstyear}-${bike.lastyear}`)
+                    : bike.bikeyear || 'Unknown';
+                  return `
+                    <div class="fmb-motorcycle-result">
+                      <h4>${bike.bikemake} ${bike.bikemodel} (${bikeYear})</h4>
+                      ${bike.bikeengine ? `<p class="fmb-engine">Engine: ${bike.bikeengine}</p>` : ''}
+                      <a href="/pages/fit-my-bike?bikeid=${bike.recid}" class="fmb-view-parts-btn">View Compatible Parts</a>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `;
+            resultsDiv.innerHTML = resultsHTML;
+          })
+          .catch(error => {
+            console.error('Error finding motorcycles:', error);
+            resultsDiv.innerHTML = '<div class="fmb-error"><p>Error finding motorcycles. Please try again.</p></div>';
+          });
+      });
+    }
+
+    function setupPartInteractions(config, container) {
+      // Handle add to cart buttons
+      container.addEventListener('click', function(e) {
+        const addToCartBtn = e.target.closest('.fmb-add-to-cart-btn');
+        if (!addToCartBtn) return;
+
+        e.preventDefault();
+        const variantId = addToCartBtn.getAttribute('data-variant-id');
+        const partTitle = addToCartBtn.getAttribute('data-part-title');
+
+        if (!variantId) {
+          console.error('No variant ID found for part:', partTitle);
+          return;
+        }
+
+        addToCartBtn.disabled = true;
+        addToCartBtn.textContent = 'Adding...';
+
+        // Use Shopify's AJAX Cart API
+        fetch('/cart/add.js', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: variantId,
+            quantity: 1
+          })
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(item => {
+          // Success - show feedback
+          addToCartBtn.textContent = 'Added!';
+          addToCartBtn.style.background = '#28a745';
+          
+          // Dispatch cart updated event if available
+          if (window.Shopify && window.Shopify.onItemAdded) {
+            window.Shopify.onItemAdded(item);
+          }
+          
+          // Reset button after 2 seconds
+          setTimeout(() => {
+            addToCartBtn.disabled = false;
+            addToCartBtn.textContent = 'Add to Cart';
+            addToCartBtn.style.background = '';
+          }, 2000);
+
+          // Update cart drawer/indicator if available
+          if (typeof window.updateCartDrawer === 'function') {
+            window.updateCartDrawer();
+          }
+          
+          // Dispatch custom event for theme integration
+          document.dispatchEvent(new CustomEvent('cart:item-added', {
+            detail: { item, variantId, partTitle }
+          }));
+        })
+        .catch(error => {
+          console.error('Error adding to cart:', error);
+          addToCartBtn.disabled = false;
+          addToCartBtn.textContent = 'Error - Try Again';
+          addToCartBtn.style.background = '#dc3545';
+          
+          // Reset button after 3 seconds
+          setTimeout(() => {
+            addToCartBtn.textContent = 'Add to Cart';
+            addToCartBtn.style.background = '';
+          }, 3000);
+        });
+      });
+    }
+
+    // Search motorcycles helper function
+    function searchMotorcycles(motorcycleData, query) {
+      const searchTerm = query.toLowerCase().trim();
+      if (!searchTerm) return [];
+      
+      // Check if it's a direct RECID search
+      if (/^\d+$/.test(searchTerm)) {
+        const recid = parseInt(searchTerm);
+        const directMatch = motorcycleData.find(bike => bike.recid === recid);
+        if (directMatch) return [directMatch];
+      }
+      
+      return motorcycleData.filter(bike => {
+        const make = (bike.bikemake || '').toLowerCase();
+        const model = (bike.bikemodel || '').toLowerCase();
+        const year = (bike.bikeyear || bike.firstyear || '').toString();
+        const engine = (bike.bikeengine || '').toLowerCase();
+        
+        const combinedText = `${make} ${model} ${year} ${engine}`;
+        
+        return combinedText.includes(searchTerm) ||
+               make.includes(searchTerm) ||
+               model.includes(searchTerm) ||
+               year.includes(searchTerm) ||
+               engine.includes(searchTerm);
+      }).sort((a, b) => {
+        // Prioritize exact make matches
+        const aMake = (a.bikemake || '').toLowerCase();
+        const bMake = (b.bikemake || '').toLowerCase();
+        
+        if (aMake.startsWith(searchTerm) && !bMake.startsWith(searchTerm)) return -1;
+        if (!aMake.startsWith(searchTerm) && bMake.startsWith(searchTerm)) return 1;
+        
+        // Then by model matches
+        const aModel = (a.bikemodel || '').toLowerCase();
+        const bModel = (b.bikemodel || '').toLowerCase();
+        
+        if (aModel.startsWith(searchTerm) && !bModel.startsWith(searchTerm)) return -1;
+        if (!aModel.startsWith(searchTerm) && bModel.startsWith(searchTerm)) return 1;
+        
+        // Finally by year (newest first)
+        const aYear = parseInt(a.bikeyear || a.firstyear || 0);
+        const bYear = parseInt(b.bikeyear || b.firstyear || 0);
+        return bYear - aYear;
       });
     }
   });
