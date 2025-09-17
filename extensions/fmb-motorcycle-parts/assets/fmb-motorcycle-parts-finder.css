@@ -196,37 +196,14 @@
 }
 
 [data-fmb] .fmb-form-group label {
-  font-weight: 500;
-  color: inherit;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-[data-fmb] .fmb-form-group label::before {
-  content: attr(data-step);
-  background: #007bff;
-  color: white;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
   font-weight: 600;
-  flex-shrink: 0;
-}
-
-[data-fmb] .fmb-form-group.disabled label::before {
-  background: rgba(128, 128, 128, 0.3);
-  color: rgba(128, 128, 128, 0.6);
+  color: inherit;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
 }
 
 [data-fmb] .fmb-form-group.disabled label {
-  color: rgba(128, 128, 128, 0.6);
+  opacity: 0.4;
 }
 
 /* Results styling - theme integrated */
