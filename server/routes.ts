@@ -23,6 +23,33 @@ function escapeHtml(unsafe: string): string {
     .replace(/'/g, "&#039;");
 }
 
+// Test function to verify HMAC validation works with known examples
+export function testHmacValidation(): void {
+  console.log('🧪 Testing HMAC validation function...');
+  
+  // Test case based on Shopify specification (corrected signature)
+  const testSecret = 'hush';
+  const testUrl = '/apps/fit-my-bike?extra=1&extra=2&shop=shop-name.myshopify.com&path_prefix=%2Fapps%2Fawesome_reviews&timestamp=1317327555&signature=a9718877bea71c2484f91608a7eaea1532bdf71f5c56825065fa4ccabe549ef3';
+  
+  const result = validateAppProxySignature(testUrl, testSecret);
+  
+  if (result) {
+    console.log('✅ HMAC test passed: Known good signature validated successfully');
+  } else {
+    console.log('❌ HMAC test failed: Known good signature was rejected');
+  }
+  
+  // Test invalid signature
+  const invalidUrl = '/apps/fit-my-bike?extra=1&shop=test.myshopify.com&timestamp=1317327555&signature=invalid';
+  const invalidResult = validateAppProxySignature(invalidUrl, testSecret);
+  
+  if (!invalidResult) {
+    console.log('✅ HMAC security test passed: Invalid signature correctly rejected');
+  } else {
+    console.log('❌ HMAC security test failed: Invalid signature was accepted');
+  }
+}
+
 function validateAppProxySignature(originalUrl: string, secret: string): boolean {
   if (!originalUrl || !secret) {
     console.error('Missing URL or secret for signature validation');
@@ -38,41 +65,75 @@ function validateAppProxySignature(originalUrl: string, secret: string): boolean
     }
     
     const rawQuery = originalUrl.substring(queryIndex + 1);
-    const params = new URLSearchParams(rawQuery);
-    const signature = params.get('signature');
     
-    if (!signature) {
+    // Parse query string manually to handle multiple values and encoding properly
+    const queryParams: { [key: string]: string[] } = {};
+    const pairs = rawQuery.split('&');
+    
+    for (const pair of pairs) {
+      const [key, value] = pair.split('=');
+      if (key && value !== undefined) {
+        const decodedKey = decodeURIComponent(key);
+        const decodedValue = decodeURIComponent(value);
+        
+        if (!queryParams[decodedKey]) {
+          queryParams[decodedKey] = [];
+        }
+        queryParams[decodedKey].push(decodedValue);
+      }
+    }
+    
+    // Extract and validate signature
+    const signatureArray = queryParams['signature'];
+    if (!signatureArray || signatureArray.length === 0) {
       console.error('No signature parameter found');
       return false;
     }
     
+    const providedSignature = signatureArray[0].toLowerCase();
+    
     // Remove signature from params for HMAC calculation
-    params.delete('signature');
+    delete queryParams['signature'];
     
     // Sort parameters alphabetically and create query string
-    const sortedParams = Array.from(params.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, value]) => `${key}=${value}`)
-      .join('&');
+    // Based on Shopify specification: join multiple values with commas, then join params with NO separator
+    const sortedParams = Object.keys(queryParams)
+      .sort()
+      .map(key => {
+        const values = queryParams[key];
+        const joinedValue = values.length > 1 ? values.join(',') : values[0];
+        return `${key}=${joinedValue}`;
+      })
+      .join('');
     
     // Calculate HMAC-SHA256
     const calculatedSignature = crypto
       .createHmac('sha256', secret)
-      .update(sortedParams)
+      .update(sortedParams, 'utf-8')
       .digest('hex');
     
-    // Use timing-safe comparison
-    const providedSignature = signature.toLowerCase();
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(calculatedSignature, 'hex'),
-      Buffer.from(providedSignature, 'hex')
-    );
+    // Use timing-safe comparison - handle different buffer lengths
+    let isValid = false;
+    try {
+      if (calculatedSignature.length === providedSignature.length) {
+        isValid = crypto.timingSafeEqual(
+          Buffer.from(calculatedSignature, 'hex'),
+          Buffer.from(providedSignature, 'hex')
+        );
+      }
+    } catch (error) {
+      console.error('Timing-safe comparison error:', error);
+      isValid = false;
+    }
     
     if (!isValid) {
       console.error(`HMAC signature mismatch for proxy request`);
       console.error(`Expected: ${calculatedSignature}`);
       console.error(`Received: ${providedSignature}`);
-      console.error(`Query string: ${sortedParams}`);
+      console.error(`Query string used: ${sortedParams}`);
+      console.error(`Raw query: ${rawQuery}`);
+    } else {
+      console.log(`✅ HMAC signature validated successfully`);
     }
     
     return isValid;
@@ -102,26 +163,19 @@ function createAppProxySecurityMiddleware() {
         return res.status(401).send("Request timestamp too old");
       }
       
-      // TEMPORARY: Disable HMAC validation while fixing encoding issues
-      // Using session-based security + timestamp validation as fallback
-      // TODO: Re-enable after fixing HTML entity encoding in HMAC calculation
-      console.log(`✅ Proxy request validated for shop: ${shop} (session + timestamp check)`);
+      // Validate HMAC signature for enhanced security
+      const secret = process.env.SHOPIFY_API_SECRET;
+      if (!secret) {
+        console.error('SHOPIFY_API_SECRET not configured');
+        return res.status(500).send("Server configuration error");
+      }
       
-      // const secret = process.env.SHOPIFY_API_SECRET;
-      // if (!secret) {
-      //   console.error('SHOPIFY_API_SECRET not configured');
-      //   return res.status(500).send("Server configuration error");
-      // }
-      // 
-      // if (!validateAppProxySignature(req.originalUrl, secret)) {
-      //   console.error(`Invalid HMAC signature for proxy request from shop: ${shop}`);
-      //   return res.status(403).send("Invalid request signature");
-      // }
-      // const appProxySecret = process.env.SHOPIFY_API_SECRET;
-      // if (!appProxySecret || !validateAppProxySignature(req.originalUrl, appProxySecret)) {
-      //   console.error(`Invalid app proxy signature for shop: ${shop}`);
-      //   return res.status(403).send("Unauthorized proxy request");
-      // }
+      if (!validateAppProxySignature(req.originalUrl, secret)) {
+        console.error(`Invalid HMAC signature for proxy request from shop: ${shop}`);
+        return res.status(403).send("Invalid request signature");
+      }
+      
+      console.log(`✅ Proxy request validated for shop: ${shop} (HMAC + timestamp + session check)`);
       
       // Verify shop has an active session (is installed)
       const sessions = Array.from(inMemorySessionStorage.values());
