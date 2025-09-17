@@ -83,6 +83,44 @@
       initializeFinderPage(config, container);
     }
 
+    // Function to group consecutive years into ranges (e.g., [2020,2021,2022,2024] -> ["2020-2022", "2024"])
+    function groupYearsIntoRanges(years) {
+      if (years.length === 0) return [];
+      
+      const ranges = [];
+      let rangeStart = years[0];
+      let rangeEnd = years[0];
+      
+      for (let i = 1; i < years.length; i++) {
+        const currentYear = years[i];
+        const previousYear = years[i - 1];
+        
+        // Check if current year is consecutive to previous (remembering years are sorted newest first)
+        if (previousYear - currentYear === 1) {
+          // Consecutive year, extend the range
+          rangeEnd = currentYear;
+        } else {
+          // Non-consecutive, close current range and start new one
+          if (rangeStart === rangeEnd) {
+            ranges.push(rangeStart.toString());
+          } else {
+            ranges.push(`${rangeEnd}-${rangeStart}`); // Note: rangeEnd < rangeStart due to newest-first sorting
+          }
+          rangeStart = currentYear;
+          rangeEnd = currentYear;
+        }
+      }
+      
+      // Add the final range
+      if (rangeStart === rangeEnd) {
+        ranges.push(rangeStart.toString());
+      } else {
+        ranges.push(`${rangeEnd}-${rangeStart}`);
+      }
+      
+      return ranges;
+    }
+
     function initializeFinderPage(config, container) {
       // Load the main motorcycle finder
       fetch(`${config.apiBaseUrl}/api/motorcycles/makes`, { 
@@ -669,13 +707,28 @@
 
         if (!selectedMake || !selectedModel) return;
 
-        fetch(`${config.apiBaseUrl}/search-data?type=years&make=${encodeURIComponent(selectedMake)}&model=${encodeURIComponent(selectedModel)}`, { 
+        fetch(`${config.apiBaseUrl}/api/motorcycles?bikemake=${encodeURIComponent(selectedMake)}`, { 
           cache: 'no-store', 
           headers: { 'Cache-Control': 'no-cache' } 
         })
           .then(response => response.json())
-          .then(yearRanges => {
-            // yearRanges already come grouped from backend (e.g., ["2020-2023", "2018-2019"])
+          .then(motorcycles => {
+            // Filter motorcycles by model and extract unique years
+            const filteredMotorcycles = motorcycles.filter(m => 
+              m.bikemodel.toLowerCase() === selectedModel.toLowerCase()
+            );
+            const allYears = new Set();
+            filteredMotorcycles.forEach(motorcycle => {
+              // Add all years in the range from firstyear to lastyear
+              for (let year = motorcycle.firstyear; year <= motorcycle.lastyear; year++) {
+                allYears.add(year);
+              }
+            });
+            
+            // Convert to sorted array (newest first) and group into ranges
+            const sortedYears = Array.from(allYears).sort((a, b) => b - a);
+            const yearRanges = groupYearsIntoRanges(sortedYears);
+            
             yearRanges.forEach(yearRange => {
               const option = document.createElement('option');
               option.value = yearRange;
