@@ -3350,34 +3350,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const compatibleProducts = [];
 
-      // Check each product's compatibility by looking at motorcycle column values
+      // Check each product's compatibility by exact SKU matching
+      // Get all non-null part values from the motorcycle
+      const motorcyclePartValues = [];
+      for (const category of categoryTags) {
+        const columnName = category.categoryValue.toLowerCase();
+        const motorcycleValue = (motorcycle as any)[columnName];
+        if (motorcycleValue && motorcycleValue.trim() !== '') {
+          motorcyclePartValues.push(motorcycleValue.trim());
+        }
+      }
+
+      console.log(`🔍 Checking compatibility for motorcycle ${motorcycle.recid}: ${motorcycle.bikemake} ${motorcycle.bikemodel}`);
+      console.log(`🔍 Motorcycle part values:`, motorcyclePartValues);
+
       for (const product of allProducts) {
         let isCompatible = false;
 
-        // Check each part category to see if this motorcycle has a matching part
-        for (const category of categoryTags) {
-          const columnName = category.categoryValue.toLowerCase();
-          const motorcycleValue = (motorcycle as any)[columnName];
-          
-          // If motorcycle has a value for this part category, check if product matches
-          if (motorcycleValue && motorcycleValue.trim() !== '') {
-            // Parse product tags to see if it matches the motorcycle's part value
-            try {
-              const productTags = JSON.parse(category.productTags) as string[];
-              
-              // Check if any product tag matches the motorcycle's part value
-              if (productTags.some(tag => 
-                product.tags?.toLowerCase().includes(tag.toLowerCase()) ||
-                product.title?.toLowerCase().includes(tag.toLowerCase()) ||
-                product.sku?.toLowerCase().includes(tag.toLowerCase())
+        // Check if the main product SKU matches any motorcycle part value
+        if (motorcyclePartValues.some(partValue => 
+          product.sku && product.sku.toLowerCase() === partValue.toLowerCase()
+        )) {
+          isCompatible = true;
+          console.log(`✅ Product ${product.title} (${product.sku}) matches main SKU`);
+        }
+
+        // If not matched by main SKU, check variant SKUs
+        if (!isCompatible && product.variants) {
+          try {
+            const variants = JSON.parse(product.variants);
+            for (const variant of variants) {
+              if (variant.sku && motorcyclePartValues.some(partValue => 
+                variant.sku.toLowerCase() === partValue.toLowerCase()
               )) {
                 isCompatible = true;
+                console.log(`✅ Product ${product.title} variant (${variant.sku}) matches`);
                 break;
               }
-            } catch (e) {
-              // Skip if JSON parsing fails
-              continue;
             }
+          } catch (e) {
+            // Skip if JSON parsing fails
           }
         }
 
