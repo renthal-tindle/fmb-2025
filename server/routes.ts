@@ -3958,6 +3958,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch motorcycles" });
     }
   });
+
+  // App proxy route for motorcycle makes (used by finder page)
+  app.get("/api/proxy/api/motorcycles/makes", appProxySecurityMiddleware, async (req, res) => {
+    try {
+      const makes = await storage.getDistinctMotorcycleMakes();
+      res.json(makes);
+    } catch (error) {
+      console.error("Error fetching motorcycle makes via app proxy:", error);
+      res.status(500).json({ error: "Failed to fetch motorcycle makes" });
+    }
+  });
   
   // App proxy route for compatible parts (used by Theme App Extension)
   app.get("/api/proxy/api/customer/motorcycles/:recid/compatible-parts", appProxySecurityMiddleware, async (req, res) => {
