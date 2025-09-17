@@ -757,12 +757,21 @@
 
         results.innerHTML = '<div class="fmb-loading"><p>Finding your motorcycle...</p></div>';
 
-        fetch(`${config.apiBaseUrl}/api/motorcycles/search?make=${selectedMake}&model=${selectedModel}&year=${selectedYear}`, { 
-          cache: 'no-store', 
-          headers: { 'Cache-Control': 'no-cache' } 
+        fetch(`${config.apiBaseUrl}/search`, { 
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          body: JSON.stringify({
+            make: selectedMake,
+            model: selectedModel,
+            year: selectedYear
+          })
         })
           .then(response => response.json())
-          .then(motorcycles => {
+          .then(data => {
+            const motorcycles = data.motorcycles || [];
             if (motorcycles.length === 0) {
               results.innerHTML = '<div class="fmb-no-results"><p>No motorcycles found for this combination.</p></div>';
               return;
