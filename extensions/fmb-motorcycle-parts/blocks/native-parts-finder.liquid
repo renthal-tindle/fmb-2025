@@ -669,29 +669,17 @@
 
         if (!selectedMake || !selectedModel) return;
 
-        fetch(`${config.apiBaseUrl}/api/motorcycles?bikemake=${encodeURIComponent(selectedMake)}`, { 
+        fetch(`${config.apiBaseUrl}/search-data?type=years&make=${encodeURIComponent(selectedMake)}&model=${encodeURIComponent(selectedModel)}`, { 
           cache: 'no-store', 
           headers: { 'Cache-Control': 'no-cache' } 
         })
           .then(response => response.json())
-          .then(motorcycles => {
-            // Filter motorcycles by model and extract unique years
-            const filteredMotorcycles = motorcycles.filter(m => 
-              m.bikemodel.toLowerCase() === selectedModel.toLowerCase()
-            );
-            const allYears = new Set();
-            filteredMotorcycles.forEach(motorcycle => {
-              // Add all years in the range from firstyear to lastyear
-              for (let year = motorcycle.firstyear; year <= motorcycle.lastyear; year++) {
-                allYears.add(year);
-              }
-            });
-            // Convert to sorted array (newest first)
-            const sortedYears = Array.from(allYears).sort((a, b) => b - a);
-            sortedYears.forEach(year => {
+          .then(yearRanges => {
+            // yearRanges already come grouped from backend (e.g., ["2020-2023", "2018-2019"])
+            yearRanges.forEach(yearRange => {
               const option = document.createElement('option');
-              option.value = year;
-              option.textContent = year;
+              option.value = yearRange;
+              option.textContent = yearRange;
               yearSelect.appendChild(option);
             });
             yearSelect.disabled = false;
