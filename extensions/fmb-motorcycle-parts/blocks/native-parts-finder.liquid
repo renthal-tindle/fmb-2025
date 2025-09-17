@@ -43,7 +43,7 @@
     if (!container) return;
 
     const config = {
-      apiBaseUrl: '{{ api_base_url | default: "" }}' || 'https://56e00a98-ad08-48da-8c00-1d8f49a92d07-00-32mevip0hcwqx.spock.replit.dev',
+      apiBaseUrl: 'https://{{ shop.permanent_domain }}/apps/fit-my-bike',
       shopDomain: window.Shopify?.shop || '{{ shop.permanent_domain }}',
       autoDetectPage: {{ auto_detect_page }},
       blockId: blockId
