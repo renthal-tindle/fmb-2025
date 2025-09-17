@@ -649,6 +649,7 @@
               modelSelect.appendChild(option);
             });
             modelSelect.disabled = false;
+            modelSelect.closest('.fmb-form-group').classList.remove('disabled');
           })
           .catch(error => {
             console.error('Error loading models:', error);
@@ -679,6 +680,7 @@
               yearSelect.appendChild(option);
             });
             yearSelect.disabled = false;
+            yearSelect.closest('.fmb-form-group').classList.remove('disabled');
           })
           .catch(error => {
             console.error('Error loading years:', error);
