@@ -53,33 +53,30 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Form styling - clean and visible */
+/* Form styling - clean without borders */
 [data-fmb] .fmb-finder-form {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 1.5rem;
+  padding: 1rem 0;
   margin-bottom: 2rem;
 }
 
 [data-fmb] .fmb-quick-search {
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 1.25rem;
-  margin-bottom: 1.5rem;
+  padding: 1.5rem 0;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.2);
 }
 
 [data-fmb] .fmb-quick-search h3 {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.5rem 0;
   color: inherit;
 }
 
 [data-fmb] .fmb-quick-search p {
   color: inherit;
-  opacity: 0.8;
-  margin: 0 0 1rem 0;
-  font-size: 0.9rem;
+  opacity: 0.7;
+  margin: 0 0 1.25rem 0;
+  font-size: 0.95rem;
 }
 
 /* Search inputs - inherit theme input styling */
@@ -90,21 +87,22 @@
 [data-fmb] .fmb-search-input,
 [data-fmb] .fmb-select {
   width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  padding: 0.75rem 0.75rem;
+  border: none;
+  border-bottom: 2px solid rgba(128, 128, 128, 0.3);
+  border-radius: 0;
   font-family: inherit;
   font-size: inherit;
   color: inherit;
   background-color: transparent;
   box-sizing: border-box;
-  transition: border-color 0.15s ease-in-out;
+  transition: border-bottom-color 0.2s ease-in-out;
 }
 
 [data-fmb] .fmb-search-input:focus,
 [data-fmb] .fmb-select:focus {
   outline: 0;
-  border-color: #007bff;
+  border-bottom-color: #007bff;
 }
 
 [data-fmb] .fmb-select:disabled {
@@ -149,12 +147,20 @@
   border-bottom: none;
 }
 
+/* Filter search section */
+[data-fmb] .fmb-finder-form h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: inherit;
+}
+
 /* Form grid layout */
 [data-fmb] .fmb-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 [data-fmb] .fmb-form-group {
@@ -163,10 +169,10 @@
 }
 
 [data-fmb] .fmb-form-group label {
-  font-weight: var(--font-body-weight-bold, 600);
-  color: rgb(var(--color-foreground, 33 37 41));
+  font-weight: 500;
+  color: inherit;
   margin-bottom: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
 }
 
 /* Results styling - theme integrated */
