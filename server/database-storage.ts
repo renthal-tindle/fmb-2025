@@ -25,7 +25,7 @@ import {
   type InsertSearchAnalytics
 } from "@shared/schema";
 import { IStorage } from "./storage";
-import { fetchShopifyProductsByIds, getCurrentSession } from "./shopify-auth";
+import { fetchShopifyProductsByIds, getCurrentSession, fetchShopifyProducts } from "./shopify-auth";
 
 const sqlConnection = postgres(process.env.DATABASE_URL!, {
   prepare: false,
@@ -291,14 +291,40 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(motorcycles).where(and(...conditions));
   }
 
-  // Shopify Products
+  // Shopify Products - Fetches live data from Shopify API
   async getShopifyProducts(): Promise<ShopifyProduct[]> {
-    const products = await db.select().from(shopifyProducts);
-    // Parse variants JSON field back into objects
-    return products.map(product => ({
-      ...product,
-      variants: product.variants ? JSON.parse(product.variants) : null
-    }));
+    try {
+      // Get the current Shopify session
+      const session = getCurrentSession();
+      if (!session) {
+        console.warn('No Shopify session available for getShopifyProducts - returning empty array');
+        return [];
+      }
+      
+      // Fetch live product data from Shopify API
+      const shopifyResponse = await fetchShopifyProducts(session);
+      
+      // Transform Shopify API response to match our expected format
+      const products: ShopifyProduct[] = shopifyResponse.products?.map((product: any) => ({
+        id: product.id.toString(),
+        title: product.title,
+        description: product.body_html || null,
+        price: product.variants?.[0]?.price || '0.00',
+        sku: product.variants?.[0]?.sku || null,
+        imageUrl: product.images?.[0]?.src || null,
+        category: product.product_type || null,
+        tags: product.tags || '', // Shopify returns tags as comma-separated string
+        variants: JSON.stringify(product.variants || [])
+      })) || [];
+      
+      console.log(`✅ LIVE DATA: Fetched ${products.length} products from Shopify`);
+      return products;
+      
+    } catch (error) {
+      console.error('Failed to fetch live Shopify products:', error);
+      // Return empty array instead of throwing to prevent complete failure
+      return [];
+    }
   }
 
   async getShopifyProduct(id: string): Promise<ShopifyProduct | undefined> {
