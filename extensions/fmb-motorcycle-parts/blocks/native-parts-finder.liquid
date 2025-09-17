@@ -636,7 +636,7 @@
 
         if (!selectedMake) return;
 
-        fetch(`${config.apiBaseUrl}/api/proxy/search-data?type=models&make=${encodeURIComponent(selectedMake)}`, { 
+        fetch(`${config.apiBaseUrl}/search-data?type=models&make=${encodeURIComponent(selectedMake)}`, { 
           cache: 'no-store', 
           headers: { 'Cache-Control': 'no-cache' } 
         })
@@ -666,7 +666,7 @@
 
         if (!selectedMake || !selectedModel) return;
 
-        fetch(`${config.apiBaseUrl}/api/proxy/search-data?type=years&make=${encodeURIComponent(selectedMake)}&model=${encodeURIComponent(selectedModel)}`, { 
+        fetch(`${config.apiBaseUrl}/search-data?type=years&make=${encodeURIComponent(selectedMake)}&model=${encodeURIComponent(selectedModel)}`, { 
           cache: 'no-store', 
           headers: { 'Cache-Control': 'no-cache' } 
         })
