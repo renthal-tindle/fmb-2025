@@ -366,24 +366,43 @@
       
       const engineSize = motorcycle.bikeengine ? `${motorcycle.bikeengine}cc` : '';
       
-      // Generate navigation menu
-      const navigationMenu = `
-        <div class="fmb-navigation">
-          <nav class="fmb-nav-buttons">
-            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('handlebars').scrollIntoView({behavior: 'smooth'})">Handlebars</button>
-            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('front-sprocket').scrollIntoView({behavior: 'smooth'})">Front Sprocket</button>
-            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('rear-sprockets').scrollIntoView({behavior: 'smooth'})">Rear Sprockets</button>
-            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('chain').scrollIntoView({behavior: 'smooth'})">Chain</button>
-            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('brake-pads').scrollIntoView({behavior: 'smooth'})">Brake Pads</button>
-            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('bar-mounts').scrollIntoView({behavior: 'smooth'})">Bar Mounts</button>
-            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('drive-conversions').scrollIntoView({behavior: 'smooth'})">Drive Conversions</button>
-            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('others').scrollIntoView({behavior: 'smooth'})">Others</button>
-          </nav>
-        </div>
-      `;
-      
       // Filter and categorize parts
       const categorizedParts = categorizeParts(parts);
+      
+      // Generate navigation menu - only show buttons for categories with products
+      const navButtons = [];
+      if (categorizedParts.handlebars.length > 0) {
+        navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'handlebars\').scrollIntoView({behavior: \'smooth\'})">Handlebars</button>');
+      }
+      if (categorizedParts.frontSprocket.length > 0) {
+        navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'front-sprocket\').scrollIntoView({behavior: \'smooth\'})">Front Sprocket</button>');
+      }
+      if (categorizedParts.rearSprockets.length > 0) {
+        navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'rear-sprockets\').scrollIntoView({behavior: \'smooth\'})">Rear Sprockets</button>');
+      }
+      if (categorizedParts.chain.length > 0) {
+        navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'chain\').scrollIntoView({behavior: \'smooth\'})">Chain</button>');
+      }
+      if (categorizedParts.brakePads.length > 0) {
+        navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'brake-pads\').scrollIntoView({behavior: \'smooth\'})">Brake Pads</button>');
+      }
+      if (categorizedParts.barMounts.length > 0) {
+        navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'bar-mounts\').scrollIntoView({behavior: \'smooth\'})">Bar Mounts</button>');
+      }
+      if (categorizedParts.driveConversions.length > 0) {
+        navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'drive-conversions\').scrollIntoView({behavior: \'smooth\'})">Drive Conversions</button>');
+      }
+      if (categorizedParts.others.length > 0) {
+        navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'others\').scrollIntoView({behavior: \'smooth\'})">Others</button>');
+      }
+      
+      const navigationMenu = navButtons.length > 0 ? `
+        <div class="fmb-navigation">
+          <nav class="fmb-nav-buttons">
+            ${navButtons.join('\n            ')}
+          </nav>
+        </div>
+      ` : '';
       
       return `
         <div class="fmb-motorcycle-page">
