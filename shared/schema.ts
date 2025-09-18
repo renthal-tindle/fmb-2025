@@ -148,6 +148,13 @@ export type ShopifyProductWithVariants = ShopifyProduct & {
   variants?: ShopifyProductVariant[];
 };
 
+// Extended types for Shopify products with admin category information
+export type ShopifyProductWithCategory = ShopifyProduct & {
+  variants?: ShopifyProductVariant[];
+  adminCategory?: string; // The assignedSection from partCategoryTags (handlebars, frontSprocket, rearSprockets, etc.)
+  adminCategoryLabel?: string; // The categoryLabel from partCategoryTags for display
+};
+
 export type InsertPartMapping = z.infer<typeof insertPartMappingSchema>;
 export type PartMapping = typeof partMappings.$inferSelect;
 

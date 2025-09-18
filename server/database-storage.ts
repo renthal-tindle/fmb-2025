@@ -12,6 +12,7 @@ import {
   type Motorcycle,
   type InsertMotorcycle,
   type ShopifyProduct,
+  type ShopifyProductWithCategory,
   type InsertShopifyProduct,
   type PartMapping,
   type InsertPartMapping,
@@ -388,8 +389,8 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Compatible Parts - Fetches live data from Shopify API
-  async getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProduct[]> {
+  // Compatible Parts - Fetches live data from Shopify API with admin category information
+  async getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProductWithCategory[]> {
     try {
       // Step 1: Get the part mappings for this motorcycle (which products are compatible)
       const mappings = await db
@@ -418,21 +419,54 @@ export class DatabaseStorage implements IStorage {
         return [];
       }
       
-      // Step 4: Fetch live product data from Shopify API
+      // Step 4: Fetch part category tags to determine admin categories
+      const categoryTags = await db.select().from(partCategoryTags);
+      
+      // Step 5: Fetch live product data from Shopify API
       const shopifyResponse = await fetchShopifyProductsByIds(session, productIds);
       
-      // Step 5: Transform Shopify API response to match our expected format
-      const products: ShopifyProduct[] = shopifyResponse.products?.map((product: any) => ({
-        id: product.id.toString(),
-        title: product.title,
-        description: product.body_html || null,
-        price: product.variants?.[0]?.price || '0.00',
-        sku: product.variants?.[0]?.sku || null,
-        imageUrl: product.images?.[0]?.src || null,
-        category: product.product_type || null,
-        tags: product.tags || '', // Shopify returns tags as comma-separated string
-        variants: JSON.stringify(product.variants || [])
-      })) || [];
+      // Step 6: Transform Shopify API response and determine admin categories
+      const products: ShopifyProductWithCategory[] = shopifyResponse.products?.map((product: any) => {
+        const productTags = (product.tags || '').toLowerCase().split(',').map((tag: string) => tag.trim());
+        
+        // Find matching category by checking if any product tags match the category's productTags
+        let adminCategory = 'others'; // Default category
+        let adminCategoryLabel = 'Others'; // Default label
+        
+        for (const categoryTag of categoryTags) {
+          if (categoryTag.assignedSection) {
+            const categoryProductTags = JSON.parse(categoryTag.productTags || '[]')
+              .map((tag: string) => tag.toLowerCase().trim());
+            
+            // Check if any product tag matches any category tag
+            const hasMatch = productTags.some(productTag => 
+              categoryProductTags.some((categoryTag: string) => 
+                productTag.includes(categoryTag) || categoryTag.includes(productTag)
+              )
+            );
+            
+            if (hasMatch) {
+              adminCategory = categoryTag.assignedSection;
+              adminCategoryLabel = categoryTag.categoryLabel;
+              break; // Use first match
+            }
+          }
+        }
+        
+        return {
+          id: product.id.toString(),
+          title: product.title,
+          description: product.body_html || null,
+          price: product.variants?.[0]?.price || '0.00',
+          sku: product.variants?.[0]?.sku || null,
+          imageUrl: product.images?.[0]?.src || null,
+          category: product.product_type || null,
+          tags: product.tags || '', // Shopify returns tags as comma-separated string
+          variants: JSON.stringify(product.variants || []),
+          adminCategory: adminCategory,
+          adminCategoryLabel: adminCategoryLabel
+        };
+      }) || [];
       
       console.log(`✅ LIVE DATA: Found ${products.length} compatible parts for motorcycle ${motorcycleRecid}`);
       return products;
