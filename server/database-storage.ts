@@ -485,22 +485,67 @@ export class DatabaseStorage implements IStorage {
         let adminCategory = 'others'; // Default category
         let adminCategoryLabel = 'Others'; // Default label
         
-        for (const categoryTag of categoryTags) {
-          if (categoryTag.assignedSection) {
-            const categoryProductTags = JSON.parse(categoryTag.productTags || '[]')
-              .map((tag: string) => tag.toLowerCase().trim());
-            
-            // Check if any product tag matches any category tag
-            const hasMatch = productTags.some((productTag: string) => 
-              categoryProductTags.some((categoryTag: string) => 
-                productTag.includes(categoryTag) || categoryTag.includes(productTag)
-              )
-            );
-            
-            if (hasMatch) {
-              adminCategory = categoryTag.assignedSection;
-              adminCategoryLabel = categoryTag.categoryLabel;
-              break; // Use first match
+        // First, check if this is an OE part by comparing SKUs with motorcycle OE fields
+        let isOEPart = false;
+        let oeFieldMatch = null;
+        
+        // Check main product SKU against OE values
+        const mainSKU = product.sku;
+        if (mainSKU) {
+          for (const categoryTag of categoryTags) {
+            if (categoryTag.categoryValue.startsWith('oe_')) {
+              const oeFieldValue = (motorcycle as any)[categoryTag.categoryValue.toLowerCase()];
+              if (oeFieldValue && typeof oeFieldValue === 'string' && oeFieldValue.toLowerCase().trim() === mainSKU.toLowerCase().trim()) {
+                isOEPart = true;
+                oeFieldMatch = categoryTag;
+                adminCategory = categoryTag.assignedSection || 'others';
+                adminCategoryLabel = categoryTag.categoryLabel || 'Others';
+                break;
+              }
+            }
+          }
+        }
+        
+        // Check variant SKUs against OE values if no main SKU match
+        if (!isOEPart && product.variants) {
+          for (const variant of product.variants) {
+            if (variant.sku) {
+              for (const categoryTag of categoryTags) {
+                if (categoryTag.categoryValue.startsWith('oe_')) {
+                  const oeFieldValue = (motorcycle as any)[categoryTag.categoryValue.toLowerCase()];
+                  if (oeFieldValue && typeof oeFieldValue === 'string' && oeFieldValue.toLowerCase().trim() === variant.sku.toLowerCase().trim()) {
+                    isOEPart = true;
+                    oeFieldMatch = categoryTag;
+                    adminCategory = categoryTag.assignedSection || 'others';
+                    adminCategoryLabel = categoryTag.categoryLabel || 'Others';
+                    break;
+                  }
+                }
+              }
+              if (isOEPart) break;
+            }
+          }
+        }
+        
+        // If not an OE part, use the standard tag matching logic
+        if (!isOEPart) {
+          for (const categoryTag of categoryTags) {
+            if (categoryTag.assignedSection) {
+              const categoryProductTags = JSON.parse(categoryTag.productTags || '[]')
+                .map((tag: string) => tag.toLowerCase().trim());
+              
+              // Check if any product tag matches any category tag
+              const hasMatch = productTags.some((productTag: string) => 
+                categoryProductTags.some((categoryTag: string) => 
+                  productTag.includes(categoryTag) || categoryTag.includes(productTag)
+                )
+              );
+              
+              if (hasMatch) {
+                adminCategory = categoryTag.assignedSection;
+                adminCategoryLabel = categoryTag.categoryLabel;
+                break; // Use first match
+              }
             }
           }
         }
@@ -514,7 +559,7 @@ export class DatabaseStorage implements IStorage {
           imageUrl: product.images?.[0]?.src || null,
           category: product.product_type || null,
           tags: product.tags || '', // Shopify returns tags as comma-separated string
-          variants: JSON.stringify(product.variants || []),
+          variants: product.variants || [],
           adminCategory: adminCategory,
           adminCategoryLabel: adminCategoryLabel
         };
