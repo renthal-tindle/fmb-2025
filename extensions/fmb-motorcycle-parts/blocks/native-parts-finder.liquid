@@ -395,7 +395,7 @@
           ${navigationMenu}
           
           <div class="fmb-parts-content">
-            ${generateDirectReplacementSection(categorizedParts)}
+            ${generateDirectReplacementSection(categorizedParts, motorcycle)}
             ${generateCategorySectionDynamic('handlebars', categorizedParts.handlebars)}
             ${generateCategorySectionDynamic('front-sprocket', categorizedParts.frontSprocket)}
             ${generateCategorySectionDynamic('rear-sprockets', categorizedParts.rearSprockets)}
@@ -472,7 +472,8 @@
       }
     }
 
-    function generateDirectReplacementSection(categorizedParts) {
+    function generateDirectReplacementSection(categorizedParts, motorcycle) {
+      // Get all compatible parts
       const allParts = [
         ...categorizedParts.handlebars,
         ...categorizedParts.frontSprocket,
@@ -484,8 +485,38 @@
         ...categorizedParts.others
       ];
       
-      if (allParts.length === 0) {
-        return '<div class="fmb-no-parts"><p>No compatible parts found for this motorcycle.</p></div>';
+      // Filter to only show OE (Original Equipment) parts that match motorcycle's oe_ columns
+      const oePartSkus = [];
+      if (motorcycle.oe_handlebar) oePartSkus.push(motorcycle.oe_handlebar);
+      if (motorcycle.oe_fcw) oePartSkus.push(motorcycle.oe_fcw);
+      if (motorcycle.oe_rcw) oePartSkus.push(motorcycle.oe_rcw);
+      if (motorcycle.oe_barmount) oePartSkus.push(motorcycle.oe_barmount);
+      if (motorcycle.oe_chain) oePartSkus.push(motorcycle.oe_chain);
+      if (motorcycle.front_brakepads) oePartSkus.push(motorcycle.front_brakepads);
+      if (motorcycle.rear_brakepads) oePartSkus.push(motorcycle.rear_brakepads);
+      
+      // Filter parts to only include those with SKUs that match OE part values
+      const oeOnlyParts = allParts.filter(part => {
+        // Check main product SKU
+        if (oePartSkus.includes(part.sku)) {
+          return true;
+        }
+        
+        // Check variant SKUs
+        if (part.variants) {
+          try {
+            const variants = JSON.parse(part.variants);
+            return variants.some(variant => oePartSkus.includes(variant.sku));
+          } catch (e) {
+            return false;
+          }
+        }
+        
+        return false;
+      });
+      
+      if (oeOnlyParts.length === 0) {
+        return '<div class="fmb-no-parts"><p>No original equipment replacement parts found for this motorcycle.</p></div>';
       }
       
       return `
@@ -503,7 +534,7 @@
                 </tr>
               </thead>
               <tbody>
-                ${allParts
+                ${oeOnlyParts
                   .map(part => ({ ...part, categoryInfo: getCategoryInfo(part, categorizedParts) }))
                   .sort((a, b) => a.categoryInfo.order - b.categoryInfo.order)
                   .map(part => {
