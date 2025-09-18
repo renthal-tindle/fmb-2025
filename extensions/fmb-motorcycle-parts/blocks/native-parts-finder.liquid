@@ -251,7 +251,7 @@
       
       // Update meta description
       const existingMeta = document.querySelector('meta[name="description"]');
-      const metaContent = `Find compatible motorcycle parts for ${motorcycle.bikemake} ${motorcycle.bikemodel} (${bikeYear}). ${parts.length} parts available including sprockets, chains, handlebars and more.`;
+      const metaContent = `Find compatible motorcycle parts for ${motorcycle.bikemake} ${motorcycle.bikemodel} (${bikeYear}). ${parts.length} parts available including handlebars, chainwheels, chains, brake pads and more.`;
       
       if (existingMeta) {
         existingMeta.setAttribute('content', metaContent);
@@ -370,11 +370,13 @@
       const navigationMenu = `
         <div class="fmb-navigation" style="background: #f8f9fa; padding: 10px; margin: 15px 0; border-radius: 5px;">
           <nav style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
-            <a href="#front-sprockets" style="text-decoration: none; color: #333; font-weight: 500;">Front Sprockets</a>
-            <a href="#rear-sprockets" style="text-decoration: none; color: #333; font-weight: 500;">Rear Sprockets</a>
-            <a href="#chains" style="text-decoration: none; color: #333; font-weight: 500;">Chains</a>
             <a href="#handlebars" style="text-decoration: none; color: #333; font-weight: 500;">Handlebars</a>
-            <a href="#grips" style="text-decoration: none; color: #333; font-weight: 500;">Grips</a>
+            <a href="#front-chainwheels" style="text-decoration: none; color: #333; font-weight: 500;">Front Chainwheels</a>
+            <a href="#rear-chainwheels" style="text-decoration: none; color: #333; font-weight: 500;">Rear Chainwheels</a>
+            <a href="#chain" style="text-decoration: none; color: #333; font-weight: 500;">Chain</a>
+            <a href="#front-brake-pads" style="text-decoration: none; color: #333; font-weight: 500;">Front Brake Pads</a>
+            <a href="#rear-brake-pads" style="text-decoration: none; color: #333; font-weight: 500;">Rear Brake Pads</a>
+            <a href="#lock-on-cam" style="text-decoration: none; color: #333; font-weight: 500;">Lock-On Cam</a>
             <a href="#accessories" style="text-decoration: none; color: #333; font-weight: 500;">Accessories</a>
           </nav>
         </div>
@@ -394,11 +396,13 @@
           
           <div class="fmb-parts-content">
             ${generateDirectReplacementSection(categorizedParts)}
-            ${generateCategorySection('front-sprockets', 'Front Sprockets', categorizedParts.frontSprockets)}
-            ${generateCategorySection('rear-sprockets', 'Rear Sprockets', categorizedParts.rearSprockets)}
-            ${generateCategorySection('chains', 'Chains', categorizedParts.chains)}
             ${generateCategorySection('handlebars', 'Handlebars', categorizedParts.handlebars)}
-            ${generateCategorySection('grips', 'Grips', categorizedParts.grips)}
+            ${generateCategorySection('front-chainwheels', 'Front Chainwheels', categorizedParts.frontChainwheels)}
+            ${generateCategorySection('rear-chainwheels', 'Rear Chainwheels', categorizedParts.rearChainwheels)}
+            ${generateCategorySection('chain', 'Chain', categorizedParts.chain)}
+            ${generateCategorySection('front-brake-pads', 'Front Brake Pads', categorizedParts.frontBrakePads)}
+            ${generateCategorySection('rear-brake-pads', 'Rear Brake Pads', categorizedParts.rearBrakePads)}
+            ${generateCategorySection('lock-on-cam', 'Lock-On Cam', categorizedParts.lockOnCam)}
             ${generateCategorySection('accessories', 'Accessories', categorizedParts.accessories)}
           </div>
         </div>
@@ -407,34 +411,43 @@
     
     function categorizeParts(parts) {
       const categorized = {
-        frontSprockets: [],
-        rearSprockets: [],
-        chains: [],
         handlebars: [],
-        grips: [],
+        frontChainwheels: [],
+        rearChainwheels: [],
+        chain: [],
+        frontBrakePads: [],
+        rearBrakePads: [],
+        lockOnCam: [],
         accessories: []
       };
       
       parts.forEach(part => {
         const title = part.title.toLowerCase();
         
-        if (title.includes('front') && title.includes('sprocket')) {
-          categorized.frontSprockets.push(part);
-        } else if (title.includes('rear') && title.includes('sprocket')) {
-          categorized.rearSprockets.push(part);
-        } else if (title.includes('sprocket')) {
+        if (title.includes('handlebar') || title.includes('bar')) {
+          categorized.handlebars.push(part);
+        } else if (title.includes('front') && (title.includes('sprocket') || title.includes('chainwheel'))) {
+          categorized.frontChainwheels.push(part);
+        } else if (title.includes('rear') && (title.includes('sprocket') || title.includes('chainwheel'))) {
+          categorized.rearChainwheels.push(part);
+        } else if (title.includes('sprocket') || title.includes('chainwheel')) {
           // If not specifically front or rear, try to categorize by part number
           if (part.sku && part.sku.includes('292')) {
-            categorized.frontSprockets.push(part);
+            categorized.frontChainwheels.push(part);
           } else {
-            categorized.rearSprockets.push(part);
+            categorized.rearChainwheels.push(part);
           }
         } else if (title.includes('chain')) {
-          categorized.chains.push(part);
-        } else if (title.includes('handlebar') || title.includes('bar')) {
-          categorized.handlebars.push(part);
-        } else if (title.includes('grip')) {
-          categorized.grips.push(part);
+          categorized.chain.push(part);
+        } else if (title.includes('front') && (title.includes('brake') || title.includes('pad'))) {
+          categorized.frontBrakePads.push(part);
+        } else if (title.includes('rear') && (title.includes('brake') || title.includes('pad'))) {
+          categorized.rearBrakePads.push(part);
+        } else if (title.includes('brake') || title.includes('pad')) {
+          // Default brake pads to front if not specified
+          categorized.frontBrakePads.push(part);
+        } else if (title.includes('grip') || title.includes('lock-on') || title.includes('cam')) {
+          categorized.lockOnCam.push(part);
         } else {
           categorized.accessories.push(part);
         }
@@ -443,13 +456,38 @@
       return categorized;
     }
     
+    // Function to get category name and order for a part
+    function getCategoryInfo(part, categorizedParts) {
+      const title = part.title.toLowerCase();
+      
+      if (categorizedParts.handlebars.includes(part)) {
+        return { name: 'Handlebars', order: 1, categoryParts: categorizedParts.handlebars };
+      } else if (categorizedParts.frontChainwheels.includes(part)) {
+        return { name: 'Front Chainwheels', order: 2, categoryParts: categorizedParts.frontChainwheels };
+      } else if (categorizedParts.rearChainwheels.includes(part)) {
+        return { name: 'Rear Chainwheels', order: 3, categoryParts: categorizedParts.rearChainwheels };
+      } else if (categorizedParts.chain.includes(part)) {
+        return { name: 'Chain', order: 4, categoryParts: categorizedParts.chain };
+      } else if (categorizedParts.frontBrakePads.includes(part)) {
+        return { name: 'Front Brake Pads', order: 5, categoryParts: categorizedParts.frontBrakePads };
+      } else if (categorizedParts.rearBrakePads.includes(part)) {
+        return { name: 'Rear Brake Pads', order: 6, categoryParts: categorizedParts.rearBrakePads };
+      } else if (categorizedParts.lockOnCam.includes(part)) {
+        return { name: 'Lock-On Cam', order: 7, categoryParts: categorizedParts.lockOnCam };
+      } else {
+        return { name: 'Accessories', order: 8, categoryParts: categorizedParts.accessories };
+      }
+    }
+
     function generateDirectReplacementSection(categorizedParts) {
       const allParts = [
-        ...categorizedParts.frontSprockets,
-        ...categorizedParts.rearSprockets,
-        ...categorizedParts.chains,
         ...categorizedParts.handlebars,
-        ...categorizedParts.grips,
+        ...categorizedParts.frontChainwheels,
+        ...categorizedParts.rearChainwheels,
+        ...categorizedParts.chain,
+        ...categorizedParts.frontBrakePads,
+        ...categorizedParts.rearBrakePads,
+        ...categorizedParts.lockOnCam,
         ...categorizedParts.accessories
       ];
       
@@ -464,31 +502,48 @@
             <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
               <thead>
                 <tr style="border-bottom: 2px solid #dee2e6;">
+                  <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Category</th>
                   <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Part Number</th>
                   <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Description</th>
-                  <th style="padding: 12px; text-align: right; border: 1px solid #dee2e6;">Price</th>
-                  <th style="padding: 12px; text-align: center; border: 1px solid #dee2e6;">Action</th>
+                  <th style="padding: 12px; text-align: center; border: 1px solid #dee2e6;">Add to Cart</th>
+                  <th style="padding: 12px; text-align: center; border: 1px solid #dee2e6;">More Options</th>
                 </tr>
               </thead>
               <tbody>
-                ${allParts.map(part => `
-                  <tr style="border-bottom: 1px solid #dee2e6;">
-                    <td style="padding: 12px; border: 1px solid #dee2e6; font-weight: 500;">${part.sku}</td>
-                    <td style="padding: 12px; border: 1px solid #dee2e6;">
-                      <div>
-                        <a href="${part.url}" style="color: #007bff; text-decoration: none; font-weight: 500;">${part.title}</a>
-                      </div>
-                    </td>
-                    <td style="padding: 12px; border: 1px solid #dee2e6; text-align: right; font-weight: 500;">£${part.price}</td>
-                    <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">
-                      <button class="fmb-add-to-cart-btn" 
-                              data-variant-id="${part.variants[0]?.id}" 
-                              style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">
-                        Add to Cart
-                      </button>
-                    </td>
-                  </tr>
-                `).join('')}
+                ${allParts
+                  .map(part => ({ ...part, categoryInfo: getCategoryInfo(part, categorizedParts) }))
+                  .sort((a, b) => a.categoryInfo.order - b.categoryInfo.order)
+                  .map(part => {
+                    const categoryInfo = part.categoryInfo;
+                    const moreOptionsCount = categoryInfo.categoryParts.length - 1;
+                    const categoryId = categoryInfo.name.toLowerCase().replace(/\s+/g, '-');
+                    
+                    return `
+                      <tr style="border-bottom: 1px solid #dee2e6;">
+                        <td style="padding: 12px; border: 1px solid #dee2e6; font-weight: 500;">${categoryInfo.name}</td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6; font-weight: 500;">${part.sku}</td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">
+                          <div>
+                            <a href="${part.url}" style="color: #007bff; text-decoration: none; font-weight: 500;">${part.title}</a>
+                            <div style="font-size: 14px; color: #666; margin-top: 4px;">£${part.price}</div>
+                          </div>
+                        </td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">
+                          <button class="fmb-add-to-cart-btn" 
+                                  data-variant-id="${part.variants[0]?.id}" 
+                                  style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                            Add to Cart
+                          </button>
+                        </td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">
+                          ${moreOptionsCount > 0 ? 
+                            `<a href="#${categoryId}" style="color: #007bff; text-decoration: none; font-weight: 500;">View ${moreOptionsCount} more</a>` : 
+                            '<span style="color: #999;">-</span>'
+                          }
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
               </tbody>
             </table>
           </div>
