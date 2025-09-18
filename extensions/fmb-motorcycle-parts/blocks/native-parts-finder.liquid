@@ -368,16 +368,16 @@
       
       // Generate navigation menu
       const navigationMenu = `
-        <div class="fmb-navigation" style="background: #f8f9fa; padding: 10px; margin: 15px 0; border-radius: 5px;">
-          <nav style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
-            <a href="#handlebars" style="text-decoration: none; color: #333; font-weight: 500;">Handlebars</a>
-            <a href="#front-sprocket" style="text-decoration: none; color: #333; font-weight: 500;">Front Sprocket</a>
-            <a href="#rear-sprockets" style="text-decoration: none; color: #333; font-weight: 500;">Rear Sprockets</a>
-            <a href="#chain" style="text-decoration: none; color: #333; font-weight: 500;">Chain</a>
-            <a href="#brake-pads" style="text-decoration: none; color: #333; font-weight: 500;">Brake Pads</a>
-            <a href="#bar-mounts" style="text-decoration: none; color: #333; font-weight: 500;">Bar Mounts</a>
-            <a href="#drive-conversions" style="text-decoration: none; color: #333; font-weight: 500;">Drive Conversions</a>
-            <a href="#others" style="text-decoration: none; color: #333; font-weight: 500;">Others</a>
+        <div class="fmb-navigation">
+          <nav class="fmb-nav-buttons">
+            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('handlebars').scrollIntoView({behavior: 'smooth'})">Handlebars</button>
+            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('front-sprocket').scrollIntoView({behavior: 'smooth'})">Front Sprocket</button>
+            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('rear-sprockets').scrollIntoView({behavior: 'smooth'})">Rear Sprockets</button>
+            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('chain').scrollIntoView({behavior: 'smooth'})">Chain</button>
+            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('brake-pads').scrollIntoView({behavior: 'smooth'})">Brake Pads</button>
+            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('bar-mounts').scrollIntoView({behavior: 'smooth'})">Bar Mounts</button>
+            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('drive-conversions').scrollIntoView({behavior: 'smooth'})">Drive Conversions</button>
+            <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById('others').scrollIntoView({behavior: 'smooth'})">Others</button>
           </nav>
         </div>
       `;
@@ -549,7 +549,6 @@
                         <td style="padding: 12px; border: 1px solid #dee2e6;">
                           <div>
                             <a href="${part.url}" style="color: #007bff; text-decoration: none; font-weight: 500;">${part.title}</a>
-                            <div style="font-size: 14px; color: #666; margin-top: 4px;">£${part.price}</div>
                           </div>
                         </td>
                         <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">

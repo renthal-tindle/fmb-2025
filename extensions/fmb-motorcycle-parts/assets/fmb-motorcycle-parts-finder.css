@@ -296,7 +296,25 @@
 
 [data-fmb] .fmb-part-sku {
   color: rgba(var(--color-foreground, 33 37 41), 0.6);
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Menlo, monospace;
+}
+
+/* Navigation menu styling */
+[data-fmb] .fmb-navigation {
+  background: #f8f9fa;
+  padding: 10px;
+  margin: 15px 0;
+  border-radius: 5px;
+}
+
+[data-fmb] .fmb-nav-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+}
+
+[data-fmb] .fmb-nav-btn {
+  margin: 0 !important; /* Override any default button margins */
 }
 
 [data-fmb] .fmb-part-price {
