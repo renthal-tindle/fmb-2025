@@ -48,8 +48,13 @@
 }
 
 @keyframes fmb-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Form styling - clean without borders */
@@ -299,12 +304,7 @@
 }
 
 /* Navigation menu styling */
-[data-fmb] .fmb-navigation {
-  background: #f8f9fa;
-  padding: 10px;
-  margin: 15px 0;
-  border-radius: 5px;
-}
+[data-fmb] .fmb-navigation {}
 
 [data-fmb] .fmb-nav-buttons {
   display: flex;
@@ -314,7 +314,15 @@
 }
 
 [data-fmb] .fmb-nav-btn {
-  margin: 0 !important; /* Override any default button margins */
+  margin: 0 !important;
+  /* Override any default button margins */
+  background: #F00;
+  border: 0;
+  color: #FFF;
+  padding: 10px 25px;
+  font-size: 1.5rem;
+  letter-spacing: .1rem;
+  font-family: Assistant, sans-serif;
 }
 
 [data-fmb] .fmb-part-price {
@@ -336,7 +344,7 @@
   text-align: center;
   cursor: pointer;
   transition: all 0.15s ease-in-out;
-  
+
   background-color: rgb(var(--color-button, 13 110 253));
   color: rgb(var(--color-button-text, 255 255 255));
 }
@@ -373,37 +381,38 @@
   [data-fmb] .fmb-native-parts-finder {
     padding: 1rem;
   }
-  
+
   [data-fmb] .fmb-form-grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
   }
-  
+
   [data-fmb] .fmb-parts-table th,
   [data-fmb] .fmb-parts-table td {
     padding: 0.5rem;
   }
-  
+
   [data-fmb] .fmb-part-image {
     width: 50px;
     height: 50px;
   }
-  
+
   [data-fmb] .fmb-native-title {
     /* inherit theme title size */
   }
 }
 
 @media (max-width: 480px) {
+
   [data-fmb] .fmb-finder-form,
   [data-fmb] .fmb-quick-search {
     padding: 1rem;
   }
-  
+
   [data-fmb] .fmb-parts-table {
     /* inherit theme font size */
   }
-  
+
   [data-fmb] .fmb-parts-table th,
   [data-fmb] .fmb-parts-table td {
     padding: 0.5rem 0.25rem;
@@ -420,11 +429,12 @@
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
+
   [data-fmb] .fmb-finder-form,
   [data-fmb] .fmb-parts-container {
     border-width: 2px;
   }
-  
+
   [data-fmb] .fmb-search-input,
   [data-fmb] .fmb-select {
     border-width: 2px;
@@ -436,16 +446,23 @@
   [data-fmb] .fmb-loading-spinner {
     animation: none;
   }
-  
+
   [data-fmb] .fmb-loading-spinner {
     animation: fmb-pulse 2s ease-in-out infinite;
   }
-  
+
   @keyframes fmb-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
   }
-  
+
   [data-fmb] .fmb-view-button:hover {
     transform: none;
   }
