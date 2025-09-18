@@ -3328,7 +3328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Customer API: Get compatible parts for a motorcycle
+  // Customer API: Get compatible parts for a motorcycle (using admin categories)
   app.get("/api/customer/motorcycles/:recid/compatible-parts", async (req, res) => {
     try {
       const recid = parseInt(req.params.recid);
@@ -3342,66 +3342,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Motorcycle not found" });
       }
 
-      // Get all products and check which ones have compatible parts for this motorcycle
-      const [allProducts, categoryTags] = await Promise.all([
-        storage.getShopifyProducts(),
-        storage.getPartCategoryTags()
-      ]);
+      // Use the updated getCompatibleParts method that includes admin category information
+      const parts = await storage.getCompatibleParts(recid);
+      
+      console.log(`✅ ADMIN CATEGORIES: Found ${parts.length} compatible parts for motorcycle ${motorcycle.recid}: ${motorcycle.bikemake} ${motorcycle.bikemodel}`);
+      console.log('📂 Part categories:', parts.map(p => ({ sku: p.sku, adminCategory: p.adminCategory, adminCategoryLabel: p.adminCategoryLabel })));
 
-      const compatibleProducts = [];
-
-      // Check each product's compatibility by exact SKU matching
-      // Get all non-null part values from the motorcycle
-      const motorcyclePartValues = [];
-      for (const category of categoryTags) {
-        const columnName = category.categoryValue.toLowerCase();
-        const motorcycleValue = (motorcycle as any)[columnName];
-        if (motorcycleValue && motorcycleValue.trim() !== '') {
-          motorcyclePartValues.push(motorcycleValue.trim());
-        }
-      }
-
-      console.log(`🔍 Checking compatibility for motorcycle ${motorcycle.recid}: ${motorcycle.bikemake} ${motorcycle.bikemodel}`);
-      console.log(`🔍 Motorcycle part values:`, motorcyclePartValues);
-
-      for (const product of allProducts) {
-        let isCompatible = false;
-
-        // Check if the main product SKU matches any motorcycle part value
-        if (motorcyclePartValues.some(partValue => 
-          product.sku && product.sku.toLowerCase() === partValue.toLowerCase()
-        )) {
-          isCompatible = true;
-          console.log(`✅ Product ${product.title} (${product.sku}) matches main SKU`);
-        }
-
-        // If not matched by main SKU, check variant SKUs
-        if (!isCompatible && product.variants) {
-          try {
-            const variants = JSON.parse(product.variants);
-            for (const variant of variants) {
-              if (variant.sku && motorcyclePartValues.some(partValue => 
-                variant.sku.toLowerCase() === partValue.toLowerCase()
-              )) {
-                isCompatible = true;
-                console.log(`✅ Product ${product.title} variant (${variant.sku}) matches`);
-                break;
-              }
-            }
-          } catch (e) {
-            // Skip if JSON parsing fails
-          }
-        }
-
-        if (isCompatible) {
-          compatibleProducts.push({
-            ...product,
-            compatibility: `Compatible with ${motorcycle.bikemake} ${motorcycle.bikemodel} (${motorcycle.firstyear}-${motorcycle.lastyear})`
-          });
-        }
-      }
-
-      res.json(compatibleProducts);
+      res.json(parts);
     } catch (error) {
       console.error('Compatible parts error:', error);
       res.status(500).json({ message: "Failed to fetch compatible parts" });

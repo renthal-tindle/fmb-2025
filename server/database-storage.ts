@@ -439,7 +439,7 @@ export class DatabaseStorage implements IStorage {
               .map((tag: string) => tag.toLowerCase().trim());
             
             // Check if any product tag matches any category tag
-            const hasMatch = productTags.some(productTag => 
+            const hasMatch = productTags.some((productTag: string) => 
               categoryProductTags.some((categoryTag: string) => 
                 productTag.includes(categoryTag) || categoryTag.includes(productTag)
               )

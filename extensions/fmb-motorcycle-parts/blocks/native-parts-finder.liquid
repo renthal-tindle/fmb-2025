@@ -251,7 +251,7 @@
       
       // Update meta description
       const existingMeta = document.querySelector('meta[name="description"]');
-      const metaContent = `Find compatible motorcycle parts for ${motorcycle.bikemake} ${motorcycle.bikemodel} (${bikeYear}). ${parts.length} parts available including handlebars, chainwheels, chains, brake pads and more.`;
+      const metaContent = `Find compatible motorcycle parts for ${motorcycle.bikemake} ${motorcycle.bikemodel} (${bikeYear}). ${parts.length} parts available including handlebars, sprockets, chains, brake pads, bar mounts and more.`;
       
       if (existingMeta) {
         existingMeta.setAttribute('content', metaContent);
@@ -371,13 +371,13 @@
         <div class="fmb-navigation" style="background: #f8f9fa; padding: 10px; margin: 15px 0; border-radius: 5px;">
           <nav style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
             <a href="#handlebars" style="text-decoration: none; color: #333; font-weight: 500;">Handlebars</a>
-            <a href="#front-chainwheels" style="text-decoration: none; color: #333; font-weight: 500;">Front Chainwheels</a>
-            <a href="#rear-chainwheels" style="text-decoration: none; color: #333; font-weight: 500;">Rear Chainwheels</a>
+            <a href="#front-sprocket" style="text-decoration: none; color: #333; font-weight: 500;">Front Sprocket</a>
+            <a href="#rear-sprockets" style="text-decoration: none; color: #333; font-weight: 500;">Rear Sprockets</a>
             <a href="#chain" style="text-decoration: none; color: #333; font-weight: 500;">Chain</a>
-            <a href="#front-brake-pads" style="text-decoration: none; color: #333; font-weight: 500;">Front Brake Pads</a>
-            <a href="#rear-brake-pads" style="text-decoration: none; color: #333; font-weight: 500;">Rear Brake Pads</a>
-            <a href="#lock-on-cam" style="text-decoration: none; color: #333; font-weight: 500;">Lock-On Cam</a>
-            <a href="#accessories" style="text-decoration: none; color: #333; font-weight: 500;">Accessories</a>
+            <a href="#brake-pads" style="text-decoration: none; color: #333; font-weight: 500;">Brake Pads</a>
+            <a href="#bar-mounts" style="text-decoration: none; color: #333; font-weight: 500;">Bar Mounts</a>
+            <a href="#drive-conversions" style="text-decoration: none; color: #333; font-weight: 500;">Drive Conversions</a>
+            <a href="#others" style="text-decoration: none; color: #333; font-weight: 500;">Others</a>
           </nav>
         </div>
       `;
@@ -396,14 +396,14 @@
           
           <div class="fmb-parts-content">
             ${generateDirectReplacementSection(categorizedParts)}
-            ${generateCategorySection('handlebars', 'Handlebars', categorizedParts.handlebars)}
-            ${generateCategorySection('front-chainwheels', 'Front Chainwheels', categorizedParts.frontChainwheels)}
-            ${generateCategorySection('rear-chainwheels', 'Rear Chainwheels', categorizedParts.rearChainwheels)}
-            ${generateCategorySection('chain', 'Chain', categorizedParts.chain)}
-            ${generateCategorySection('front-brake-pads', 'Front Brake Pads', categorizedParts.frontBrakePads)}
-            ${generateCategorySection('rear-brake-pads', 'Rear Brake Pads', categorizedParts.rearBrakePads)}
-            ${generateCategorySection('lock-on-cam', 'Lock-On Cam', categorizedParts.lockOnCam)}
-            ${generateCategorySection('accessories', 'Accessories', categorizedParts.accessories)}
+            ${generateCategorySectionDynamic('handlebars', categorizedParts.handlebars)}
+            ${generateCategorySectionDynamic('front-sprocket', categorizedParts.frontSprocket)}
+            ${generateCategorySectionDynamic('rear-sprockets', categorizedParts.rearSprockets)}
+            ${generateCategorySectionDynamic('chain', categorizedParts.chain)}
+            ${generateCategorySectionDynamic('brake-pads', categorizedParts.brakePads)}
+            ${generateCategorySectionDynamic('bar-mounts', categorizedParts.barMounts)}
+            ${generateCategorySectionDynamic('drive-conversions', categorizedParts.driveConversions)}
+            ${generateCategorySectionDynamic('others', categorizedParts.others)}
           </div>
         </div>
       `;
@@ -412,83 +412,76 @@
     function categorizeParts(parts) {
       const categorized = {
         handlebars: [],
-        frontChainwheels: [],
-        rearChainwheels: [],
+        frontSprocket: [],
+        rearSprockets: [],
         chain: [],
-        frontBrakePads: [],
-        rearBrakePads: [],
-        lockOnCam: [],
-        accessories: []
+        brakePads: [],
+        barMounts: [],
+        driveConversions: [],
+        others: []
       };
       
       parts.forEach(part => {
-        const title = part.title.toLowerCase();
+        // Use admin category from API response if available
+        const adminCategory = part.adminCategory || 'others';
         
-        if (title.includes('handlebar') || title.includes('bar')) {
+        // Map admin categories to categorized structure
+        if (adminCategory === 'handlebars') {
           categorized.handlebars.push(part);
-        } else if (title.includes('front') && (title.includes('sprocket') || title.includes('chainwheel'))) {
-          categorized.frontChainwheels.push(part);
-        } else if (title.includes('rear') && (title.includes('sprocket') || title.includes('chainwheel'))) {
-          categorized.rearChainwheels.push(part);
-        } else if (title.includes('sprocket') || title.includes('chainwheel')) {
-          // If not specifically front or rear, try to categorize by part number
-          if (part.sku && part.sku.includes('292')) {
-            categorized.frontChainwheels.push(part);
-          } else {
-            categorized.rearChainwheels.push(part);
-          }
-        } else if (title.includes('chain')) {
+        } else if (adminCategory === 'frontSprocket') {
+          categorized.frontSprocket.push(part);
+        } else if (adminCategory === 'rearSprockets') {
+          categorized.rearSprockets.push(part);
+        } else if (adminCategory === 'chain') {
           categorized.chain.push(part);
-        } else if (title.includes('front') && (title.includes('brake') || title.includes('pad'))) {
-          categorized.frontBrakePads.push(part);
-        } else if (title.includes('rear') && (title.includes('brake') || title.includes('pad'))) {
-          categorized.rearBrakePads.push(part);
-        } else if (title.includes('brake') || title.includes('pad')) {
-          // Default brake pads to front if not specified
-          categorized.frontBrakePads.push(part);
-        } else if (title.includes('grip') || title.includes('lock-on') || title.includes('cam')) {
-          categorized.lockOnCam.push(part);
+        } else if (adminCategory === 'brakePads') {
+          categorized.brakePads.push(part);
+        } else if (adminCategory === 'barMounts') {
+          categorized.barMounts.push(part);
+        } else if (adminCategory === 'driveConversions') {
+          categorized.driveConversions.push(part);
         } else {
-          categorized.accessories.push(part);
+          categorized.others.push(part);
         }
       });
       
       return categorized;
     }
     
-    // Function to get category name and order for a part
+    // Function to get category name and order for a part using admin categories
     function getCategoryInfo(part, categorizedParts) {
-      const title = part.title.toLowerCase();
+      const adminCategory = part.adminCategory || 'others';
+      const adminCategoryLabel = part.adminCategoryLabel || 'Others';
       
       if (categorizedParts.handlebars.includes(part)) {
-        return { name: 'Handlebars', order: 1, categoryParts: categorizedParts.handlebars };
-      } else if (categorizedParts.frontChainwheels.includes(part)) {
-        return { name: 'Front Chainwheels', order: 2, categoryParts: categorizedParts.frontChainwheels };
-      } else if (categorizedParts.rearChainwheels.includes(part)) {
-        return { name: 'Rear Chainwheels', order: 3, categoryParts: categorizedParts.rearChainwheels };
+        return { name: adminCategoryLabel, order: 1, categoryParts: categorizedParts.handlebars };
+      } else if (categorizedParts.frontSprocket.includes(part)) {
+        return { name: adminCategoryLabel, order: 2, categoryParts: categorizedParts.frontSprocket };
+      } else if (categorizedParts.rearSprockets.includes(part)) {
+        return { name: adminCategoryLabel, order: 3, categoryParts: categorizedParts.rearSprockets };
       } else if (categorizedParts.chain.includes(part)) {
-        return { name: 'Chain', order: 4, categoryParts: categorizedParts.chain };
-      } else if (categorizedParts.frontBrakePads.includes(part)) {
-        return { name: 'Front Brake Pads', order: 5, categoryParts: categorizedParts.frontBrakePads };
-      } else if (categorizedParts.rearBrakePads.includes(part)) {
-        return { name: 'Rear Brake Pads', order: 6, categoryParts: categorizedParts.rearBrakePads };
-      } else if (categorizedParts.lockOnCam.includes(part)) {
-        return { name: 'Lock-On Cam', order: 7, categoryParts: categorizedParts.lockOnCam };
+        return { name: adminCategoryLabel, order: 4, categoryParts: categorizedParts.chain };
+      } else if (categorizedParts.brakePads.includes(part)) {
+        return { name: adminCategoryLabel, order: 5, categoryParts: categorizedParts.brakePads };
+      } else if (categorizedParts.barMounts.includes(part)) {
+        return { name: adminCategoryLabel, order: 6, categoryParts: categorizedParts.barMounts };
+      } else if (categorizedParts.driveConversions.includes(part)) {
+        return { name: adminCategoryLabel, order: 7, categoryParts: categorizedParts.driveConversions };
       } else {
-        return { name: 'Accessories', order: 8, categoryParts: categorizedParts.accessories };
+        return { name: adminCategoryLabel, order: 8, categoryParts: categorizedParts.others };
       }
     }
 
     function generateDirectReplacementSection(categorizedParts) {
       const allParts = [
         ...categorizedParts.handlebars,
-        ...categorizedParts.frontChainwheels,
-        ...categorizedParts.rearChainwheels,
+        ...categorizedParts.frontSprocket,
+        ...categorizedParts.rearSprockets,
         ...categorizedParts.chain,
-        ...categorizedParts.frontBrakePads,
-        ...categorizedParts.rearBrakePads,
-        ...categorizedParts.lockOnCam,
-        ...categorizedParts.accessories
+        ...categorizedParts.brakePads,
+        ...categorizedParts.barMounts,
+        ...categorizedParts.driveConversions,
+        ...categorizedParts.others
       ];
       
       if (allParts.length === 0) {
@@ -573,6 +566,16 @@
           </div>
         </div>
       `;
+    }
+
+    // Dynamic category section that uses adminCategoryLabel from parts
+    function generateCategorySectionDynamic(id, parts) {
+      if (parts.length === 0) return '';
+      
+      // Get the category label from the first part (all parts in a section should have the same category)
+      const categoryLabel = parts[0]?.adminCategoryLabel || id.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      
+      return generateCategorySection(id, categoryLabel, parts);
     }
 
     function searchMotorcycles(motorcycleData, query) {
