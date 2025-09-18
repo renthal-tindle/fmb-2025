@@ -3927,7 +3927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // App proxy route for compatible parts (used by Theme App Extension)
+  // App proxy route for compatible parts (used by Theme App Extension) - using admin categories
   app.get("/api/proxy/api/customer/motorcycles/:recid/compatible-parts", appProxySecurityMiddleware, async (req, res) => {
     try {
       const recid = parseInt(req.params.recid);
@@ -3941,55 +3941,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Motorcycle not found" });
       }
 
-      // Get all products and check which ones have compatible parts for this motorcycle
-      // Use the same logic as the original route
-      const [allProducts, categoryTags] = await Promise.all([
-        storage.getShopifyProducts(),
-        storage.getPartCategoryTags()
-      ]);
+      // Use the updated getCompatibleParts method that includes admin category information
+      const parts = await storage.getCompatibleParts(recid);
+      
+      console.log(`🎯 PROXY ADMIN CATEGORIES: Found ${parts.length} compatible parts for motorcycle ${motorcycle.recid}: ${motorcycle.bikemake} ${motorcycle.bikemodel}`);
+      console.log('📂 Proxy part categories:', parts.map(p => ({ sku: p.sku, adminCategory: p.adminCategory, adminCategoryLabel: p.adminCategoryLabel })));
 
-      const compatibleProducts = [];
-
-      // Check each product's compatibility by looking at motorcycle column values
-      for (const product of allProducts) {
-        let isCompatible = false;
-
-        // Check each part category to see if this motorcycle has a matching part
-        for (const category of categoryTags) {
-          const columnName = category.categoryValue.toLowerCase();
-          const motorcycleValue = (motorcycle as any)[columnName];
-          
-          // If motorcycle has a value for this part category, check if product matches
-          if (motorcycleValue && motorcycleValue.trim() !== '') {
-            // Parse product tags to see if it matches the motorcycle's part value
-            try {
-              const productTags = JSON.parse(category.productTags) as string[];
-              
-              // Check if any product tag matches the motorcycle's part value
-              if (productTags.some(tag => 
-                product.tags?.toLowerCase().includes(tag.toLowerCase()) ||
-                product.title?.toLowerCase().includes(tag.toLowerCase()) ||
-                product.sku?.toLowerCase().includes(tag.toLowerCase())
-              )) {
-                isCompatible = true;
-                break;
-              }
-            } catch (e) {
-              // Skip if JSON parsing fails
-              continue;
-            }
-          }
-        }
-
-        if (isCompatible) {
-          compatibleProducts.push({
-            ...product,
-            compatibility: `Compatible with ${motorcycle.bikemake} ${motorcycle.bikemodel} (${motorcycle.firstyear}-${motorcycle.lastyear})`
-          });
-        }
-      }
-
-      res.json(compatibleProducts);
+      res.json(parts);
     } catch (error) {
       console.error("Error fetching compatible parts via app proxy:", error);
       res.status(500).json({ error: "Failed to fetch compatible parts" });

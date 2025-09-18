@@ -392,7 +392,13 @@ export class DatabaseStorage implements IStorage {
   // Compatible Parts - Fetches live data from Shopify API with admin category information
   async getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProductWithCategory[]> {
     try {
-      // Step 1: Get the part mappings for this motorcycle (which products are compatible)
+      // Get the motorcycle details for SKU-based matching
+      const motorcycle = await this.getMotorcycle(motorcycleRecid);
+      if (!motorcycle) {
+        return [];
+      }
+
+      // Step 1: Get the part mappings for this motorcycle (explicit mappings)
       const mappings = await db
         .select({
           shopifyProductId: partMappings.shopifyProductId,
@@ -405,28 +411,74 @@ export class DatabaseStorage implements IStorage {
           )
         );
       
-      if (mappings.length === 0) {
-        return [];
-      }
-      
-      // Step 2: Extract the Shopify product IDs
-      const productIds = mappings.map(m => m.shopifyProductId);
-      
-      // Step 3: Get the current Shopify session
+      // Step 2: Get the current Shopify session
       const session = getCurrentSession();
       if (!session) {
         console.warn('No Shopify session available - falling back to empty results');
         return [];
       }
       
-      // Step 4: Fetch part category tags to determine admin categories
+      // Step 3: Fetch part category tags to determine admin categories
       const categoryTags = await db.select().from(partCategoryTags);
       
-      // Step 5: Fetch live product data from Shopify API
-      const shopifyResponse = await fetchShopifyProductsByIds(session, productIds);
+      let compatibleProducts: any[] = [];
+
+      if (mappings.length > 0) {
+        // Use explicit part mappings if they exist
+        const productIds = mappings.map(m => m.shopifyProductId);
+        const shopifyResponse = await fetchShopifyProductsByIds(session, productIds);
+        compatibleProducts = shopifyResponse.products || [];
+      } else {
+        // Fall back to SKU-based matching when no explicit mappings exist
+        console.log(`🔍 No explicit mappings for motorcycle ${motorcycleRecid}, using SKU-based matching`);
+        
+        // Get all products for SKU matching
+        const allProductsResponse = await fetchShopifyProducts(session);
+        const allProducts = allProductsResponse.products || [];
+        
+        // Collect all motorcycle OE part values for SKU matching
+        const motorcyclePartValues = [];
+        for (const category of categoryTags) {
+          const columnName = category.categoryValue.toLowerCase();
+          const motorcycleValue = (motorcycle as any)[columnName];
+          if (motorcycleValue && motorcycleValue.trim() !== '') {
+            motorcyclePartValues.push(motorcycleValue.trim());
+          }
+        }
+        
+        console.log(`🔍 Motorcycle ${motorcycleRecid} part values for SKU matching:`, motorcyclePartValues);
+        
+        // Find products that match motorcycle part values by SKU
+        for (const product of allProducts) {
+          let isCompatible = false;
+
+          // Check if the main product SKU matches any motorcycle part value
+          if (motorcyclePartValues.some(partValue => 
+            product.sku && product.sku.toLowerCase() === partValue.toLowerCase()
+          )) {
+            isCompatible = true;
+          }
+
+          // If not matched by main SKU, check variant SKUs
+          if (!isCompatible && product.variants) {
+            for (const variant of product.variants) {
+              if (variant.sku && motorcyclePartValues.some(partValue => 
+                variant.sku.toLowerCase() === partValue.toLowerCase()
+              )) {
+                isCompatible = true;
+                break;
+              }
+            }
+          }
+
+          if (isCompatible) {
+            compatibleProducts.push(product);
+          }
+        }
+      }
       
-      // Step 6: Transform Shopify API response and determine admin categories
-      const products: ShopifyProductWithCategory[] = shopifyResponse.products?.map((product: any) => {
+      // Step 4: Transform compatible products and determine admin categories
+      const products: ShopifyProductWithCategory[] = compatibleProducts.map((product: any) => {
         const productTags = (product.tags || '').toLowerCase().split(',').map((tag: string) => tag.trim());
         
         // Find matching category by checking if any product tags match the category's productTags
