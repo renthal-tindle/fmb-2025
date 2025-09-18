@@ -220,12 +220,12 @@
 
 [data-fmb] .fmb-results-table,
 [data-fmb] .fmb-parts-table {
-  width: 100%;
+  /*width: 100%;
   border-collapse: collapse;
   background: rgb(var(--color-background, 255 255 255));
   border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
   border-radius: 0 0 var(--border-radius, 8px) var(--border-radius, 8px);
-  overflow: hidden;
+  overflow: hidden;*/
 }
 
 [data-fmb] .fmb-results-table th,
