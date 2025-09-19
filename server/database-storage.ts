@@ -389,7 +389,7 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Enhanced Compatible Parts with Auto-Healing - Fetches live data from Shopify API with resilient SKU-based fallback
+  // Compatible Parts - Uses motorcycle database fields for SKU matching (ignores admin part mappings)
   async getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProductWithCategory[]> {
     try {
       // Get the motorcycle details for SKU-based matching
@@ -398,124 +398,82 @@ export class DatabaseStorage implements IStorage {
         return [];
       }
 
-      // Step 1: Get the part mappings for this motorcycle (explicit mappings)
-      const mappings = await db
-        .select({
-          id: partMappings.id,
-          shopifyProductId: partMappings.shopifyProductId,
-          expectedSku: partMappings.expectedSku,
-          status: partMappings.status,
-        })
-        .from(partMappings)
-        .where(
-          and(
-            eq(partMappings.motorcycleRecid, motorcycleRecid),
-            eq(partMappings.compatible, true)
-          )
-        );
-      
-      // Step 2: Get the current Shopify session
+      // Get the current Shopify session
       const session = getCurrentSession();
       if (!session) {
         console.warn('No Shopify session available - falling back to empty results');
         return [];
       }
       
-      // Step 3: Fetch part category tags to determine admin categories
+      // Fetch part category tags to determine admin categories
       const categoryTags = await db.select().from(partCategoryTags);
       
+      console.log(`🔍 Using motorcycle database fields for compatibility matching (motorcycle ${motorcycleRecid})`);
+      
+      // Get all products for SKU matching
+      const allProductsResponse = await fetchShopifyProducts(session);
+      const allProducts = allProductsResponse.products || [];
+      
+      // Collect ALL motorcycle part values for SKU matching (not just OE fields)
+      const motorcyclePartValues = [];
+      
+      // Define all the motorcycle part fields that can contain SKU values
+      const partFieldsToCheck = [
+        // Original Equipment fields
+        'oe_handlebar', 'oe_fcw', 'oe_rcw', 'oe_barmount', 'oe_chain',
+        // Brake pad fields
+        'front_brakepads', 'rear_brakepads',
+        // Handlebar fields
+        'handlebars_78', 'twinwall', 'fatbar', 'fatbar36',
+        // Other part fields
+        'grips', 'cam',
+        // Bar mount fields
+        'barmount28', 'barmount36',
+        // Sprocket/chainwheel fields
+        'fcwgroup', 'fcwconv', 'rcwconv', 'rcwgroup', 'rcwgroup_range', 'twinring',
+        // Chain fields
+        'chainconv', 'r1_chain', 'r3_chain', 'r4_chain', 'rr4_chain',
+        // Other specialized fields
+        'clipon', 'rcwcarrier', 'active_handlecompare'
+      ];
+      
+      // Extract all non-empty part values from motorcycle database
+      for (const fieldName of partFieldsToCheck) {
+        const motorcycleValue = (motorcycle as any)[fieldName];
+        if (motorcycleValue && typeof motorcycleValue === 'string' && motorcycleValue.trim() !== '') {
+          motorcyclePartValues.push(motorcycleValue.trim());
+        }
+      }
+      
+      console.log(`🔍 Motorcycle ${motorcycleRecid} part values for SKU matching:`, motorcyclePartValues);
+      
       let compatibleProducts: any[] = [];
+      
+      // Find products that match motorcycle part values by SKU
+      for (const product of allProducts) {
+        let isCompatible = false;
 
-      if (mappings.length > 0) {
-        // Enhanced explicit part mappings with auto-healing
-        const productIds = mappings.map(m => m.shopifyProductId);
-        const shopifyResponse = await fetchShopifyProductsByIds(session, productIds);
-        const retrievedProducts = shopifyResponse.products || [];
-        
-        // Create map of retrieved product IDs for healing check
-        const retrievedProductIds = new Set(retrievedProducts.map((p: any) => p.id.toString()));
-        
-        // Check for stale mappings and attempt to heal them
-        const staleMappings = mappings.filter(m => !retrievedProductIds.has(m.shopifyProductId));
-        
-        if (staleMappings.length > 0) {
-          console.log(`🔧 Found ${staleMappings.length} stale product mappings for motorcycle ${motorcycleRecid}, attempting to heal...`);
-          
-          // Attempt to heal stale mappings using their expected SKUs
-          for (const staleMapping of staleMappings) {
-            if (staleMapping.expectedSku) {
-              const healResult = await this.healPartMapping(staleMapping.id, staleMapping.expectedSku);
-              if (healResult.success) {
-                console.log(`✅ Healed mapping: ${healResult.message}`);
-                
-                // Refetch the healed product
-                try {
-                  const healedProductResponse = await fetchShopifyProductsByIds(session, [healResult.newProductId!]);
-                  if (healedProductResponse.products?.length > 0) {
-                    retrievedProducts.push(...healedProductResponse.products);
-                  }
-                } catch (healedFetchError) {
-                  console.warn(`⚠️ Could not fetch healed product ${healResult.newProductId}:`, healedFetchError);
-                }
-              } else {
-                console.warn(`❌ Failed to heal mapping for SKU ${staleMapping.expectedSku}: ${healResult.message}`);
-              }
-            } else {
-              console.warn(`❌ Cannot heal mapping ${staleMapping.id} - no expected SKU available`);
+        // Check if the main product SKU matches any motorcycle part value
+        if (motorcyclePartValues.some(partValue => 
+          product.sku && product.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
+        )) {
+          isCompatible = true;
+        }
+
+        // If not matched by main SKU, check variant SKUs
+        if (!isCompatible && product.variants) {
+          for (const variant of product.variants) {
+            if (variant.sku && motorcyclePartValues.some(partValue => 
+              variant.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
+            )) {
+              isCompatible = true;
+              break;
             }
           }
         }
-        
-        compatibleProducts = retrievedProducts;
-      } else {
-        // Fall back to SKU-based matching when no explicit mappings exist
-        console.log(`🔍 No explicit mappings for motorcycle ${motorcycleRecid}, using SKU-based matching`);
-        
-        // Get all products for SKU matching
-        const allProductsResponse = await fetchShopifyProducts(session);
-        const allProducts = allProductsResponse.products || [];
-        
-        // Collect all motorcycle OE part values for SKU matching (only OE fields for accuracy)
-        const motorcyclePartValues = [];
-        for (const category of categoryTags) {
-          const columnName = category.categoryValue.toLowerCase();
-          // Only include OE (Original Equipment) fields to prevent false positives
-          if (columnName.startsWith('oe_')) {
-            const motorcycleValue = (motorcycle as any)[columnName];
-            if (motorcycleValue && motorcycleValue.trim() !== '') {
-              motorcyclePartValues.push(motorcycleValue.trim());
-            }
-          }
-        }
-        
-        console.log(`🔍 Motorcycle ${motorcycleRecid} part values for SKU matching:`, motorcyclePartValues);
-        
-        // Find products that match motorcycle part values by SKU
-        for (const product of allProducts) {
-          let isCompatible = false;
 
-          // Check if the main product SKU matches any motorcycle part value
-          if (motorcyclePartValues.some(partValue => 
-            product.sku && product.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
-          )) {
-            isCompatible = true;
-          }
-
-          // If not matched by main SKU, check variant SKUs
-          if (!isCompatible && product.variants) {
-            for (const variant of product.variants) {
-              if (variant.sku && motorcyclePartValues.some(partValue => 
-                variant.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
-              )) {
-                isCompatible = true;
-                break;
-              }
-            }
-          }
-
-          if (isCompatible) {
-            compatibleProducts.push(product);
-          }
+        if (isCompatible) {
+          compatibleProducts.push(product);
         }
       }
       
