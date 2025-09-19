@@ -45,7 +45,7 @@ export const motorcycles = pgTable("motorcycles", {
   active_handlecompare: text("active_handlecompare"),
 });
 
-export const shopifyProducts = pgTable("_shopify_products", {
+export const shopifyProducts = pgTable("xx_shopify_products", {
   id: varchar("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
@@ -62,6 +62,11 @@ export const partMappings = pgTable("part_mappings", {
   shopifyProductId: varchar("shopify_product_id").notNull(), // Shopify product ID - fetched live from API
   motorcycleRecid: integer("motorcycle_recid").notNull().references(() => motorcycles.recid),
   compatible: boolean("compatible").notNull().default(true),
+  // SKU-based resilience fields
+  expectedSku: text("expected_sku"), // Expected SKU for this product (for validation and healing)
+  productTitle: text("product_title"), // Product title for easier debugging
+  lastSynced: text("last_synced").default(sql`CURRENT_TIMESTAMP`), // When this mapping was last verified
+  status: text("status").default('active'), // 'active', 'stale', 'healing'
 });
 
 export const importHistory = pgTable("import_history", {

@@ -3173,6 +3173,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to populate part mapping metadata for SKU-based healing
+  app.post("/api/admin/populate-mapping-metadata", async (req, res) => {
+    try {
+      console.log('🔧 Starting part mapping metadata population...');
+      const result = await storage.populatePartMappingMetadata();
+      
+      console.log(`✅ Metadata population completed: ${result.updated} updated, ${result.failed} failed`);
+      
+      res.json({
+        message: "Part mapping metadata population completed",
+        updated: result.updated,
+        failed: result.failed,
+        details: result.details
+      });
+    } catch (error) {
+      console.error('Metadata population error:', error);
+      res.status(500).json({ 
+        message: "Failed to populate mapping metadata", 
+        error: (error as Error).message 
+      });
+    }
+  });
+
+  // Admin endpoint to validate and heal all stale part mappings
+  app.post("/api/admin/heal-stale-mappings", async (req, res) => {
+    try {
+      console.log('🔧 Starting auto-heal of stale part mappings...');
+      const result = await storage.autoHealAllStalePartMappings();
+      
+      console.log(`✅ Auto-heal completed: ${result.healed} healed, ${result.failed} failed`);
+      
+      res.json({
+        message: "Auto-heal of stale mappings completed",
+        healed: result.healed,
+        failed: result.failed,
+        details: result.details
+      });
+    } catch (error) {
+      console.error('Auto-heal error:', error);
+      res.status(500).json({ 
+        message: "Failed to heal stale mappings", 
+        error: (error as Error).message 
+      });
+    }
+  });
+
+  // Admin endpoint to validate part mappings health
+  app.get("/api/admin/validate-mappings", async (req, res) => {
+    try {
+      console.log('🔍 Validating part mappings health...');
+      const result = await storage.validatePartMappings();
+      
+      console.log(`✅ Validation completed: ${result.healthy.length} healthy, ${result.stale.length} stale, ${result.missing.length} missing SKUs`);
+      
+      res.json({
+        message: "Part mappings validation completed",
+        healthy: result.healthy.length,
+        stale: result.stale.length,
+        missing: result.missing.length,
+        details: result
+      });
+    } catch (error) {
+      console.error('Mapping validation error:', error);
+      res.status(500).json({ 
+        message: "Failed to validate mappings", 
+        error: (error as Error).message 
+      });
+    }
+  });
+
   // Debug endpoint to check Shopify authentication status
   app.get("/api/debug/shopify-status", async (req, res) => {
     try {

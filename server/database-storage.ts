@@ -389,7 +389,7 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Compatible Parts - Fetches live data from Shopify API with admin category information
+  // Compatible Parts - Uses motorcycle database fields for SKU matching (ignores admin part mappings)
   async getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProductWithCategory[]> {
     try {
       // Get the motorcycle details for SKU-based matching
@@ -398,82 +398,83 @@ export class DatabaseStorage implements IStorage {
         return [];
       }
 
-      // Step 1: Get the part mappings for this motorcycle (explicit mappings)
-      const mappings = await db
-        .select({
-          shopifyProductId: partMappings.shopifyProductId,
-        })
-        .from(partMappings)
-        .where(
-          and(
-            eq(partMappings.motorcycleRecid, motorcycleRecid),
-            eq(partMappings.compatible, true)
-          )
-        );
-      
-      // Step 2: Get the current Shopify session
+      // Get the current Shopify session
       const session = getCurrentSession();
       if (!session) {
         console.warn('No Shopify session available - falling back to empty results');
         return [];
       }
       
-      // Step 3: Fetch part category tags to determine admin categories
+      // Fetch part category tags to determine admin categories
       const categoryTags = await db.select().from(partCategoryTags);
       
-      let compatibleProducts: any[] = [];
-
-      if (mappings.length > 0) {
-        // Use explicit part mappings if they exist
-        const productIds = mappings.map(m => m.shopifyProductId);
-        const shopifyResponse = await fetchShopifyProductsByIds(session, productIds);
-        compatibleProducts = shopifyResponse.products || [];
-      } else {
-        // Fall back to SKU-based matching when no explicit mappings exist
-        console.log(`🔍 No explicit mappings for motorcycle ${motorcycleRecid}, using SKU-based matching`);
-        
-        // Get all products for SKU matching
-        const allProductsResponse = await fetchShopifyProducts(session);
-        const allProducts = allProductsResponse.products || [];
-        
-        // Collect all motorcycle OE part values for SKU matching
-        const motorcyclePartValues = [];
-        for (const category of categoryTags) {
-          const columnName = category.categoryValue.toLowerCase();
-          const motorcycleValue = (motorcycle as any)[columnName];
-          if (motorcycleValue && motorcycleValue.trim() !== '') {
-            motorcyclePartValues.push(motorcycleValue.trim());
-          }
+      console.log(`🔍 Using motorcycle database fields for compatibility matching (motorcycle ${motorcycleRecid})`);
+      
+      // Get all products for SKU matching
+      const allProductsResponse = await fetchShopifyProducts(session);
+      const allProducts = allProductsResponse.products || [];
+      
+      // Collect ALL motorcycle part values for SKU matching (not just OE fields)
+      const motorcyclePartValues = [];
+      
+      // Define all the motorcycle part fields that can contain SKU values
+      const partFieldsToCheck = [
+        // Original Equipment fields
+        'oe_handlebar', 'oe_fcw', 'oe_rcw', 'oe_barmount', 'oe_chain',
+        // Brake pad fields
+        'front_brakepads', 'rear_brakepads',
+        // Handlebar fields
+        'handlebars_78', 'twinwall', 'fatbar', 'fatbar36',
+        // Other part fields
+        'grips', 'cam',
+        // Bar mount fields
+        'barmount28', 'barmount36',
+        // Sprocket/chainwheel fields
+        'fcwgroup', 'fcwconv', 'rcwconv', 'rcwgroup', 'rcwgroup_range', 'twinring',
+        // Chain fields
+        'chainconv', 'r1_chain', 'r3_chain', 'r4_chain', 'rr4_chain',
+        // Other specialized fields
+        'clipon', 'rcwcarrier', 'active_handlecompare'
+      ];
+      
+      // Extract all non-empty part values from motorcycle database
+      for (const fieldName of partFieldsToCheck) {
+        const motorcycleValue = (motorcycle as any)[fieldName];
+        if (motorcycleValue && typeof motorcycleValue === 'string' && motorcycleValue.trim() !== '') {
+          motorcyclePartValues.push(motorcycleValue.trim());
         }
-        
-        console.log(`🔍 Motorcycle ${motorcycleRecid} part values for SKU matching:`, motorcyclePartValues);
-        
-        // Find products that match motorcycle part values by SKU
-        for (const product of allProducts) {
-          let isCompatible = false;
+      }
+      
+      console.log(`🔍 Motorcycle ${motorcycleRecid} part values for SKU matching:`, motorcyclePartValues);
+      console.log(`📋 Motorcycle ${motorcycleRecid} record:`, JSON.stringify(motorcycle, null, 2));
+      
+      let compatibleProducts: any[] = [];
+      
+      // Find products that match motorcycle part values by SKU
+      for (const product of allProducts) {
+        let isCompatible = false;
 
-          // Check if the main product SKU matches any motorcycle part value
-          if (motorcyclePartValues.some(partValue => 
-            product.sku && product.sku.toLowerCase() === partValue.toLowerCase()
-          )) {
-            isCompatible = true;
-          }
+        // Check if the main product SKU matches any motorcycle part value
+        if (motorcyclePartValues.some(partValue => 
+          product.sku && product.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
+        )) {
+          isCompatible = true;
+        }
 
-          // If not matched by main SKU, check variant SKUs
-          if (!isCompatible && product.variants) {
-            for (const variant of product.variants) {
-              if (variant.sku && motorcyclePartValues.some(partValue => 
-                variant.sku.toLowerCase() === partValue.toLowerCase()
-              )) {
-                isCompatible = true;
-                break;
-              }
+        // If not matched by main SKU, check variant SKUs
+        if (!isCompatible && product.variants) {
+          for (const variant of product.variants) {
+            if (variant.sku && motorcyclePartValues.some(partValue => 
+              variant.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
+            )) {
+              isCompatible = true;
+              break;
             }
           }
+        }
 
-          if (isCompatible) {
-            compatibleProducts.push(product);
-          }
+        if (isCompatible) {
+          compatibleProducts.push(product);
         }
       }
       
@@ -729,5 +730,249 @@ export class DatabaseStorage implements IStorage {
     
     const max = rows[0]?.maxRecid == null ? 9999 : Number(rows[0].maxRecid);
     return max + 1;
+  }
+
+  // ========== SKU-BASED HEALING FUNCTIONS ==========
+  
+  /**
+   * Validates all part mappings and identifies stale product IDs
+   */
+  async validatePartMappings(): Promise<{
+    healthy: Array<{id: string, shopifyProductId: string, expectedSku: string | null}>,
+    stale: Array<{id: string, shopifyProductId: string, expectedSku: string | null}>,
+    missing: Array<{id: string, shopifyProductId: string}>
+  }> {
+    const session = getCurrentSession();
+    if (!session) {
+      throw new Error('No Shopify session available for validation');
+    }
+
+    // Get all part mappings
+    const mappings = await db.select().from(partMappings);
+    
+    // Get unique product IDs to check
+    const uniqueProductIds = Array.from(new Set(mappings.map(m => m.shopifyProductId)));
+    
+    // Fetch products from Shopify to validate IDs
+    const shopifyResponse = await fetchShopifyProductsByIds(session, uniqueProductIds);
+    const existingProducts = shopifyResponse.products || [];
+    const existingProductIds = new Set(existingProducts.map((p: any) => p.id.toString()));
+    
+    const healthy = [];
+    const stale = [];
+    const missing = [];
+    
+    for (const mapping of mappings) {
+      if (existingProductIds.has(mapping.shopifyProductId)) {
+        healthy.push({
+          id: mapping.id,
+          shopifyProductId: mapping.shopifyProductId,
+          expectedSku: mapping.expectedSku
+        });
+      } else {
+        if (mapping.expectedSku) {
+          stale.push({
+            id: mapping.id,
+            shopifyProductId: mapping.shopifyProductId,
+            expectedSku: mapping.expectedSku
+          });
+        } else {
+          missing.push({
+            id: mapping.id,
+            shopifyProductId: mapping.shopifyProductId
+          });
+        }
+      }
+    }
+    
+    return { healthy, stale, missing };
+  }
+
+  /**
+   * Heals a stale part mapping by finding the product with matching SKU
+   */
+  async healPartMapping(mappingId: string, expectedSku: string): Promise<{
+    success: boolean, 
+    newProductId?: string,
+    message: string
+  }> {
+    const session = getCurrentSession();
+    if (!session) {
+      return { success: false, message: 'No Shopify session available' };
+    }
+
+    try {
+      // Get all products from Shopify to search for SKU
+      const shopifyResponse = await fetchShopifyProducts(session);
+      const allProducts = shopifyResponse.products || [];
+      
+      // Find product containing the expected SKU (check main SKU and variants)
+      let matchingProduct = null;
+      for (const product of allProducts) {
+        // Check main product SKU
+        if (product.sku && product.sku.toLowerCase().trim() === expectedSku.toLowerCase().trim()) {
+          matchingProduct = product;
+          break;
+        }
+        
+        // Check variant SKUs
+        if (product.variants) {
+          for (const variant of product.variants) {
+            if (variant.sku && variant.sku.toLowerCase().trim() === expectedSku.toLowerCase().trim()) {
+              matchingProduct = product;
+              break;
+            }
+          }
+          if (matchingProduct) break;
+        }
+      }
+      
+      if (!matchingProduct) {
+        return { 
+          success: false, 
+          message: `No product found with SKU: ${expectedSku}` 
+        };
+      }
+      
+      // Update the mapping with the new product ID
+      await db
+        .update(partMappings)
+        .set({
+          shopifyProductId: matchingProduct.id.toString(),
+          productTitle: matchingProduct.title,
+          lastSynced: new Date().toISOString(),
+          status: 'active'
+        })
+        .where(eq(partMappings.id, mappingId));
+      
+      return {
+        success: true,
+        newProductId: matchingProduct.id.toString(),
+        message: `Healed mapping: ${expectedSku} → ${matchingProduct.title} (ID: ${matchingProduct.id})`
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        message: `Error healing mapping: ${(error as Error).message}`
+      };
+    }
+  }
+
+  /**
+   * Populates missing SKU and title data for existing part mappings
+   */
+  async populatePartMappingMetadata(): Promise<{
+    updated: number,
+    failed: number,
+    details: Array<{id: string, sku?: string, title?: string, error?: string}>
+  }> {
+    const session = getCurrentSession();
+    if (!session) {
+      throw new Error('No Shopify session available');
+    }
+
+    // Get mappings without expected_sku or product_title
+    const mappingsToUpdate = await db
+      .select()
+      .from(partMappings)
+      .where(
+        or(
+          sql`${partMappings.expectedSku} IS NULL`,
+          sql`${partMappings.productTitle} IS NULL`
+        )
+      );
+
+    if (mappingsToUpdate.length === 0) {
+      return { updated: 0, failed: 0, details: [] };
+    }
+
+    // Get unique product IDs to fetch
+    const uniqueProductIds = Array.from(new Set(mappingsToUpdate.map(m => m.shopifyProductId)));
+    
+    // Fetch products from Shopify
+    const shopifyResponse = await fetchShopifyProductsByIds(session, uniqueProductIds);
+    const products = shopifyResponse.products || [];
+    
+    // Create product lookup map
+    const productMap = new Map(products.map((p: any) => [p.id.toString(), p]));
+    
+    let updated = 0;
+    let failed = 0;
+    const details = [];
+    
+    for (const mapping of mappingsToUpdate) {
+      const product = productMap.get(mapping.shopifyProductId);
+      
+      if (product) {
+        // Get the primary SKU (from first variant or main product)
+        const primarySku = (product as any).variants?.[0]?.sku || (product as any).sku || null;
+        
+        try {
+          await db
+            .update(partMappings)
+            .set({
+              expectedSku: primarySku,
+              productTitle: (product as any).title,
+              lastSynced: new Date().toISOString(),
+              status: 'active'
+            })
+            .where(eq(partMappings.id, mapping.id));
+          
+          updated++;
+          details.push({
+            id: mapping.id,
+            sku: primarySku,
+            title: (product as any).title
+          });
+        } catch (error) {
+          failed++;
+          details.push({
+            id: mapping.id,
+            error: `Update failed: ${(error as Error).message}`
+          });
+        }
+      } else {
+        failed++;
+        details.push({
+          id: mapping.id,
+          error: `Product ${mapping.shopifyProductId} not found in Shopify`
+        });
+      }
+    }
+    
+    return { updated, failed, details };
+  }
+
+  /**
+   * Auto-heals all stale part mappings by finding products with matching SKUs
+   */
+  async autoHealAllStalePartMappings(): Promise<{
+    healed: number,
+    failed: number,
+    details: Array<{id: string, message: string}>
+  }> {
+    const validation = await this.validatePartMappings();
+    
+    let healed = 0;
+    let failed = 0;
+    const details = [];
+    
+    for (const staleMapping of validation.stale) {
+      const result = await this.healPartMapping(staleMapping.id, staleMapping.expectedSku!);
+      
+      if (result.success) {
+        healed++;
+      } else {
+        failed++;
+      }
+      
+      details.push({
+        id: staleMapping.id,
+        message: result.message
+      });
+    }
+    
+    return { healed, failed, details };
   }
 }
