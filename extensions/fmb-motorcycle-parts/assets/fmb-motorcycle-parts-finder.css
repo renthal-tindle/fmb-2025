@@ -312,7 +312,9 @@
   color: rgba(var(--color-foreground, 33 37 41), 0.6);
 }
 
-[data-fmb] .fmb-category-section{
+/* FMB Parts Cards */
+[data-fmb] .fmb-category-section h3{
+  text-transform: capitalize;
   padding-bottom:2%;
   border-bottom:solid 1px #666;
 }
@@ -322,10 +324,6 @@
   padding:2%;
 }
 
-/* FMB Parts Cards */
-[data-fmb] .fmb-category-section h3{
-  text-transform: capitalize;
-}
 [data-fmb] .fmb-parts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, 25%);
