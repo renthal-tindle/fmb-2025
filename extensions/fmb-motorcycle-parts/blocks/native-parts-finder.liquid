@@ -408,7 +408,6 @@
         <div class="fmb-motorcycle-page">
           <div class="fmb-motorcycle-header">
             <h1>${motorcycle.bikemake} ${motorcycle.bikemodel} (${getBikeTypeLabel(motorcycle.biketype)}) ${bikeYear}</h1>
-            <a href="/pages/fit-my-bike" class="fmb-back-link">← Fit My Bike</a>
             <button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" 
   onclick="location.href='/pages/fit-my-bike';">Return to Search</button>
           </div>
@@ -537,7 +536,7 @@
       });
       
       if (oeOnlyParts.length === 0) {
-        return '<div class="fmb-no-parts"><p>No original equipment replacement parts found for this motorcycle.</p></div>';
+        return '<div class="fmb-no-parts"><p>No Renthal parts found for this motorcycle.</p></div>';
       }
       
       return `
@@ -573,11 +572,7 @@
                           </div>
                         </td>
                         <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">
-                          <button class="fmb-add-to-cart-btn" 
-                                  data-variant-id="${part.variants[0]?.id}" 
-                                  style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">
-                            Add to Cart
-                          </button>
+                          <button class="fmb-nav-btn fmb-add-to-cart-btn" data-variant-id="${part.variants[0]?.id}">Add to Cart</button>
                         </td>
                         <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">
                           ${moreOptionsCount > 0 ? 
@@ -600,18 +595,14 @@
       
       return `
         <div id="${id}" class="fmb-category-section">
-          <h3>${title}</h3>
+          <h3>${id}</h3>
           <div class="fmb-parts-grid">
             ${parts.map(part => `
-              <div class="fmb-part-card" style="border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 10px 0;">
+              <div class="fmb-part-card">
+                <div class="fmb-part-card-title">${title}</div>
                 <h4><a href="${part.url}" style="color: #007bff; text-decoration: none;">${part.title}</a></h4>
                 <p><strong>SKU:</strong> ${part.sku}</p>
-                <p><strong>Price:</strong> £${part.price}</p>
-                <button class="fmb-add-to-cart-btn" 
-                        data-variant-id="${part.variants[0]?.id}"
-                        style="background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer;">
-                  Add to Cart
-                </button>
+                <button class="fmb-add-to-cart-btn fmb-nav-btn" data-variant-id="${part.variants[0]?.id}">Add to Cart</button>
               </div>
             `).join('')}
           </div>

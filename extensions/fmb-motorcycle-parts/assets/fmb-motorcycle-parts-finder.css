@@ -230,7 +230,10 @@
   border: 1px solid rgba(var(--color-foreground, 0 0 0), 0.1);
   border-radius: 0 0 var(--border-radius, 8px) var(--border-radius, 8px);
   overflow: hidden;*/
+  background-color:#666;
 }
+
+[data-fmb]
 
 [data-fmb] .fmb-results-table th,
 [data-fmb] .fmb-parts-table th {
@@ -251,12 +254,17 @@
 
 [data-fmb] .fmb-results-table tr:hover,
 [data-fmb] .fmb-parts-table tr:hover {
-  background-color: rgba(var(--color-button, 13 110 253), 0.05);
+  background-color: #000;
 }
 
 [data-fmb] .fmb-results-table tr:last-child td,
 [data-fmb] .fmb-parts-table tr:last-child td {
   border-bottom: none;
+}
+
+[data-fmb] .fmb-results-table tr,
+[data-fmb] .fmb-parts-table  tr:nth-child(even){
+  background-color: #444;
 }
 
 /* Parts-specific styling - theme integrated */
@@ -302,6 +310,36 @@
 [data-fmb] .fmb-part-sku {
   color: rgba(var(--color-foreground, 33 37 41), 0.6);
 }
+/* FMB Parts Cards */
+[data-fmb] .fmb-category-section h3{
+  text-transform: capitalize;
+}
+
+[data-fmb] .fmb-parts-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid #666; 
+  border-radius: 8px; 
+  /*padding: 15px; 
+  margin: 10px 0;
+  width :25%;*/
+  text-align: center;
+  background-color: #333;
+}
+
+[data-fmb].fmb-parts-cards a{
+  color:#FFF;
+  font-weight: 900;
+  text-decoration: none;
+  font-size: calc(var(--font-heading-scale) * 2.4rem);
+}
+
+[data-fmb] .fmb-parts-cards-title{
+  border-bottom:solid 1px #888;
+  padding-bottom:10px;
+}
 
 /* Navigation menu styling */
 [data-fmb] .fmb-navigation {}
@@ -309,8 +347,8 @@
 [data-fmb] .fmb-nav-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
-  justify-content: center;
+  gap: 5px;
+  /*justify-content: center;*/
 }
 
 [data-fmb] .fmb-nav-btn {
