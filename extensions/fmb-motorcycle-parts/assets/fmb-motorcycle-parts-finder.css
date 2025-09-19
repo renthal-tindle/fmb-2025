@@ -7,6 +7,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 1rem;
+  border-top:solid 1px #444;
 }
 
 /* Header styling - clean and visible */
@@ -310,6 +311,17 @@
 [data-fmb] .fmb-part-sku {
   color: rgba(var(--color-foreground, 33 37 41), 0.6);
 }
+
+[data-fmb] .fmb-category-section{
+  padding-bottom:2%;
+  border-bottom:solid 1px #666;
+}
+
+[data-fmb] .fmb-category-section h3{
+  background-color: #666;
+  padding:2%;
+}
+
 /* FMB Parts Cards */
 [data-fmb] .fmb-category-section h3{
   text-transform: capitalize;
