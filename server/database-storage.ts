@@ -551,9 +551,9 @@ export class DatabaseStorage implements IStorage {
           }
         }
         
-        return {
-          id: product.id.toString(),
-          title: product.title,
+        const productData = {
+          id: product.id ? product.id.toString() : `temp-${Math.random().toString(36)}`,
+          title: product.title || 'Unknown Product',
           description: product.body_html || null,
           price: product.variants?.[0]?.price || '0.00',
           sku: product.variants?.[0]?.sku || null,
@@ -564,6 +564,13 @@ export class DatabaseStorage implements IStorage {
           adminCategory: adminCategory,
           adminCategoryLabel: adminCategoryLabel
         };
+        
+        // Debug log to help identify any missing fields
+        if (!product.id) {
+          console.warn(`⚠️ Product missing ID:`, JSON.stringify(product, null, 2));
+        }
+        
+        return productData;
       }) || [];
       
       console.log(`✅ LIVE DATA: Found ${products.length} compatible parts for motorcycle ${motorcycleRecid}`);
