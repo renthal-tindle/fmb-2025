@@ -389,7 +389,7 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Compatible Parts - Fetches live data from Shopify API with admin category information
+  // Enhanced Compatible Parts with Auto-Healing - Fetches live data from Shopify API with resilient SKU-based fallback
   async getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProductWithCategory[]> {
     try {
       // Get the motorcycle details for SKU-based matching
@@ -401,7 +401,10 @@ export class DatabaseStorage implements IStorage {
       // Step 1: Get the part mappings for this motorcycle (explicit mappings)
       const mappings = await db
         .select({
+          id: partMappings.id,
           shopifyProductId: partMappings.shopifyProductId,
+          expectedSku: partMappings.expectedSku,
+          status: partMappings.status,
         })
         .from(partMappings)
         .where(
@@ -424,10 +427,46 @@ export class DatabaseStorage implements IStorage {
       let compatibleProducts: any[] = [];
 
       if (mappings.length > 0) {
-        // Use explicit part mappings if they exist
+        // Enhanced explicit part mappings with auto-healing
         const productIds = mappings.map(m => m.shopifyProductId);
         const shopifyResponse = await fetchShopifyProductsByIds(session, productIds);
-        compatibleProducts = shopifyResponse.products || [];
+        const retrievedProducts = shopifyResponse.products || [];
+        
+        // Create map of retrieved product IDs for healing check
+        const retrievedProductIds = new Set(retrievedProducts.map((p: any) => p.id.toString()));
+        
+        // Check for stale mappings and attempt to heal them
+        const staleMappings = mappings.filter(m => !retrievedProductIds.has(m.shopifyProductId));
+        
+        if (staleMappings.length > 0) {
+          console.log(`🔧 Found ${staleMappings.length} stale product mappings for motorcycle ${motorcycleRecid}, attempting to heal...`);
+          
+          // Attempt to heal stale mappings using their expected SKUs
+          for (const staleMapping of staleMappings) {
+            if (staleMapping.expectedSku) {
+              const healResult = await this.healPartMapping(staleMapping.id, staleMapping.expectedSku);
+              if (healResult.success) {
+                console.log(`✅ Healed mapping: ${healResult.message}`);
+                
+                // Refetch the healed product
+                try {
+                  const healedProductResponse = await fetchShopifyProductsByIds(session, [healResult.newProductId!]);
+                  if (healedProductResponse.products?.length > 0) {
+                    retrievedProducts.push(...healedProductResponse.products);
+                  }
+                } catch (healedFetchError) {
+                  console.warn(`⚠️ Could not fetch healed product ${healResult.newProductId}:`, healedFetchError);
+                }
+              } else {
+                console.warn(`❌ Failed to heal mapping for SKU ${staleMapping.expectedSku}: ${healResult.message}`);
+              }
+            } else {
+              console.warn(`❌ Cannot heal mapping ${staleMapping.id} - no expected SKU available`);
+            }
+          }
+        }
+        
+        compatibleProducts = retrievedProducts;
       } else {
         // Fall back to SKU-based matching when no explicit mappings exist
         console.log(`🔍 No explicit mappings for motorcycle ${motorcycleRecid}, using SKU-based matching`);
@@ -436,13 +475,16 @@ export class DatabaseStorage implements IStorage {
         const allProductsResponse = await fetchShopifyProducts(session);
         const allProducts = allProductsResponse.products || [];
         
-        // Collect all motorcycle OE part values for SKU matching
+        // Collect all motorcycle OE part values for SKU matching (only OE fields for accuracy)
         const motorcyclePartValues = [];
         for (const category of categoryTags) {
           const columnName = category.categoryValue.toLowerCase();
-          const motorcycleValue = (motorcycle as any)[columnName];
-          if (motorcycleValue && motorcycleValue.trim() !== '') {
-            motorcyclePartValues.push(motorcycleValue.trim());
+          // Only include OE (Original Equipment) fields to prevent false positives
+          if (columnName.startsWith('oe_')) {
+            const motorcycleValue = (motorcycle as any)[columnName];
+            if (motorcycleValue && motorcycleValue.trim() !== '') {
+              motorcyclePartValues.push(motorcycleValue.trim());
+            }
           }
         }
         
@@ -454,7 +496,7 @@ export class DatabaseStorage implements IStorage {
 
           // Check if the main product SKU matches any motorcycle part value
           if (motorcyclePartValues.some(partValue => 
-            product.sku && product.sku.toLowerCase() === partValue.toLowerCase()
+            product.sku && product.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
           )) {
             isCompatible = true;
           }
@@ -463,7 +505,7 @@ export class DatabaseStorage implements IStorage {
           if (!isCompatible && product.variants) {
             for (const variant of product.variants) {
               if (variant.sku && motorcyclePartValues.some(partValue => 
-                variant.sku.toLowerCase() === partValue.toLowerCase()
+                variant.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
               )) {
                 isCompatible = true;
                 break;
