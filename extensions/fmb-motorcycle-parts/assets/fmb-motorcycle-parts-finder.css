@@ -315,7 +315,7 @@
   text-transform: capitalize;
 }
 
-[data-fmb] .fmb-parts-cards {
+[data-fmb] .fmb-parts-card {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
@@ -329,7 +329,7 @@
   background-color: #333;
 }
 
-[data-fmb] .fmb-parts-cards a{
+[data-fmb] .fmb-parts-card a{
   color:#FFF;
   font-weight: 900;
   text-decoration: none;
