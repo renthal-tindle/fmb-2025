@@ -446,6 +446,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       console.log(`🔍 Motorcycle ${motorcycleRecid} part values for SKU matching:`, motorcyclePartValues);
+      console.log(`📋 Motorcycle ${motorcycleRecid} record:`, JSON.stringify(motorcycle, null, 2));
       
       let compatibleProducts: any[] = [];
       

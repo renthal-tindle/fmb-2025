@@ -457,7 +457,11 @@ export class MemStorage implements IStorage {
     const partMapping: PartMapping = { 
       ...mapping, 
       id,
-      compatible: mapping.compatible !== undefined ? mapping.compatible : true
+      compatible: mapping.compatible !== undefined ? mapping.compatible : true,
+      status: mapping.status || 'active',
+      expectedSku: mapping.expectedSku || null,
+      productTitle: mapping.productTitle || null,
+      lastSynced: mapping.lastSynced || new Date().toISOString()
     };
     this.partMappings.set(id, partMapping);
     return partMapping;
@@ -467,20 +471,82 @@ export class MemStorage implements IStorage {
     return this.partMappings.delete(id);
   }
 
-  // Compatible Parts
+  // Compatible Parts - Uses motorcycle database fields for SKU matching (ignores admin part mappings)
   async getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProduct[]> {
-    const mappings = await this.getPartMappingsByMotorcycle(motorcycleRecid);
-    const compatibleProducts: ShopifyProduct[] = [];
+    console.log(`🔍 Using motorcycle database fields for compatibility matching (motorcycle ${motorcycleRecid})`);
     
-    for (const mapping of mappings) {
-      if (mapping.compatible) {
-        const product = this.shopifyProducts.get(mapping.shopifyProductId);
-        if (product) {
-          compatibleProducts.push(product);
-        }
+    // Get the motorcycle details
+    const motorcycle = await this.getMotorcycle(motorcycleRecid);
+    if (!motorcycle) {
+      return [];
+    }
+    
+    // Collect ALL motorcycle part values for SKU matching (not just OE fields)
+    const motorcyclePartValues = [];
+    
+    // Define all the motorcycle part fields that can contain SKU values
+    const partFieldsToCheck = [
+      // Original Equipment fields
+      'oe_handlebar', 'oe_fcw', 'oe_rcw', 'oe_barmount', 'oe_chain',
+      // Brake pad fields
+      'front_brakepads', 'rear_brakepads',
+      // Handlebar fields
+      'handlebars_78', 'twinwall', 'fatbar', 'fatbar36',
+      // Other part fields
+      'grips', 'cam',
+      // Bar mount fields
+      'barmount28', 'barmount36',
+      // Sprocket/chainwheel fields
+      'fcwgroup', 'fcwconv', 'rcwconv', 'rcwgroup', 'rcwgroup_range', 'twinring',
+      // Chain fields
+      'chainconv', 'r1_chain', 'r3_chain', 'r4_chain', 'rr4_chain',
+      // Other specialized fields
+      'clipon', 'rcwcarrier', 'active_handlecompare'
+    ];
+    
+    // Extract all non-empty part values from motorcycle database
+    for (const fieldName of partFieldsToCheck) {
+      const motorcycleValue = (motorcycle as any)[fieldName];
+      if (motorcycleValue && typeof motorcycleValue === 'string' && motorcycleValue.trim() !== '') {
+        motorcyclePartValues.push(motorcycleValue.trim());
       }
     }
     
+    console.log(`🔍 Motorcycle ${motorcycleRecid} part values for SKU matching:`, motorcyclePartValues);
+    console.log(`📋 Motorcycle ${motorcycleRecid} record:`, JSON.stringify(motorcycle, null, 2));
+    
+    let compatibleProducts: ShopifyProduct[] = [];
+    
+    // Find products that match motorcycle part values by SKU
+    for (const product of Array.from(this.shopifyProducts.values())) {
+      let isCompatible = false;
+
+      // Check if the main product SKU matches any motorcycle part value
+      if (motorcyclePartValues.some(partValue => 
+        product.sku && product.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
+      )) {
+        isCompatible = true;
+      }
+
+      // If not matched by main SKU, check variant SKUs if available
+      if (!isCompatible && product.variants) {
+        const variants = typeof product.variants === 'string' ? JSON.parse(product.variants) : product.variants;
+        for (const variant of variants) {
+          if (variant.sku && motorcyclePartValues.some(partValue => 
+            variant.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
+          )) {
+            isCompatible = true;
+            break;
+          }
+        }
+      }
+
+      if (isCompatible) {
+        compatibleProducts.push(product);
+      }
+    }
+    
+    console.log(`✅ Found ${compatibleProducts.length} compatible parts for motorcycle ${motorcycleRecid} using motorcycle database fields`);
     return compatibleProducts;
   }
 
