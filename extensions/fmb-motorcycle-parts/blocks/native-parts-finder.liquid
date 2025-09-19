@@ -545,12 +545,12 @@
           <div class="fmb-parts-table">
             <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
               <thead>
-                <tr style="border-bottom: 2px solid #dee2e6;">
-                  <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Category</th>
-                  <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Part Number</th>
-                  <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Description</th>
-                  <th style="padding: 12px; text-align: center; border: 1px solid #dee2e6;">Add to Cart</th>
-                  <th style="padding: 12px; text-align: center; border: 1px solid #dee2e6;">More Options</th>
+                <tr>
+                  <th>Category</th>
+                  <th>Part Number</th>
+                  <th>Description</th>
+                  <th>Add to Cart</th>
+                  <th>More Options</th>
                 </tr>
               </thead>
               <tbody>
@@ -563,20 +563,18 @@
                     const categoryId = categoryInfo.name.toLowerCase().replace(/\s+/g, '-');
                     
                     return `
-                      <tr style="border-bottom: 1px solid #dee2e6;">
-                        <td style="padding: 12px; border: 1px solid #dee2e6; font-weight: 500;">${categoryInfo.name}</td>
-                        <td style="padding: 12px; border: 1px solid #dee2e6; font-weight: 500;">${part.sku}</td>
-                        <td style="padding: 12px; border: 1px solid #dee2e6;">
-                          <div>
-                            <a href="${part.url}" style="color: #007bff; text-decoration: none; font-weight: 500;">${part.title}</a>
-                          </div>
+                      <tr>
+                        <td>${categoryInfo.name}</td>
+                        <td>${part.sku}</td>
+                        <td>
+                            <a href="${part.url}">${part.title}</a>
                         </td>
-                        <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">
+                        <td >
                           <button class="fmb-nav-btn fmb-add-to-cart-btn" data-variant-id="${part.variants[0]?.id}">Add to Cart</button>
                         </td>
-                        <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">
+                        <td>
                           ${moreOptionsCount > 0 ? 
-                            `<a href="#${categoryId}" style="color: #007bff; text-decoration: none; font-weight: 500;">View ${moreOptionsCount} more</a>` : 
+                            `<a href="#${id}">View ${moreOptionsCount} more</a>` : 
                             '<span style="color: #999;">-</span>'
                           }
                         </td>
