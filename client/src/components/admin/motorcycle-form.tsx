@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertMotorcycleSchema } from "@shared/schema";
+import { insertMotorcycleSchema, BIKE_CATEGORIES, CATEGORY_SUBCATEGORIES } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -32,6 +32,7 @@ interface MotorcycleFormProps {
 export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedCategory, setSelectedCategory] = useState(motorcycle?.bikeCategory || "");
 
   const form = useForm<InsertMotorcycle>({
     resolver: zodResolver(
@@ -42,6 +43,8 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
     defaultValues: {
       recid: motorcycle?.recid || undefined,
       biketype: motorcycle?.biketype || 1,
+      bikeCategory: motorcycle?.bikeCategory || null,
+      bikeSubcategory: motorcycle?.bikeSubcategory || null,
       bikemake: motorcycle?.bikemake || "",
       bikemodel: motorcycle?.bikemodel || "",
       firstyear: motorcycle?.firstyear || new Date().getFullYear(),
@@ -213,12 +216,74 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="bikeCategory"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select 
+                      value={field.value || ""} 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        setSelectedCategory(value);
+                        // Clear subcategory when category changes
+                        form.setValue("bikeSubcategory", null);
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-motorcycle-category">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={BIKE_CATEGORIES.OFF_ROAD}>{BIKE_CATEGORIES.OFF_ROAD}</SelectItem>
+                        <SelectItem value={BIKE_CATEGORIES.STREET}>{BIKE_CATEGORIES.STREET}</SelectItem>
+                        <SelectItem value={BIKE_CATEGORIES.ATV}>{BIKE_CATEGORIES.ATV}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="bikeSubcategory"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subcategory</FormLabel>
+                    <Select 
+                      value={field.value || ""} 
+                      onValueChange={(value) => field.onChange(value)}
+                      disabled={!selectedCategory}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-motorcycle-subcategory">
+                          <SelectValue placeholder={selectedCategory ? "Select subcategory" : "Select category first"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {selectedCategory && CATEGORY_SUBCATEGORIES[selectedCategory]?.map((subcat) => (
+                          <SelectItem key={subcat} value={subcat}>
+                            {subcat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="biketype"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Bike Type</FormLabel>
+                  <FormLabel>Legacy Type (for compatibility)</FormLabel>
                   <Select value={field.value?.toString()} onValueChange={(value) => field.onChange(parseInt(value))}>
                     <FormControl>
                       <SelectTrigger data-testid="select-motorcycle-biketype">
@@ -236,7 +301,6 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
                 </FormItem>
               )}
             />
-
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button 
