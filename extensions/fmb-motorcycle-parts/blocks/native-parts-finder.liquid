@@ -629,6 +629,10 @@
         if (directMatch) return [directMatch];
       }
       
+      // Extract years from search query (4-digit numbers between 1900-2099)
+      const yearMatches = searchTerm.match(/\b(19\d{2}|20\d{2})\b/g);
+      const searchYears = yearMatches ? yearMatches.map(y => parseInt(y)) : [];
+      
       // Split search into words for multi-word matching
       const words = searchTerm.split(/\s+/).filter(word => word.length > 0);
       if (words.length === 0) return [];
@@ -646,11 +650,21 @@
         
         // Multi-word search: all words must match some part of the bike info
         return words.every(word => {
+          // Check if the word is a year we extracted
+          const wordAsYear = parseInt(word);
+          if (searchYears.includes(wordAsYear)) {
+            // Year matching: check if it falls within the bike's production range
+            if (bike.firstyear && bike.lastyear) {
+              return wordAsYear >= bike.firstyear && wordAsYear <= bike.lastyear;
+            } else if (bike.bikeyear) {
+              return wordAsYear === bike.bikeyear;
+            }
+            return false;
+          }
+          
+          // Non-year word matching
           return bike.bikemake.toLowerCase().includes(word) ||
                  bike.bikemodel.toLowerCase().includes(word) ||
-                 (bike.bikeyear && bike.bikeyear.toString().includes(word)) ||
-                 (bike.firstyear && bike.firstyear.toString().includes(word)) ||
-                 (bike.lastyear && bike.lastyear.toString().includes(word)) ||
                  (bike.bikeengine && bike.bikeengine.toString().includes(word));
         });
       }).sort((a, b) => {
