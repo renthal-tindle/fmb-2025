@@ -576,13 +576,8 @@ export default function AdminDashboard() {
                         {motorcycle.recid}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {motorcycle.bikemake} {motorcycle.bikemodel}
-                            </div>
-                            <div className="text-sm text-gray-500">{getBikeCategoryDisplay(motorcycle)}</div>
-                          </div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {motorcycle.bikemake} {motorcycle.bikemodel}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
