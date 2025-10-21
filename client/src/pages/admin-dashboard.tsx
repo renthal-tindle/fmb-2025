@@ -14,6 +14,7 @@ import { CSVImport } from "@/components/admin/csv-import";
 import PartCategorySettings from "@/components/admin/part-category-settings";
 import { PartsInventory } from "@/components/admin/parts-inventory";
 import { TopSearchesAnalytics } from "@/components/admin/top-searches-analytics";
+import MotorcycleCategoryManagement from "@/components/admin/motorcycle-category-management";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Motorcycle } from "@shared/schema";
 import { BIKE_CATEGORIES, BIKE_SUBCATEGORIES, CATEGORY_SUBCATEGORIES } from "@shared/schema";
@@ -714,8 +715,11 @@ export default function AdminDashboard() {
             </div>
           )}
           {activePanel === "settings" && (
-            <div className="p-6">
-              <PartCategorySettings />
+            <div className="p-6 space-y-8">
+              <MotorcycleCategoryManagement />
+              <div className="border-t pt-8">
+                <PartCategorySettings />
+              </div>
             </div>
           )}
         </main>

@@ -111,6 +111,16 @@ export const searchAnalytics = pgTable("search_analytics", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const motorcycleCategoryConfig = pgTable("motorcycle_category_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  category: text("category").notNull(), // Main category: "Off-Road", "Street", "ATV"
+  subcategory: text("subcategory"), // Subcategory: "MX/Enduro", "Sportbike", etc. (null for category-only entries)
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertMotorcycleSchema = createInsertSchema(motorcycles);
 
 export const insertShopifyProductSchema = createInsertSchema(shopifyProducts);
@@ -183,6 +193,15 @@ export const insertSearchAnalyticsSchema = createInsertSchema(searchAnalytics).o
 
 export type InsertSearchAnalytics = z.infer<typeof insertSearchAnalyticsSchema>;
 export type SearchAnalytics = typeof searchAnalytics.$inferSelect;
+
+export const insertMotorcycleCategoryConfigSchema = createInsertSchema(motorcycleCategoryConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMotorcycleCategoryConfig = z.infer<typeof insertMotorcycleCategoryConfigSchema>;
+export type MotorcycleCategoryConfig = typeof motorcycleCategoryConfig.$inferSelect;
 
 // Motorcycle Category Structure
 export const BIKE_CATEGORIES = {

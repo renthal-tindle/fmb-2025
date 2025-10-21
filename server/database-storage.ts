@@ -9,6 +9,7 @@ import {
   partCategoryTags,
   shopifySessions,
   searchAnalytics,
+  motorcycleCategoryConfig,
   type Motorcycle,
   type InsertMotorcycle,
   type ShopifyProduct,
@@ -23,7 +24,9 @@ import {
   type ShopifySessionData,
   type InsertShopifySession,
   type SearchAnalytics,
-  type InsertSearchAnalytics
+  type InsertSearchAnalytics,
+  type MotorcycleCategoryConfig,
+  type InsertMotorcycleCategoryConfig
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { fetchShopifyProductsByIds, getCurrentSession, fetchShopifyProducts } from "./shopify-auth";
@@ -1106,5 +1109,41 @@ export class DatabaseStorage implements IStorage {
     }
     
     return { healed, failed, details };
+  }
+
+  // Motorcycle Category Configuration
+  async getMotorcycleCategoryConfig(): Promise<MotorcycleCategoryConfig[]> {
+    return await db.select().from(motorcycleCategoryConfig)
+      .where(eq(motorcycleCategoryConfig.isActive, true))
+      .orderBy(motorcycleCategoryConfig.sortOrder);
+  }
+
+  async createMotorcycleCategoryConfig(config: InsertMotorcycleCategoryConfig): Promise<MotorcycleCategoryConfig> {
+    const result = await db.insert(motorcycleCategoryConfig).values(config).returning();
+    return result[0];
+  }
+
+  async updateMotorcycleCategoryConfig(id: string, updates: Partial<InsertMotorcycleCategoryConfig>): Promise<MotorcycleCategoryConfig | undefined> {
+    const result = await db.update(motorcycleCategoryConfig)
+      .set({ ...updates, updatedAt: sql`CURRENT_TIMESTAMP` })
+      .where(eq(motorcycleCategoryConfig.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteMotorcycleCategoryConfig(id: string): Promise<boolean> {
+    // Soft delete by setting isActive to false
+    const result = await db.update(motorcycleCategoryConfig)
+      .set({ isActive: false, updatedAt: sql`CURRENT_TIMESTAMP` })
+      .where(eq(motorcycleCategoryConfig.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async hardDeleteMotorcycleCategoryConfig(id: string): Promise<boolean> {
+    // Hard delete for complete removal
+    const result = await db.delete(motorcycleCategoryConfig)
+      .where(eq(motorcycleCategoryConfig.id, id));
+    return result.length > 0;
   }
 }

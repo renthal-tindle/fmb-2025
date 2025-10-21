@@ -4029,6 +4029,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Motorcycle Category Configuration routes
+  app.get("/api/motorcycle-category-config", async (req, res) => {
+    try {
+      const categories = await storage.getMotorcycleCategoryConfig();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching category config:", error);
+      res.status(500).json({ message: "Failed to fetch category configuration" });
+    }
+  });
+
+  app.post("/api/motorcycle-category-config", async (req, res) => {
+    try {
+      const newCategory = await storage.createMotorcycleCategoryConfig(req.body);
+      res.json(newCategory);
+    } catch (error) {
+      console.error("Error creating category config:", error);
+      res.status(500).json({ message: "Failed to create category configuration" });
+    }
+  });
+
+  app.put("/api/motorcycle-category-config/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateMotorcycleCategoryConfig(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ message: "Category configuration not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating category config:", error);
+      res.status(500).json({ message: "Failed to update category configuration" });
+    }
+  });
+
+  app.delete("/api/motorcycle-category-config/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteMotorcycleCategoryConfig(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Category configuration not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting category config:", error);
+      res.status(500).json({ message: "Failed to delete category configuration" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
