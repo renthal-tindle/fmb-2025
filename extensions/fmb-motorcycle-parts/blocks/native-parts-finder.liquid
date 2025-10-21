@@ -826,31 +826,17 @@
             });
             
             // Create a separate option for each motorcycle
-            // Show capacity when there are multiple bikes for this make/model to help distinguish them
-            const showCapacity = filteredMotorcycles.length > 1;
-            
             filteredMotorcycles.forEach(motorcycle => {
               const option = document.createElement('option');
               // Store the recid as the value, not the year
               option.value = motorcycle.recid;
               
-              // Display year range
+              // Display year range only
               const yearDisplay = motorcycle.firstyear === motorcycle.lastyear 
                 ? motorcycle.firstyear 
                 : `${motorcycle.firstyear}-${motorcycle.lastyear}`;
               
-              // Add differentiator when there are multiple bikes for this make/model
-              if (showCapacity) {
-                // Use capacity as primary differentiator
-                if (motorcycle.capacity) {
-                  option.textContent = `${yearDisplay} (${motorcycle.capacity}cc)`;
-                } else {
-                  // Fallback to recid if no capacity
-                  option.textContent = `${yearDisplay} (ID: ${motorcycle.recid})`;
-                }
-              } else {
-                option.textContent = yearDisplay;
-              }
+              option.textContent = yearDisplay;
               
               yearSelect.appendChild(option);
             });
