@@ -79,8 +79,27 @@ export class DatabaseStorage implements IStorage {
       return result;
     }
     
+    // Extract year from search if present (4-digit year between 1900-2099)
+    const yearMatch = searchTerm.match(/\b(19\d{2}|20\d{2})\b/);
+    const searchYear = yearMatch ? parseInt(yearMatch[0]) : null;
+    
+    // Remove year from search term when matching make/model
+    const searchWithoutYear = searchYear 
+      ? searchTerm.replace(/\b(19\d{2}|20\d{2})\b/g, '').trim().replace(/\s+/g, ' ')
+      : searchTerm;
+    
     // Split search into individual words for better matching
-    const words = searchTerm.split(/\s+/);
+    const words = searchWithoutYear.split(/\s+/).filter(w => w.length > 0);
+    
+    if (words.length === 0 && searchYear) {
+      // Only year was provided, search by year range
+      return await db.select().from(motorcycles).where(
+        and(
+          lte(motorcycles.firstyear, searchYear),
+          gte(motorcycles.lastyear, searchYear)
+        )
+      );
+    }
     
     if (words.length === 1) {
       // Single word: search in make OR model OR RECID (if numeric)
@@ -95,7 +114,16 @@ export class DatabaseStorage implements IStorage {
         conditions.push(sql`CAST(${motorcycles.recid} AS TEXT) ILIKE ${pattern}`);
       }
       
-      return await db.select().from(motorcycles).where(or(...conditions));
+      let results = await db.select().from(motorcycles).where(or(...conditions));
+      
+      // Filter by year if year was in search
+      if (searchYear) {
+        results = results.filter(bike => 
+          bike.firstyear <= searchYear && bike.lastyear >= searchYear
+        );
+      }
+      
+      return results;
     } else {
       // Multiple words: try different combinations
       const patterns = words.map(word => `%${word}%`);
@@ -109,19 +137,28 @@ export class DatabaseStorage implements IStorage {
       );
       
       // Also try the full search term in make or model
-      const fullPattern = `%${searchTerm}%`;
+      const fullPattern = `%${searchWithoutYear}%`;
       const fullTermCondition = or(
         ilike(motorcycles.bikemake, fullPattern),
         ilike(motorcycles.bikemodel, fullPattern)
       );
       
       // Return results where either the full term matches OR all individual words match
-      return await db.select().from(motorcycles).where(
+      let results = await db.select().from(motorcycles).where(
         or(
           fullTermCondition,
           and(...wordConditions)
         )
       );
+      
+      // Filter by year if year was in search
+      if (searchYear) {
+        results = results.filter(bike => 
+          bike.firstyear <= searchYear && bike.lastyear >= searchYear
+        );
+      }
+      
+      return results;
     }
   }
 
