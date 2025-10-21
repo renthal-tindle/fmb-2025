@@ -598,6 +598,8 @@ export class DatabaseStorage implements IStorage {
           category: product.product_type || null,
           tags: product.tags || '', // Shopify returns tags as comma-separated string
           variants: product.variants || [],
+          handle: product.handle || null,
+          url: product.handle ? `/products/${product.handle}` : null,
           adminCategory: adminCategory,
           adminCategoryLabel: adminCategoryLabel
         };
