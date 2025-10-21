@@ -5,7 +5,9 @@ import { z } from "zod";
 
 export const motorcycles = pgTable("motorcycles", {
   recid: integer("recid").primaryKey(),
-  biketype: integer("biketype").notNull(), // 1=Street, 2=Dirt, 5=Dual Sport, 6=ATVs
+  biketype: integer("biketype").notNull(), // Legacy: 1=Street, 2=Dirt, 5=Dual Sport, 6=ATVs
+  bikeCategory: text("bike_category"), // New: "Off-Road", "Street", "ATV"
+  bikeSubcategory: text("bike_subcategory"), // New: "MX/Enduro", "Sportbike", "Dual Sport", etc.
   bikemake: text("bikemake").notNull(),
   bikemodel: text("bikemodel").notNull(),
   firstyear: integer("firstyear").notNull(),
@@ -181,3 +183,44 @@ export const insertSearchAnalyticsSchema = createInsertSchema(searchAnalytics).o
 
 export type InsertSearchAnalytics = z.infer<typeof insertSearchAnalyticsSchema>;
 export type SearchAnalytics = typeof searchAnalytics.$inferSelect;
+
+// Motorcycle Category Structure
+export const BIKE_CATEGORIES = {
+  OFF_ROAD: "Off-Road",
+  STREET: "Street",
+  ATV: "ATV"
+} as const;
+
+export const BIKE_SUBCATEGORIES = {
+  // Off-Road subcategories
+  MX_ENDURO: "MX/Enduro",
+  TRIALS: "Trials",
+  
+  // Street subcategories
+  SPORTBIKE: "Sportbike",
+  ADVENTURE: "Adventure",
+  CRUISER: "Cruiser / V-Twin",
+  TOURING: "Touring",
+  STANDARD: "Standard / Naked",
+  
+  // Shared across Off-Road and Street
+  DUAL_SPORT: "Dual Sport"
+} as const;
+
+// Category to subcategory mapping
+export const CATEGORY_SUBCATEGORIES: Record<string, string[]> = {
+  [BIKE_CATEGORIES.OFF_ROAD]: [
+    BIKE_SUBCATEGORIES.MX_ENDURO,
+    BIKE_SUBCATEGORIES.TRIALS,
+    BIKE_SUBCATEGORIES.DUAL_SPORT
+  ],
+  [BIKE_CATEGORIES.STREET]: [
+    BIKE_SUBCATEGORIES.SPORTBIKE,
+    BIKE_SUBCATEGORIES.ADVENTURE,
+    BIKE_SUBCATEGORIES.CRUISER,
+    BIKE_SUBCATEGORIES.TOURING,
+    BIKE_SUBCATEGORIES.STANDARD,
+    BIKE_SUBCATEGORIES.DUAL_SPORT
+  ],
+  [BIKE_CATEGORIES.ATV]: []
+};

@@ -1718,7 +1718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Motorcycles routes
   app.get("/api/motorcycles", async (req, res) => {
     try {
-      const { search, bikemake, firstyear, lastyear, biketype } = req.query;
+      const { search, bikemake, firstyear, lastyear, biketype, bikeCategory, bikeSubcategory } = req.query;
       
       let motorcycles;
       if (search) {
@@ -1736,12 +1736,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Log analytics error but don't fail the search
           console.error('Failed to track search analytics:', analyticsError);
         }
-      } else if (bikemake || firstyear || lastyear || biketype) {
+      } else if (bikemake || firstyear || lastyear || biketype || bikeCategory || bikeSubcategory) {
         motorcycles = await storage.filterMotorcycles({
           bikemake: bikemake as string,
           firstyear: firstyear ? parseInt(firstyear as string) : undefined,
           lastyear: lastyear ? parseInt(lastyear as string) : undefined,
           biketype: biketype ? parseInt(biketype as string) : undefined,
+          bikeCategory: bikeCategory as string,
+          bikeSubcategory: bikeSubcategory as string,
         });
       } else {
         motorcycles = await storage.getMotorcycles();

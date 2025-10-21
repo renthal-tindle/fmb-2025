@@ -16,13 +16,14 @@ import { PartsInventory } from "@/components/admin/parts-inventory";
 import { TopSearchesAnalytics } from "@/components/admin/top-searches-analytics";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Motorcycle } from "@shared/schema";
+import { BIKE_CATEGORIES, BIKE_SUBCATEGORIES, CATEGORY_SUBCATEGORIES } from "@shared/schema";
 
 type AdminPanel = "dashboard" | "motorcycles" | "products" | "parts" | "inventory" | "import" | "settings";
 
 export default function AdminDashboard() {
   const [activePanel, setActivePanel] = useState<AdminPanel>("dashboard");
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({ bikemake: "", biketype: "", firstyear: "" });
+  const [filters, setFilters] = useState({ bikemake: "", biketype: "", bikeCategory: "", bikeSubcategory: "", firstyear: "" });
   const [showMotorcycleForm, setShowMotorcycleForm] = useState(false);
   const [selectedMotorcycle, setSelectedMotorcycle] = useState<Motorcycle | null>(null);
   const { toast } = useToast();
@@ -97,6 +98,12 @@ export default function AdminDashboard() {
       if (filters.biketype && filters.biketype !== "all-types") {
         params.append("biketype", filters.biketype);
       }
+      if (filters.bikeCategory && filters.bikeCategory !== "all-categories") {
+        params.append("bikeCategory", filters.bikeCategory);
+      }
+      if (filters.bikeSubcategory && filters.bikeSubcategory !== "all-subcategories") {
+        params.append("bikeSubcategory", filters.bikeSubcategory);
+      }
       
       const url = `/api/motorcycles${params.toString() ? `?${params.toString()}` : ''}`;
       const response = await fetch(url);
@@ -121,9 +128,18 @@ export default function AdminDashboard() {
     queryKey: ["/api/motorcycles/years"],
   });
 
-  // Helper function to convert biketype to readable text
-  const getBikeTypeText = (biketype: number): string => {
-    switch (biketype) {
+  // Helper function to get bike category display text (supports both old and new format)
+  const getBikeCategoryDisplay = (motorcycle: any): string => {
+    // New format: use bikeCategory and bikeSubcategory if available
+    if (motorcycle.bikeCategory) {
+      if (motorcycle.bikeSubcategory) {
+        return `${motorcycle.bikeCategory} - ${motorcycle.bikeSubcategory}`;
+      }
+      return motorcycle.bikeCategory;
+    }
+    
+    // Legacy format: convert biketype number to text
+    switch (motorcycle.biketype) {
       case 1: return "Street/Road";
       case 2: return "Dirt/Off-road";
       case 5: return "Dual Sport";
@@ -427,7 +443,7 @@ export default function AdminDashboard() {
       {/* Search and Filters */}
       <Card className="mb-6">
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
               <Input
@@ -470,17 +486,43 @@ export default function AdminDashboard() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-              <Select value={filters.biketype} onValueChange={(value) => setFilters({...filters, biketype: value})}>
-                <SelectTrigger data-testid="select-filter-biketype">
-                  <SelectValue placeholder="All Types" />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <Select 
+                value={filters.bikeCategory} 
+                onValueChange={(value) => setFilters({...filters, bikeCategory: value, bikeSubcategory: ""})}
+                data-testid="select-filter-category"
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all-types">All Types</SelectItem>
-                  <SelectItem value="1">Street/Road</SelectItem>
-                  <SelectItem value="2">Dirt/Off-road</SelectItem>
-                  <SelectItem value="5">Dual Sport</SelectItem>
-                  <SelectItem value="6">ATV/Quad</SelectItem>
+                  <SelectItem value="all-categories">All Categories</SelectItem>
+                  <SelectItem value={BIKE_CATEGORIES.OFF_ROAD}>{BIKE_CATEGORIES.OFF_ROAD}</SelectItem>
+                  <SelectItem value={BIKE_CATEGORIES.STREET}>{BIKE_CATEGORIES.STREET}</SelectItem>
+                  <SelectItem value={BIKE_CATEGORIES.ATV}>{BIKE_CATEGORIES.ATV}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Subcategory</label>
+              <Select 
+                value={filters.bikeSubcategory} 
+                onValueChange={(value) => setFilters({...filters, bikeSubcategory: value})}
+                disabled={!filters.bikeCategory || filters.bikeCategory === "all-categories"}
+                data-testid="select-filter-subcategory"
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Subcategories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all-subcategories">All Subcategories</SelectItem>
+                  {filters.bikeCategory && filters.bikeCategory !== "all-categories" && 
+                    CATEGORY_SUBCATEGORIES[filters.bikeCategory]?.map((subcat) => (
+                      <SelectItem key={subcat} value={subcat}>
+                        {subcat}
+                      </SelectItem>
+                    ))
+                  }
                 </SelectContent>
               </Select>
             </div>
@@ -539,7 +581,7 @@ export default function AdminDashboard() {
                             <div className="text-sm font-medium text-gray-900">
                               {motorcycle.bikemake} {motorcycle.bikemodel}
                             </div>
-                            <div className="text-sm text-gray-500">{getBikeTypeText(motorcycle.biketype)}</div>
+                            <div className="text-sm text-gray-500">{getBikeCategoryDisplay(motorcycle)}</div>
                           </div>
                         </div>
                       </td>
@@ -550,7 +592,7 @@ export default function AdminDashboard() {
                         {motorcycle.capacity ? `${motorcycle.capacity}cc` : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant="secondary">{getBikeTypeText(motorcycle.biketype)}</Badge>
+                        <Badge variant="secondary">{getBikeCategoryDisplay(motorcycle)}</Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <Badge variant={motorcycle.partsCount > 0 ? "default" : "outline"} data-testid={`badge-parts-count-${motorcycle.recid}`}>

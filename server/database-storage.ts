@@ -166,7 +166,9 @@ export class DatabaseStorage implements IStorage {
     bikemake?: string; 
     firstyear?: number; 
     lastyear?: number; 
-    biketype?: number 
+    biketype?: number;
+    bikeCategory?: string;
+    bikeSubcategory?: string;
   }): Promise<Motorcycle[]> {
     const conditions = [];
     
@@ -186,6 +188,12 @@ export class DatabaseStorage implements IStorage {
     }
     if (filters.biketype) {
       conditions.push(eq(motorcycles.biketype, filters.biketype));
+    }
+    if (filters.bikeCategory) {
+      conditions.push(eq(motorcycles.bikeCategory, filters.bikeCategory));
+    }
+    if (filters.bikeSubcategory) {
+      conditions.push(eq(motorcycles.bikeSubcategory, filters.bikeSubcategory));
     }
 
     if (conditions.length === 0) {
