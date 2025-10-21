@@ -814,28 +814,47 @@
         })
           .then(response => response.json())
           .then(motorcycles => {
-            // Filter motorcycles by model and extract unique years
+            // Filter motorcycles by model - keep each bike separate
             const filteredMotorcycles = motorcycles.filter(m => 
               m.bikemodel.toLowerCase() === selectedModel.toLowerCase()
             );
-            const allYears = new Set();
-            filteredMotorcycles.forEach(motorcycle => {
-              // Add all years in the range from firstyear to lastyear
-              for (let year = motorcycle.firstyear; year <= motorcycle.lastyear; year++) {
-                allYears.add(year);
-              }
+            
+            // Sort by year (newest first), then by capacity descending
+            filteredMotorcycles.sort((a, b) => {
+              if (b.firstyear !== a.firstyear) return b.firstyear - a.firstyear;
+              return (b.capacity || 0) - (a.capacity || 0);
             });
             
-            // Convert to sorted array (newest first) and group into ranges
-            const sortedYears = Array.from(allYears).sort((a, b) => b - a);
-            const yearRanges = groupYearsIntoRanges(sortedYears);
+            // Create a separate option for each motorcycle
+            // Show capacity when there are multiple bikes for this make/model to help distinguish them
+            const showCapacity = filteredMotorcycles.length > 1;
             
-            yearRanges.forEach(yearRange => {
+            filteredMotorcycles.forEach(motorcycle => {
               const option = document.createElement('option');
-              option.value = yearRange;
-              option.textContent = yearRange;
+              // Store the recid as the value, not the year
+              option.value = motorcycle.recid;
+              
+              // Display year range
+              const yearDisplay = motorcycle.firstyear === motorcycle.lastyear 
+                ? motorcycle.firstyear 
+                : `${motorcycle.firstyear}-${motorcycle.lastyear}`;
+              
+              // Add differentiator when there are multiple bikes for this make/model
+              if (showCapacity) {
+                // Use capacity as primary differentiator
+                if (motorcycle.capacity) {
+                  option.textContent = `${yearDisplay} (${motorcycle.capacity}cc)`;
+                } else {
+                  // Fallback to recid if no capacity
+                  option.textContent = `${yearDisplay} (ID: ${motorcycle.recid})`;
+                }
+              } else {
+                option.textContent = yearDisplay;
+              }
+              
               yearSelect.appendChild(option);
             });
+            
             yearSelect.disabled = false;
             yearSelect.closest('.fmb-form-group').classList.remove('disabled');
           })
@@ -845,49 +864,16 @@
           });
       });
 
-      // Year selection handler - find matching motorcycle and redirect to its bikeid
+      // Year selection handler - redirect directly to the selected motorcycle (recid is in the value)
       yearSelect.addEventListener('change', function() {
-        const selectedMake = makeSelect.value;
-        const selectedModel = modelSelect.value;
-        const selectedYear = this.value;
+        const selectedRecid = this.value;
 
-        if (!selectedMake || !selectedModel || !selectedYear) {
+        if (!selectedRecid) {
           return;
         }
 
-        // Show loading state while finding motorcycle
-        results.innerHTML = '<div class="fmb-loading"><p>Finding your motorcycle...</p></div>';
-
-        // Search for the specific motorcycle that matches these criteria
-        fetch(`${config.apiBaseUrl}/search`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache'
-          },
-          body: JSON.stringify({
-            make: selectedMake,
-            model: selectedModel,
-            year: selectedYear
-          })
-        })
-          .then(response => response.json())
-          .then(data => {
-            const motorcycles = data.motorcycles || [];
-            
-            if (motorcycles.length === 0) {
-              results.innerHTML = '<div class="fmb-error"><p>No motorcycle found for this combination.</p></div>';
-              return;
-            }
-
-            // Get the first matching motorcycle and redirect to its bikeid page
-            const motorcycle = motorcycles[0];
-            window.location.href = `/pages/fit-my-bike/?bikeid=${motorcycle.recid}`;
-          })
-          .catch(error => {
-            console.error('Error finding motorcycle:', error);
-            results.innerHTML = '<div class="fmb-error"><p>Error finding motorcycle. Please try again.</p></div>';
-          });
+        // Redirect directly to the motorcycle's page using its recid
+        window.location.href = `/pages/fit-my-bike/?bikeid=${selectedRecid}`;
       });
     }
 
