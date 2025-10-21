@@ -35,13 +35,23 @@ Preferred communication style: Simple, everyday language.
   - Shopify products (title, price, SKU, images)
   - Part mappings (linking products to compatible motorcycles)
   - Import history (tracking bulk data operations)
+  - Motorcycle category configuration (dynamic category/subcategory definitions)
 
 ### Key Features
 - **Dual Interface**: Toggle between admin dashboard and customer catalog views
 - **Search & Filtering**: Advanced search across motorcycles and parts with multiple filter options
 - **Bulk Operations**: CSV import functionality for motorcycles and part mappings
 - **Compatibility Management**: Create and manage relationships between parts and motorcycle models
+- **Dynamic Category Management**: Admin panel for managing motorcycle categories and subcategories with real-time updates
 - **Responsive Design**: Mobile-first approach with adaptive layouts
+
+### Recent Changes (October 21, 2025)
+- **Motorcycle Category Management System**: Added dynamic category configuration in Settings panel
+  - Admins can now add, edit, and delete motorcycle categories and subcategories
+  - Categories are stored in the database instead of being hardcoded
+  - Motorcycle form dynamically loads categories from the database
+  - Supports hierarchical categories with independent subcategory filtering
+  - Default categories seeded: Off-Road (MX/Enduro, Trials, Dual Sport), Street (Sportbike, Adventure, Cruiser/V-Twin, Touring, Standard/Naked, Dual Sport), ATV
 
 ### Authentication & Authorization
 - Currently uses session-based approach with connect-pg-simple for PostgreSQL session storage
