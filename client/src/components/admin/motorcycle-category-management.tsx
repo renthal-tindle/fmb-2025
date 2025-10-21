@@ -176,7 +176,7 @@ export default function MotorcycleCategoryManagement() {
                             size="sm"
                             onClick={() => handleDelete(cat.id, cat.category, cat.subcategory)}
                             disabled={deleteMutation.isPending}
-                            data-testid={`button-delete-${cat.id}`}
+                            data-testid={`button-delete-category-${cat.id}`}
                           >
                             <span className="material-icons text-base">delete</span>
                           </Button>

@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertMotorcycleSchema, BIKE_CATEGORIES, CATEGORY_SUBCATEGORIES } from "@shared/schema";
+import { insertMotorcycleSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { MotorcycleCategoryConfig } from "@shared/schema";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,27 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState(motorcycle?.bikeCategory || "");
+
+  // Fetch category configuration from the database
+  const { data: categoryConfig, isLoading: loadingCategories } = useQuery<MotorcycleCategoryConfig[]>({
+    queryKey: ["/api/motorcycle-category-config"],
+  });
+
+  // Build dynamic category and subcategory options
+  const categoryOptions = useMemo(() => {
+    if (!categoryConfig) return [];
+    const uniqueCategories = Array.from(new Set(categoryConfig.map(c => c.category)));
+    return uniqueCategories.sort();
+  }, [categoryConfig]);
+
+  const subcategoryOptions = useMemo(() => {
+    if (!categoryConfig || !selectedCategory) return [];
+    return categoryConfig
+      .filter(c => c.category === selectedCategory && c.subcategory)
+      .map(c => c.subcategory!)
+      .filter((v, i, a) => a.indexOf(v) === i) // unique
+      .sort();
+  }, [categoryConfig, selectedCategory]);
 
   const form = useForm<InsertMotorcycle>({
     resolver: zodResolver(
@@ -238,9 +260,9 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value={BIKE_CATEGORIES.OFF_ROAD}>{BIKE_CATEGORIES.OFF_ROAD}</SelectItem>
-                        <SelectItem value={BIKE_CATEGORIES.STREET}>{BIKE_CATEGORIES.STREET}</SelectItem>
-                        <SelectItem value={BIKE_CATEGORIES.ATV}>{BIKE_CATEGORIES.ATV}</SelectItem>
+                        {categoryOptions.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -265,7 +287,7 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {selectedCategory && CATEGORY_SUBCATEGORIES[selectedCategory]?.map((subcat) => (
+                        {subcategoryOptions.map((subcat) => (
                           <SelectItem key={subcat} value={subcat}>
                             {subcat}
                           </SelectItem>
