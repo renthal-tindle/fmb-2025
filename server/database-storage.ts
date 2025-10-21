@@ -426,6 +426,84 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
+  // Add parts count to all motorcycles efficiently (fetches Shopify products once)
+  async addPartsCountToMotorcycles(motorcycles: Motorcycle[]): Promise<Array<Motorcycle & { partsCount: number }>> {
+    try {
+      // Get the current Shopify session
+      const session = getCurrentSession();
+      if (!session) {
+        // No session, return motorcycles with 0 parts
+        return motorcycles.map(m => ({ ...m, partsCount: 0 }));
+      }
+      
+      // Fetch Shopify products ONCE for all motorcycles
+      const allProductsResponse = await fetchShopifyProducts(session);
+      const allProducts = allProductsResponse.products || [];
+      
+      // Define all the motorcycle part fields that can contain SKU values
+      const partFieldsToCheck = [
+        'oe_handlebar', 'oe_fcw', 'oe_rcw', 'oe_barmount', 'oe_chain',
+        'front_brakepads', 'rear_brakepads',
+        'handlebars_78', 'twinwall', 'fatbar', 'fatbar36',
+        'grips', 'cam',
+        'barmount28', 'barmount36',
+        'fcwgroup', 'fcwconv', 'rcwconv', 'rcwgroup', 'rcwgroup_range', 'twinring',
+        'chainconv', 'r1_chain', 'r3_chain', 'r4_chain', 'rr4_chain',
+        'clipon', 'rcwcarrier', 'active_handlecompare'
+      ];
+      
+      // Count parts for each motorcycle using the shared product list
+      return motorcycles.map(motorcycle => {
+        // Extract all non-empty part values from this motorcycle
+        const motorcyclePartValues: string[] = [];
+        for (const fieldName of partFieldsToCheck) {
+          const motorcycleValue = (motorcycle as any)[fieldName];
+          if (motorcycleValue && typeof motorcycleValue === 'string' && motorcycleValue.trim() !== '') {
+            motorcyclePartValues.push(motorcycleValue.trim());
+          }
+        }
+        
+        // Count compatible products for this motorcycle
+        let count = 0;
+        for (const product of allProducts) {
+          let isCompatible = false;
+
+          // Check if the main product SKU matches any motorcycle part value
+          if (motorcyclePartValues.some(partValue => 
+            product.sku && product.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
+          )) {
+            isCompatible = true;
+          }
+
+          // If not matched by main SKU, check variant SKUs
+          if (!isCompatible && product.variants) {
+            for (const variant of product.variants) {
+              if (variant.sku && motorcyclePartValues.some(partValue => 
+                variant.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
+              )) {
+                isCompatible = true;
+                break;
+              }
+            }
+          }
+
+          if (isCompatible) {
+            count++;
+          }
+        }
+        
+        return {
+          ...motorcycle,
+          partsCount: count
+        };
+      });
+    } catch (error) {
+      console.error('Failed to add parts count to motorcycles:', error);
+      // Return motorcycles with 0 parts on error
+      return motorcycles.map(m => ({ ...m, partsCount: 0 }));
+    }
+  }
+
   // Compatible Parts - Uses motorcycle database fields for SKU matching (ignores admin part mappings)
   async getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProductWithCategory[]> {
     try {

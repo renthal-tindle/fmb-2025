@@ -1747,13 +1747,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         motorcycles = await storage.getMotorcycles();
       }
       
+      // Fetch Shopify products once and count parts for all motorcycles
+      const motorcyclesWithCounts = await storage.addPartsCountToMotorcycles(motorcycles);
+      
       // Prevent caching to ensure fresh data
       res.set({
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0'
       });
-      res.json(motorcycles);
+      res.json(motorcyclesWithCounts);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch motorcycles" });
     }

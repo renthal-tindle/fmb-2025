@@ -511,6 +511,9 @@ export default function AdminDashboard() {
                     Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Parts Mapped
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -518,14 +521,14 @@ export default function AdminDashboard() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center">
+                    <td colSpan={7} className="px-6 py-4 text-center">
                       <div className="flex justify-center">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                       </div>
                     </td>
                   </tr>
                 ) : filteredMotorcycles && filteredMotorcycles.length > 0 ? (
-                  filteredMotorcycles.map((motorcycle: Motorcycle) => (
+                  filteredMotorcycles.map((motorcycle: any) => (
                     <tr key={motorcycle.recid} data-testid={`row-motorcycle-${motorcycle.recid}`}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
                         {motorcycle.recid}
@@ -548,6 +551,11 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Badge variant="secondary">{getBikeTypeText(motorcycle.biketype)}</Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <Badge variant={motorcycle.partsCount > 0 ? "default" : "outline"} data-testid={`badge-parts-count-${motorcycle.recid}`}>
+                          {motorcycle.partsCount || 0}
+                        </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <Button 
@@ -589,7 +597,7 @@ export default function AdminDashboard() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                       No motorcycles found
                     </td>
                   </tr>
