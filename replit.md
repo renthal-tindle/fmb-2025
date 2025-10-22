@@ -48,6 +48,13 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **Part Section Drag-and-Drop Reordering**:
+  - Added database-backed section management with sortOrder field in part_sections table
+  - Main sections (Bar Mounts, Brake Pads, Chain, etc.) now support drag-and-drop reordering in Settings
+  - Section ordering persists to database and displays correctly in parts-mapping component
+  - Initialization endpoint creates default sections with sequential sortOrder values
+  - Parts-mapping component fetches sections from database and sorts by sortOrder dynamically
+  - Both sections and categories within sections support independent drag-and-drop ordering
 - **Part Category Drag-and-Drop Reordering**:
   - Removed manual sortOrder input fields; users now reorder categories by dragging
   - Implemented @dnd-kit library for intuitive drag-and-drop functionality
