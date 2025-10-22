@@ -51,12 +51,14 @@ Preferred communication style: Simple, everyday language.
 - **Part Category Drag-and-Drop Reordering**:
   - Removed manual sortOrder input fields; users now reorder categories by dragging
   - Implemented @dnd-kit library for intuitive drag-and-drop functionality
-  - Categories grouped by section (Handlebars, Front Sprocket, etc.) with independent reordering
-  - Drag-and-drop updates sortOrder values automatically via batch mutation
+  - Categories grouped by section (Handlebars, Front Sprocket, etc.) with independent reordering within each section
+  - Drag-and-drop updates sortOrder values automatically via batch mutation with optimistic updates
   - Visual drag handle (grip-vertical icon) appears on hover for clear affordance
   - "Drag to reorder" hint displayed in section headers
   - New categories automatically assigned highest sortOrder + 1 within their section
   - Backend batch update endpoint supports multi-category sortOrder updates in single transaction
+  - Database sorts by assignedSection first, then sortOrder within each section
+  - Frontend properly sorts categories by sortOrder when displaying grouped sections
 - **Admin Dashboard Enhancement - RECID Sorting**: 
   - Added ability to sort motorcycles table by RECID column
   - Clickable RECID header toggles between ascending and descending order

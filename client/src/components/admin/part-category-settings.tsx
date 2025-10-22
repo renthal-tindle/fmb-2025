@@ -436,26 +436,14 @@ export default function PartCategorySettings() {
       return;
     }
 
-    console.log('Drag event:', {
-      activeId: active.id,
-      overId: over.id,
-      oldIndex,
-      newIndex,
-      sectionCategories: sectionCategories.map(c => ({ value: c.value, sortOrder: c.sortOrder }))
-    });
-
     // Reorder the categories array within this section
     const reorderedCategories = arrayMove(sectionCategories, oldIndex, newIndex);
-
-    console.log('Reordered categories:', reorderedCategories.map(c => ({ value: c.value, sortOrder: c.sortOrder })));
 
     // Calculate new sortOrder values for the reordered categories
     const updates = reorderedCategories.map((cat, index) => ({
       categoryValue: cat.value,
       sortOrder: index,
     }));
-
-    console.log('Updates to send:', updates);
 
     // Update sortOrder in the database
     batchUpdateSortOrderMutation.mutate(updates);
