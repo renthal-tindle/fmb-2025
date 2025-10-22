@@ -547,6 +547,7 @@ export default function PartCategorySettings() {
           ...defaultCategory,
           productTags: Array.isArray(tags) ? tags : [savedCategory.productTags],
           assignedSection: savedCategory.assignedSection || "unassigned",
+          sortOrder: savedCategory.sortOrder || 0,
           isSaved: true,
           isDefault: true
         };
@@ -555,12 +556,13 @@ export default function PartCategorySettings() {
           ...defaultCategory,
           productTags: [savedCategory.productTags],
           assignedSection: savedCategory.assignedSection || "unassigned",
+          sortOrder: savedCategory.sortOrder || 0,
           isSaved: true,
           isDefault: true
         };
       }
     }
-    return { ...defaultCategory, assignedSection: "unassigned", isSaved: false, isDefault: true };
+    return { ...defaultCategory, assignedSection: "unassigned", sortOrder: 0, isSaved: false, isDefault: true };
   });
 
   // Add custom categories (not in default list)
@@ -574,6 +576,7 @@ export default function PartCategorySettings() {
           label: savedCategory.categoryLabel || savedCategory.categoryValue,
           productTags: Array.isArray(tags) ? tags : [savedCategory.productTags],
           assignedSection: savedCategory.assignedSection || "unassigned",
+          sortOrder: savedCategory.sortOrder || 0,
           isSaved: true,
           isDefault: false
         };
@@ -583,6 +586,7 @@ export default function PartCategorySettings() {
           label: savedCategory.categoryLabel || savedCategory.categoryValue,
           productTags: [savedCategory.productTags],
           assignedSection: savedCategory.assignedSection || "unassigned",
+          sortOrder: savedCategory.sortOrder || 0,
           isSaved: true,
           isDefault: false
         };
@@ -591,7 +595,7 @@ export default function PartCategorySettings() {
 
   const allCategories = [...defaultCategoriesUpdated, ...customCategories];
 
-  // Group categories by assigned section
+  // Group categories by assigned section and sort by sortOrder within each section
   const categoriesBySection = allCategories.reduce((acc, category) => {
     const section = category.assignedSection || "unassigned";
     if (!acc[section]) {
@@ -600,6 +604,11 @@ export default function PartCategorySettings() {
     acc[section].push(category);
     return acc;
   }, {} as Record<string, typeof allCategories>);
+
+  // Sort categories within each section by sortOrder
+  Object.keys(categoriesBySection).forEach(section => {
+    categoriesBySection[section].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  });
 
   if (isLoading) {
     return (
