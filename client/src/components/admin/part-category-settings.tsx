@@ -313,6 +313,16 @@ export default function PartCategorySettings() {
 
   const allCategories = [...defaultCategoriesUpdated, ...customCategories];
 
+  // Group categories by assigned section
+  const categoriesBySection = allCategories.reduce((acc, category) => {
+    const section = category.assignedSection || "unassigned";
+    if (!acc[section]) {
+      acc[section] = [];
+    }
+    acc[section].push(category);
+    return acc;
+  }, {} as Record<string, typeof allCategories>);
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -476,188 +486,158 @@ export default function PartCategorySettings() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {allCategories.map((category) => (
-          <Card key={category.value} className={category.isSaved ? "border-green-200" : "border-gray-200"}>
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{category.label}</CardTitle>
-                <div className="flex gap-2">
-                  {category.isSaved && <Badge variant="outline" className="text-green-600">Saved</Badge>}
-                  {!category.isDefault && <Badge variant="outline" className="text-blue-600">Custom</Badge>}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => startEditing(category)}
-                    data-testid={`button-edit-${category.value}`}
-                  >
-                    <span className="material-icons text-base">edit</span>
-                  </Button>
-                </div>
-              </div>
-              <p className="text-sm text-gray-500">{category.value}</p>
-            </CardHeader>
-            <CardContent>
-              {editingCategory === category.value ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor={`label-${category.value}`} className="text-sm font-medium">
-                        Category Label
-                      </Label>
-                      <p className="text-xs text-gray-600 mt-1 mb-2">
-                        Display name for this category
-                      </p>
-                      <Input
-                        id={`label-${category.value}`}
-                        value={editingLabel}
-                        onChange={(e) => setEditingLabel(e.target.value)}
-                        placeholder="V-Twin Handlebars"
-                        data-testid={`input-label-${category.value}`}
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor={`value-${category.value}`} className="text-sm font-medium">
-                        Category Value
-                      </Label>
-                      <p className="text-xs text-gray-600 mt-1 mb-2">
-                        Internal identifier (lowercase, underscores, no spaces)
-                      </p>
-                      <Input
-                        id={`value-${category.value}`}
-                        value={editingValue}
-                        onChange={(e) => setEditingValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
-                        placeholder="vtwin_handlebars"
-                        data-testid={`input-value-${category.value}`}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor={`tags-${category.value}`} className="text-sm font-medium">
-                      Product Tags
-                    </Label>
-                    <p className="text-xs text-gray-600 mt-1 mb-3">
-                      Enter search terms separated by commas. These will match against product titles and categories.
-                    </p>
-                    <div className="bg-blue-50 border border-blue-200 p-3 rounded-md mb-3">
-                      <p className="text-xs font-medium text-blue-800 mb-1">Examples:</p>
-                      <p className="text-xs text-blue-700">handlebar, fatbar, twinwall</p>
-                      <p className="text-xs text-blue-700">brake pad, brake pads, front brake</p>
-                      <p className="text-xs text-blue-700">sprocket, chainwheel, front sprocket</p>
-                    </div>
-                    <Textarea
-                      id={`tags-${category.value}`}
-                      value={editingTags}
-                      onChange={(e) => setEditingTags(e.target.value)}
-                      placeholder="handlebar, fatbar, twinwall"
-                      className="min-h-[100px] text-sm"
-                      data-testid={`textarea-tags-${category.value}`}
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      Separate each tag with a comma. Products matching any of these tags will appear for this category.
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor={`section-${category.value}`} className="text-sm font-medium">
-                        Assign to Section
-                      </Label>
-                      <p className="text-xs text-gray-600 mt-1 mb-3">
-                        Choose which section this category will appear in during part assignment.
-                      </p>
-                      <Select value={editingSection} onValueChange={setEditingSection}>
-                        <SelectTrigger data-testid={`select-section-${category.value}`}>
-                          <SelectValue placeholder="Select a section..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SECTION_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor={`sort-order-${category.value}`} className="text-sm font-medium">
-                        Sort Order
-                      </Label>
-                      <p className="text-xs text-gray-600 mt-1 mb-3">
-                        Lower numbers appear first (e.g., 1 before 10)
-                      </p>
-                      <Input
-                        id={`sort-order-${category.value}`}
-                        type="number"
-                        value={editingSortOrder}
-                        onChange={(e) => setEditingSortOrder(parseInt(e.target.value) || 0)}
-                        placeholder="0"
-                        data-testid={`input-sort-order-${category.value}`}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3 pt-2">
-                    <Button
-                      onClick={() => saveCategory(category)}
-                      disabled={saveCategoryMutation.isPending}
-                      data-testid={`button-save-${category.value}`}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      {saveCategoryMutation.isPending ? "Saving..." : "Save Tags"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={cancelEditing}
-                      data-testid={`button-cancel-${category.value}`}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => deleteCategoryMutation.mutate(category.value)}
-                      disabled={deleteCategoryMutation.isPending}
-                      data-testid={`button-delete-${category.value}`}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300"
-                    >
-                      {deleteCategoryMutation.isPending ? "Deleting..." : "Delete Category"}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-600">Current tags:</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {category.productTags.map((tag, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-gray-600">Assigned section:</p>
-                    <div className="mt-1">
-                      {category.assignedSection && category.assignedSection !== "unassigned" ? (
-                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                          {SECTION_OPTIONS.find(opt => opt.value === category.assignedSection)?.label || category.assignedSection}
-                        </Badge>
+      {/* Grouped categories by section */}
+      <div className="space-y-4">
+        {Object.entries(categoriesBySection).sort(([a], [b]) => {
+          // Sort sections: put specific sections first, unassigned last
+          if (a === "unassigned") return 1;
+          if (b === "unassigned") return -1;
+          return a.localeCompare(b);
+        }).map(([sectionKey, categories]) => {
+          const sectionTitle = SECTION_OPTIONS.find(opt => opt.value === sectionKey)?.label || "Unassigned";
+          
+          return (
+            <Card key={sectionKey}>
+              <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <CardTitle className="text-lg font-bold text-gray-900">{sectionTitle}</CardTitle>
+                <p className="text-sm text-gray-600">{categories.length} {categories.length === 1 ? 'category' : 'categories'}</p>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {categories.map((category) => (
+                    <div key={category.value} className={`p-4 hover:bg-gray-50 transition-colors ${editingCategory === category.value ? 'bg-blue-50' : ''}`}>
+                      {editingCategory === category.value ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <Label htmlFor={`label-${category.value}`} className="text-xs font-medium">Label</Label>
+                              <Input
+                                id={`label-${category.value}`}
+                                value={editingLabel}
+                                onChange={(e) => setEditingLabel(e.target.value)}
+                                placeholder="V-Twin Handlebars"
+                                className="h-8 text-sm"
+                                data-testid={`input-label-${category.value}`}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`value-${category.value}`} className="text-xs font-medium">Value</Label>
+                              <Input
+                                id={`value-${category.value}`}
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
+                                placeholder="vtwin_handlebars"
+                                className="h-8 text-sm"
+                                data-testid={`input-value-${category.value}`}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`sort-order-${category.value}`} className="text-xs font-medium">Sort Order</Label>
+                              <Input
+                                id={`sort-order-${category.value}`}
+                                type="number"
+                                value={editingSortOrder}
+                                onChange={(e) => setEditingSortOrder(parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                className="h-8 text-sm"
+                                data-testid={`input-sort-order-${category.value}`}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor={`tags-${category.value}`} className="text-xs font-medium">Product Tags (comma-separated)</Label>
+                            <Textarea
+                              id={`tags-${category.value}`}
+                              value={editingTags}
+                              onChange={(e) => setEditingTags(e.target.value)}
+                              placeholder="handlebar, fatbar, twinwall"
+                              className="min-h-[60px] text-sm mt-1"
+                              data-testid={`textarea-tags-${category.value}`}
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor={`section-${category.value}`} className="text-xs font-medium">Section</Label>
+                            <Select value={editingSection} onValueChange={setEditingSection}>
+                              <SelectTrigger className="h-8 text-sm mt-1" data-testid={`select-section-${category.value}`}>
+                                <SelectValue placeholder="Select a section..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SECTION_OPTIONS.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => saveCategory(category)}
+                              disabled={saveCategoryMutation.isPending}
+                              size="sm"
+                              data-testid={`button-save-${category.value}`}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              {saveCategoryMutation.isPending ? "Saving..." : "Save"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={cancelEditing}
+                              data-testid={`button-cancel-${category.value}`}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteCategoryMutation.mutate(category.value)}
+                              disabled={deleteCategoryMutation.isPending}
+                              data-testid={`button-delete-${category.value}`}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            >
+                              {deleteCategoryMutation.isPending ? "Deleting..." : "Delete"}
+                            </Button>
+                          </div>
+                        </div>
                       ) : (
-                        <Badge variant="outline" className="text-xs bg-gray-50 text-gray-500">
-                          Unassigned
-                        </Badge>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-sm text-gray-900">{category.label}</h4>
+                              {category.isSaved && <Badge variant="outline" className="text-xs text-green-600 border-green-300">Saved</Badge>}
+                              {!category.isDefault && <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Custom</Badge>}
+                            </div>
+                            <p className="text-xs text-gray-500 mb-2">{category.value}</p>
+                            <div className="flex flex-wrap gap-1">
+                              {category.productTags.map((tag, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs px-2 py-0">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEditing(category)}
+                            className="shrink-0"
+                            data-testid={`button-edit-${category.value}`}
+                          >
+                            <span className="material-icons text-base">edit</span>
+                          </Button>
+                        </div>
                       )}
                     </div>
-                  </div>
+                  ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <Card className="bg-blue-50 border-blue-200">
