@@ -2497,7 +2497,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sections = await storage.initializeDefaultPartSections();
       res.status(201).json(sections);
     } catch (error) {
-      res.status(500).json({ message: "Failed to initialize part sections" });
+      console.error("Error initializing part sections:", error);
+      res.status(500).json({ message: "Failed to initialize part sections", error: String(error) });
     }
   });
 
