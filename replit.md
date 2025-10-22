@@ -48,6 +48,11 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **Settings Page Reorganization**:
+  - Reorganized Settings into two tabbed sections for better user experience
+  - **Motorcycle Settings Tab**: Contains motorcycle category management (add/edit categories and subcategories)
+  - **Parts Mapping Tab**: Contains parts category settings, section order management, and create new sections
+  - Clean tabbed navigation with icons for easy identification
 - **Dynamic Section Management System**:
   - "Create New Section" button and form in Settings panel for adding custom part sections
   - Section dropdown menus now dynamically populated from database instead of hardcoded values
