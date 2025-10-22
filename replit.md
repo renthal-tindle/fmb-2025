@@ -48,6 +48,13 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **Dynamic Section Management System**:
+  - "Create New Section" button and form in Settings panel for adding custom part sections
+  - Section dropdown menus now dynamically populated from database instead of hardcoded values
+  - New sections automatically appear in category assignment dropdowns and parts mapping interface
+  - Form validation ensures unique section keys and labels
+  - Green-themed create form appears immediately below button for better UX
+  - Supports creating custom sections alongside default sections (Handlebars, Front Sprocket, etc.)
 - **Part Section Drag-and-Drop Reordering**:
   - Added database-backed section management with sortOrder field in part_sections table
   - Main sections (Bar Mounts, Brake Pads, Chain, etc.) now support drag-and-drop reordering in Settings
