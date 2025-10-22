@@ -769,56 +769,7 @@ export default function PartCategorySettings() {
         </div>
       </div>
 
-      {/* Section Order Management */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-lg">Section Order</CardTitle>
-              <p className="text-sm text-gray-600 mt-1">Drag sections to reorder how they appear in the parts catalog</p>
-            </div>
-            {(!partSections || partSections.length === 0) && (
-              <Button
-                onClick={() => initializeSectionsMutation.mutate()}
-                disabled={initializeSectionsMutation.isPending}
-                data-testid="button-initialize-sections"
-                size="sm"
-              >
-                {initializeSectionsMutation.isPending ? "Initializing..." : "Initialize Sections"}
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isSectionsLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : partSections && partSections.length > 0 ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleSectionDragEnd}
-            >
-              <SortableContext
-                items={partSections.map(s => s.sectionKey)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-2">
-                  {partSections.map((section) => (
-                    <SortableSection key={section.sectionKey} section={section} />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <p>No sections configured. Click "Initialize Sections" to set up default sections.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
+      {/* Create New Category Form */}
       {showCreateForm && (
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
@@ -924,6 +875,56 @@ export default function PartCategorySettings() {
           </CardContent>
         </Card>
       )}
+
+      {/* Section Order Management */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-lg">Section Order</CardTitle>
+              <p className="text-sm text-gray-600 mt-1">Drag sections to reorder how they appear in the parts catalog</p>
+            </div>
+            {(!partSections || partSections.length === 0) && (
+              <Button
+                onClick={() => initializeSectionsMutation.mutate()}
+                disabled={initializeSectionsMutation.isPending}
+                data-testid="button-initialize-sections"
+                size="sm"
+              >
+                {initializeSectionsMutation.isPending ? "Initializing..." : "Initialize Sections"}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isSectionsLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : partSections && partSections.length > 0 ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleSectionDragEnd}
+            >
+              <SortableContext
+                items={partSections.map(s => s.sectionKey)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {partSections.map((section) => (
+                    <SortableSection key={section.sectionKey} section={section} />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No sections configured. Click "Initialize Sections" to set up default sections.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Grouped categories by section with drag-and-drop */}
       <div className="space-y-4">
