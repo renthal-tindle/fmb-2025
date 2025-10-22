@@ -48,6 +48,46 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **Parts Mapping SKU Reference Update**:
+  - All part assignments now reference SKU instead of product description for FCW Group, RCW Group, and all other categories
+  - Parts mapping interface displays SKU as primary identifier with product title as supplementary information
+  - Database stores SKU values for consistent product identification across exports and displays
+  - Backward compatible: System supports both legacy title-based and new SKU-based assignments
+  - CSV exports now show SKU values instead of descriptions for accurate inventory management
+- **Delete Operation Bug Fix**:
+  - Fixed database delete operations for part categories and sections by adding `.returning()` clause
+  - Delete operations now properly verify success and return correct status codes
+  - Resolved 404 errors when attempting to delete categories or sections
+- **Settings Page Reorganization**:
+  - Reorganized Settings into two tabbed sections for better user experience
+  - **Motorcycle Settings Tab**: Contains motorcycle category management (add/edit categories and subcategories)
+  - **Parts Mapping Tab**: Contains parts category settings, section order management, and create new sections
+  - Clean tabbed navigation with icons for easy identification
+- **Dynamic Section Management System**:
+  - "Create New Section" button and form in Settings panel for adding custom part sections
+  - Section dropdown menus now dynamically populated from database instead of hardcoded values
+  - New sections automatically appear in category assignment dropdowns and parts mapping interface
+  - Form validation ensures unique section keys and labels
+  - Green-themed create form appears immediately below button for better UX
+  - Supports creating custom sections alongside default sections (Handlebars, Front Sprocket, etc.)
+- **Part Section Drag-and-Drop Reordering**:
+  - Added database-backed section management with sortOrder field in part_sections table
+  - Main sections (Bar Mounts, Brake Pads, Chain, etc.) now support drag-and-drop reordering in Settings
+  - Section ordering persists to database and displays correctly in parts-mapping component
+  - Initialization endpoint creates default sections with sequential sortOrder values
+  - Parts-mapping component fetches sections from database and sorts by sortOrder dynamically
+  - Both sections and categories within sections support independent drag-and-drop ordering
+- **Part Category Drag-and-Drop Reordering**:
+  - Removed manual sortOrder input fields; users now reorder categories by dragging
+  - Implemented @dnd-kit library for intuitive drag-and-drop functionality
+  - Categories grouped by section (Handlebars, Front Sprocket, etc.) with independent reordering within each section
+  - Drag-and-drop updates sortOrder values automatically via batch mutation with optimistic updates
+  - Visual drag handle (grip-vertical icon) appears on hover for clear affordance
+  - "Drag to reorder" hint displayed in section headers
+  - New categories automatically assigned highest sortOrder + 1 within their section
+  - Backend batch update endpoint supports multi-category sortOrder updates in single transaction
+  - Database sorts by assignedSection first, then sortOrder within each section
+  - Frontend properly sorts categories by sortOrder when displaying grouped sections
 - **Admin Dashboard Enhancement - RECID Sorting**: 
   - Added ability to sort motorcycles table by RECID column
   - Clickable RECID header toggles between ascending and descending order

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMotorcycleSchema, insertPartMappingSchema, insertImportHistorySchema, insertPartCategoryTagsSchema } from "@shared/schema";
+import { insertMotorcycleSchema, insertPartMappingSchema, insertImportHistorySchema, insertPartCategoryTagsSchema, insertPartSectionSchema } from "@shared/schema";
 import { z } from "zod";
 import { getAuthUrl, validateAuthCallback, verifyShop, fetchShopifyProducts, inMemorySessionStorage, shopify } from "./shopify-auth";
 import multer from 'multer';
@@ -2435,6 +2435,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete part category tag" });
+    }
+  });
+
+  // Part Sections routes
+  app.get("/api/part-sections", async (req, res) => {
+    try {
+      const sections = await storage.getPartSections();
+      res.json(sections);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch part sections" });
+    }
+  });
+
+  app.post("/api/part-sections", async (req, res) => {
+    try {
+      const validatedData = insertPartSectionSchema.parse(req.body);
+      const section = await storage.createPartSection(validatedData);
+      res.status(201).json(section);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create part section" });
+    }
+  });
+
+  app.put("/api/part-sections/:sectionKey", async (req, res) => {
+    try {
+      const { sectionKey } = req.params;
+      const validatedData = insertPartSectionSchema.partial().parse(req.body);
+      const section = await storage.updatePartSection(sectionKey, validatedData);
+      if (!section) {
+        return res.status(404).json({ message: "Part section not found" });
+      }
+      res.json(section);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update part section" });
+    }
+  });
+
+  app.delete("/api/part-sections/:sectionKey", async (req, res) => {
+    try {
+      const { sectionKey } = req.params;
+      const success = await storage.deletePartSection(sectionKey);
+      if (!success) {
+        return res.status(404).json({ message: "Part section not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete part section" });
+    }
+  });
+
+  // Initialize default part sections
+  app.post("/api/part-sections/initialize", async (req, res) => {
+    try {
+      const sections = await storage.initializeDefaultPartSections();
+      res.status(201).json(sections);
+    } catch (error) {
+      console.error("Error initializing part sections:", error);
+      res.status(500).json({ message: "Failed to initialize part sections", error: String(error) });
+    }
+  });
+
+  // Batch update sortOrder for part sections
+  app.post("/api/part-sections/batch-update-sort-order", async (req, res) => {
+    try {
+      const updates = z.array(z.object({ 
+        sectionKey: z.string(), 
+        sortOrder: z.number() 
+      })).parse(req.body);
+      
+      const results = await Promise.all(
+        updates.map(update => 
+          storage.updatePartSection(update.sectionKey, { sortOrder: update.sortOrder })
+        )
+      );
+      
+      res.json(results);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to batch update part section sort order" });
     }
   });
 

@@ -14,6 +14,7 @@ import { CSVImport } from "@/components/admin/csv-import";
 import PartCategorySettings from "@/components/admin/part-category-settings";
 import { PartsInventory } from "@/components/admin/parts-inventory";
 import { TopSearchesAnalytics } from "@/components/admin/top-searches-analytics";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MotorcycleCategoryManagement from "@/components/admin/motorcycle-category-management";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Motorcycle } from "@shared/schema";
@@ -739,11 +740,32 @@ export default function AdminDashboard() {
             </div>
           )}
           {activePanel === "settings" && (
-            <div className="p-6 space-y-8">
-              <MotorcycleCategoryManagement />
-              <div className="border-t pt-8">
-                <PartCategorySettings />
+            <div className="p-6">
+              <div className="mb-6">
+                <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+                <p className="text-gray-600 mt-2">Configure motorcycle categories and parts mapping settings</p>
               </div>
+              
+              <Tabs defaultValue="motorcycles" className="w-full">
+                <TabsList className="grid w-full max-w-md grid-cols-2">
+                  <TabsTrigger value="motorcycles" data-testid="tab-motorcycle-settings">
+                    <span className="material-icons text-sm mr-2">two_wheeler</span>
+                    Motorcycle Settings
+                  </TabsTrigger>
+                  <TabsTrigger value="parts" data-testid="tab-parts-mapping">
+                    <span className="material-icons text-sm mr-2">category</span>
+                    Parts Mapping
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="motorcycles" className="mt-6 space-y-6">
+                  <MotorcycleCategoryManagement />
+                </TabsContent>
+                
+                <TabsContent value="parts" className="mt-6 space-y-6">
+                  <PartCategorySettings />
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </main>
