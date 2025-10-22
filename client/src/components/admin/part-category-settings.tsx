@@ -377,15 +377,47 @@ export default function PartCategorySettings() {
       );
       await Promise.all(promises);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/part-category-tags"] });
+    onMutate: async (updates) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["/api/part-category-tags"] });
+
+      // Snapshot the previous value
+      const previousTags = queryClient.getQueryData(["/api/part-category-tags"]);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(["/api/part-category-tags"], (old: any[]) => {
+        if (!old) return old;
+        
+        // Create a map of updates for quick lookup
+        const updateMap = new Map(updates.map(u => [u.categoryValue, u.sortOrder]));
+        
+        // Update the sortOrder values in the cached data
+        return old.map(tag => {
+          const newSortOrder = updateMap.get(tag.categoryValue);
+          if (newSortOrder !== undefined) {
+            return { ...tag, sortOrder: newSortOrder };
+          }
+          return tag;
+        });
+      });
+
+      // Return context with the previous value
+      return { previousTags };
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // Rollback to the previous value on error
+      if (context?.previousTags) {
+        queryClient.setQueryData(["/api/part-category-tags"], context.previousTags);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to update sort order",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: ["/api/part-category-tags"] });
     },
   });
 
