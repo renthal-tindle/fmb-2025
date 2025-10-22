@@ -691,12 +691,24 @@ export class DatabaseStorage implements IStorage {
         // Get the matched variant ID for this product
         const matchedVariantId = productMatchInfo.get(product);
         
+        // Find the matched variant object to get its SKU and price
+        let matchedVariant = product.variants?.[0]; // Default to first variant
+        if (matchedVariantId && product.variants) {
+          const foundVariant = product.variants.find((v: any) => v.id?.toString() === matchedVariantId);
+          if (foundVariant) {
+            matchedVariant = foundVariant;
+            console.log(`✅ Using matched variant for ${product.title}: SKU ${matchedVariant.sku} (variant ID: ${matchedVariantId})`);
+          }
+        } else if (product.variants && product.variants.length > 1) {
+          console.log(`⚠️ No matchedVariantId for multi-variant product ${product.title}, using first variant: ${matchedVariant?.sku}`);
+        }
+        
         const productData = {
           id: product.id ? product.id.toString() : `temp-${Math.random().toString(36)}`,
           title: product.title || 'Unknown Product',
           description: product.body_html || null,
-          price: product.variants?.[0]?.price || '0.00',
-          sku: product.variants?.[0]?.sku || null,
+          price: matchedVariant?.price || '0.00',
+          sku: matchedVariant?.sku || null,
           imageUrl: product.images?.[0]?.src || null,
           category: product.product_type || null,
           tags: product.tags || '', // Shopify returns tags as comma-separated string
