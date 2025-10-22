@@ -98,6 +98,7 @@ export const partCategoryTags = pgTable("part_category_tags", {
   categoryLabel: text("category_label").notNull(),
   productTags: text("product_tags").notNull(), // JSON array as text
   assignedSection: text("assigned_section"), // Which section this category belongs to: handlebars, frontSprocket, rearSprockets, chain, brakePads, barMounts, driveConversions, others
+  sortOrder: integer("sort_order").notNull().default(0), // Display order for categories in parts mapping
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

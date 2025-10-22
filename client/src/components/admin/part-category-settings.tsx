@@ -60,11 +60,13 @@ export default function PartCategorySettings() {
   const [editingSection, setEditingSection] = useState("unassigned");
   const [editingLabel, setEditingLabel] = useState("");
   const [editingValue, setEditingValue] = useState("");
+  const [editingSortOrder, setEditingSortOrder] = useState(0);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState("");
   const [newCategoryValue, setNewCategoryValue] = useState("");
   const [newCategoryTags, setNewCategoryTags] = useState("");
   const [newCategorySection, setNewCategorySection] = useState("unassigned");
+  const [newCategorySortOrder, setNewCategorySortOrder] = useState(0);
   const { toast } = useToast();
 
   // Query for existing part category tags
@@ -74,11 +76,12 @@ export default function PartCategorySettings() {
 
   // Mutation for creating/updating part category tags
   const saveCategoryMutation = useMutation({
-    mutationFn: async ({ categoryValue, categoryLabel, productTags, assignedSection, originalValue }: {
+    mutationFn: async ({ categoryValue, categoryLabel, productTags, assignedSection, sortOrder, originalValue }: {
       categoryValue: string;
       categoryLabel: string;
       productTags: string;
       assignedSection?: string;
+      sortOrder?: number;
       originalValue?: string;
     }) => {
       if (originalValue) {
@@ -87,7 +90,8 @@ export default function PartCategorySettings() {
           categoryValue, // New value to update to
           categoryLabel,
           productTags,
-          assignedSection
+          assignedSection,
+          sortOrder
         });
       } else {
         // Create new category
@@ -95,7 +99,8 @@ export default function PartCategorySettings() {
           categoryValue,
           categoryLabel,
           productTags,
-          assignedSection
+          assignedSection,
+          sortOrder
         });
       }
     },
@@ -107,6 +112,7 @@ export default function PartCategorySettings() {
       setEditingSection("unassigned");
       setEditingLabel("");
       setEditingValue("");
+      setEditingSortOrder(0);
       toast({
         title: "Success",
         description: "Part category tags updated successfully",
@@ -129,7 +135,8 @@ export default function PartCategorySettings() {
         categoryValue: newCategoryValue,
         categoryLabel: newCategoryLabel,
         productTags: JSON.stringify(tagsArray),
-        assignedSection: newCategorySection === "unassigned" ? null : newCategorySection
+        assignedSection: newCategorySection === "unassigned" ? null : newCategorySection,
+        sortOrder: newCategorySortOrder
       });
     },
     onSuccess: () => {
@@ -139,6 +146,7 @@ export default function PartCategorySettings() {
       setNewCategoryValue("");
       setNewCategoryTags("");
       setNewCategorySection("unassigned");
+      setNewCategorySortOrder(0);
       toast({
         title: "Success",
         description: "New part category created successfully",
@@ -217,11 +225,13 @@ export default function PartCategorySettings() {
       setEditingSection(existingCategory.assignedSection || "unassigned");
       setEditingLabel(existingCategory.categoryLabel || category.label);
       setEditingValue(existingCategory.categoryValue);
+      setEditingSortOrder(existingCategory.sortOrder || 0);
     } else {
       setEditingTags(category.productTags.join(", "));
       setEditingSection("unassigned");
       setEditingLabel(category.label);
       setEditingValue(category.value);
+      setEditingSortOrder(0);
     }
   };
 
@@ -232,6 +242,7 @@ export default function PartCategorySettings() {
       categoryLabel: editingLabel,
       productTags: JSON.stringify(tagsArray),
       assignedSection: editingSection === "unassigned" ? undefined : editingSection,
+      sortOrder: editingSortOrder,
       originalValue: originalCategoryValue || undefined
     });
   };
@@ -243,6 +254,7 @@ export default function PartCategorySettings() {
     setEditingSection("unassigned");
     setEditingLabel("");
     setEditingValue("");
+    setEditingSortOrder(0);
   };
 
   // Merge default categories with saved ones and add custom categories
@@ -396,25 +408,43 @@ export default function PartCategorySettings() {
               />
             </div>
             
-            <div>
-              <Label htmlFor="new-category-section" className="text-sm font-medium">
-                Assign to Section
-              </Label>
-              <p className="text-xs text-gray-600 mt-1 mb-2">
-                Choose which section this category will appear in during part assignment
-              </p>
-              <Select value={newCategorySection} onValueChange={setNewCategorySection}>
-                <SelectTrigger data-testid="select-new-category-section">
-                  <SelectValue placeholder="Select a section..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {SECTION_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="new-category-section" className="text-sm font-medium">
+                  Assign to Section
+                </Label>
+                <p className="text-xs text-gray-600 mt-1 mb-2">
+                  Choose which section this category will appear in during part assignment
+                </p>
+                <Select value={newCategorySection} onValueChange={setNewCategorySection}>
+                  <SelectTrigger data-testid="select-new-category-section">
+                    <SelectValue placeholder="Select a section..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SECTION_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="new-category-sort-order" className="text-sm font-medium">
+                  Sort Order
+                </Label>
+                <p className="text-xs text-gray-600 mt-1 mb-2">
+                  Lower numbers appear first (e.g., 1 before 10)
+                </p>
+                <Input
+                  id="new-category-sort-order"
+                  type="number"
+                  value={newCategorySortOrder}
+                  onChange={(e) => setNewCategorySortOrder(parseInt(e.target.value) || 0)}
+                  placeholder="0"
+                  data-testid="input-new-category-sort-order"
+                />
+              </div>
             </div>
             
             <div className="flex gap-3 pt-2">
@@ -434,6 +464,7 @@ export default function PartCategorySettings() {
                   setNewCategoryValue("");
                   setNewCategoryTags("");
                   setNewCategorySection("unassigned");
+                  setNewCategorySortOrder(0);
                 }}
                 data-testid="button-cancel-create"
               >
@@ -528,25 +559,43 @@ export default function PartCategorySettings() {
                     </p>
                   </div>
                   
-                  <div>
-                    <Label htmlFor={`section-${category.value}`} className="text-sm font-medium">
-                      Assign to Section
-                    </Label>
-                    <p className="text-xs text-gray-600 mt-1 mb-3">
-                      Choose which section this category will appear in during part assignment.
-                    </p>
-                    <Select value={editingSection} onValueChange={setEditingSection}>
-                      <SelectTrigger data-testid={`select-section-${category.value}`}>
-                        <SelectValue placeholder="Select a section..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SECTION_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`section-${category.value}`} className="text-sm font-medium">
+                        Assign to Section
+                      </Label>
+                      <p className="text-xs text-gray-600 mt-1 mb-3">
+                        Choose which section this category will appear in during part assignment.
+                      </p>
+                      <Select value={editingSection} onValueChange={setEditingSection}>
+                        <SelectTrigger data-testid={`select-section-${category.value}`}>
+                          <SelectValue placeholder="Select a section..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SECTION_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor={`sort-order-${category.value}`} className="text-sm font-medium">
+                        Sort Order
+                      </Label>
+                      <p className="text-xs text-gray-600 mt-1 mb-3">
+                        Lower numbers appear first (e.g., 1 before 10)
+                      </p>
+                      <Input
+                        id={`sort-order-${category.value}`}
+                        type="number"
+                        value={editingSortOrder}
+                        onChange={(e) => setEditingSortOrder(parseInt(e.target.value) || 0)}
+                        placeholder="0"
+                        data-testid={`input-sort-order-${category.value}`}
+                      />
+                    </div>
                   </div>
                   
                   <div className="flex gap-3 pt-2">
