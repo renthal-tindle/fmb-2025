@@ -523,3 +523,120 @@
     transform: none;
   }
 }
+
+/* Variant Cards Styling */
+[data-fmb] .fmb-variant-category {
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #666;
+  padding-bottom: 1.5rem;
+}
+
+[data-fmb] .fmb-variant-category h3 {
+  background-color: #666;
+  padding: 1rem;
+  margin: 0 0 1rem 0;
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+[data-fmb] .fmb-variant-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+[data-fmb] .fmb-variant-card {
+  position: relative;
+  background-color: #333;
+  border: 2px solid #666;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+[data-fmb] .fmb-variant-card:hover {
+  border-color: #999;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+/* OE variant highlight */
+[data-fmb] .fmb-variant-card.fmb-variant-oe {
+  border-color: #28a745;
+  border-width: 3px;
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+[data-fmb] .fmb-oe-badge {
+  position: absolute;
+  top: -10px;
+  right: -5px;
+  background: #28a745;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+[data-fmb] .fmb-variant-sku {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #FFF;
+  margin-bottom: 0.5rem;
+}
+
+[data-fmb] .fmb-variant-title {
+  font-size: 0.85rem;
+  color: #CCC;
+  margin-bottom: 0.75rem;
+}
+
+[data-fmb] .fmb-variant-price {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #FFF;
+  margin-bottom: 0.75rem;
+}
+
+[data-fmb] .fmb-variant-card .fmb-add-to-cart-btn {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+}
+
+[data-fmb] .fmb-view-more {
+  display: inline-block;
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+[data-fmb] .fmb-view-more:hover {
+  text-decoration: underline;
+  color: #0056b3;
+}
+
+/* Responsive for variant cards */
+@media (max-width: 768px) {
+  [data-fmb] .fmb-variant-cards {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  [data-fmb] .fmb-variant-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  [data-fmb] .fmb-variant-card {
+    padding: 0.75rem;
+  }
+}

@@ -703,6 +703,27 @@ export class DatabaseStorage implements IStorage {
           console.log(`⚠️ No matchedVariantId for multi-variant product ${product.title}, using first variant: ${matchedVariant?.sku}`);
         }
         
+        // Check if this is an FCW/RCW group product by comparing product title with fcwgroup/rcwgroup fields
+        const fcwGroupTitle = motorcycle.fcwgroup;
+        const rcwGroupTitle = motorcycle.rcwgroup;
+        
+        const isFcwRcwGroupProduct = (
+          (fcwGroupTitle && product.title && product.title.toLowerCase().trim() === fcwGroupTitle.toLowerCase().trim()) ||
+          (rcwGroupTitle && product.title && product.title.toLowerCase().trim() === rcwGroupTitle.toLowerCase().trim())
+        );
+        
+        // If this is an FCW/RCW group product with multiple variants, include all variants as alternatives
+        let alternativeVariants: any[] = [];
+        if (isFcwRcwGroupProduct && product.variants && product.variants.length > 1) {
+          alternativeVariants = product.variants.map((v: any) => ({
+            id: v.id?.toString() || null,
+            sku: v.sku || null,
+            price: v.price || '0.00',
+            title: v.title || null,
+            isOE: v.id?.toString() === matchedVariantId // Mark the OE variant
+          }));
+        }
+        
         const productData = {
           id: product.id ? product.id.toString() : `temp-${Math.random().toString(36)}`,
           title: product.title || 'Unknown Product',
@@ -717,7 +738,8 @@ export class DatabaseStorage implements IStorage {
           url: product.handle ? `/products/${product.handle}` : null,
           adminCategory: adminCategory,
           adminCategoryLabel: adminCategoryLabel,
-          matchedVariantId: matchedVariantId // ID of the variant that matched motorcycle's SKU
+          matchedVariantId: matchedVariantId, // ID of the variant that matched motorcycle's SKU
+          alternativeVariants: alternativeVariants // All variants for FCW/RCW group products
         };
         
         // Debug log to help identify any missing fields
