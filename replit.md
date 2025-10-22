@@ -52,8 +52,10 @@ Preferred communication style: Simple, everyday language.
   - Implemented card-based display for all gearing options within FCW/RCW Group products (sprockets)
   - Backend identifies products matching motorcycle's fcwgroup/rcwgroup fields and includes all variants as alternativeVariants array
   - Each variant includes id, sku, price, title, and isOE flag to mark the exact OE match
+  - Backend automatically sorts variants so OE match always appears first in the list
   - Theme extension displays variant options as responsive cards instead of single table row
   - OE variant highlighted with green border, "OE Match" badge, and distinct background
+  - Visual separator with "Alternative Options" label appears between OE card and alternative variants
   - Each variant card includes independent "Add to Cart" button with correct variant ID
   - Responsive grid layout: 4 columns desktop → 3 columns tablet → 2 columns mobile
   - Example: RECID 9211 (KTM 150 SX 2023) now shows Front Sprocket with 3 variants (12T, 13T OE, 14T+) and Rear Sprocket with 23 variants (48T-70T with 50T as OE)
