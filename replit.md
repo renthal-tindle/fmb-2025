@@ -45,7 +45,18 @@ Preferred communication style: Simple, everyday language.
 - **Dynamic Category Management**: Admin panel for managing motorcycle categories and subcategories with real-time updates
 - **Responsive Design**: Mobile-first approach with adaptive layouts
 
-### Recent Changes (October 21, 2025)
+### Recent Changes
+
+**October 22, 2025**
+- **CSV Import Enhancement - Optional RECID Field**: 
+  - RECID field is now optional in motorcycle and combined CSV imports
+  - System auto-assigns sequential RECID values starting from max existing RECID + 1
+  - PostgreSQL advisory locks (lock ID: 1234567890) prevent race conditions during concurrent imports
+  - Both import paths serialize RECID allocation with proper lock acquisition/release
+  - Returns HTTP 503 when import lock cannot be acquired, preventing conflicts
+  - Ensures data integrity and unique RECID assignment even under concurrent load
+
+**October 21, 2025**
 - **Motorcycle Category Management System**: Added dynamic category configuration in Settings panel
   - Admins can now add, edit, and delete motorcycle categories and subcategories
   - Categories are stored in the database instead of being hardcoded
