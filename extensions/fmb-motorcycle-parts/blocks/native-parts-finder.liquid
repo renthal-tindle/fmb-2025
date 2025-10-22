@@ -562,6 +562,9 @@
                     const moreOptionsCount = categoryInfo.categoryParts.length - 1;
                     const categoryId = categoryInfo.name.toLowerCase().replace(/\s+/g, '-');
                     
+                    // Use matchedVariantId if available, otherwise fall back to first variant
+                    const variantId = part.matchedVariantId || part.variants[0]?.id;
+                    
                     return `
                       <tr>
                         <td>${categoryInfo.name}</td>
@@ -570,7 +573,7 @@
                             <a href="${part.url}">${part.title}</a>
                         </td>
                         <td >
-                          <button class="fmb-nav-btn fmb-add-to-cart-btn" data-variant-id="${part.variants[0]?.id}">Add to Cart</button>
+                          <button class="fmb-nav-btn fmb-add-to-cart-btn" data-variant-id="${variantId}">Add to Cart</button>
                         </td>
                         <td>
                           ${moreOptionsCount > 0 ? 
