@@ -580,14 +580,20 @@ export class DatabaseStorage implements IStorage {
       let compatibleProducts: any[] = [];
       
       // Find products that match motorcycle part values by SKU
+      // Also track which specific variant matched for each product
+      const productMatchInfo: Map<any, string | null> = new Map();
+      
       for (const product of allProducts) {
         let isCompatible = false;
+        let matchedVariantId: string | null = null;
 
         // Check if the main product SKU matches any motorcycle part value
         if (motorcyclePartValues.some(partValue => 
           product.sku && product.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
         )) {
           isCompatible = true;
+          // If main product SKU matches, use first variant ID
+          matchedVariantId = product.variants?.[0]?.id?.toString() || null;
         }
 
         // If not matched by main SKU, check variant SKUs
@@ -597,6 +603,7 @@ export class DatabaseStorage implements IStorage {
               variant.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
             )) {
               isCompatible = true;
+              matchedVariantId = variant.id?.toString() || null;
               break;
             }
           }
@@ -604,6 +611,7 @@ export class DatabaseStorage implements IStorage {
 
         if (isCompatible) {
           compatibleProducts.push(product);
+          productMatchInfo.set(product, matchedVariantId);
         }
       }
       
@@ -680,6 +688,9 @@ export class DatabaseStorage implements IStorage {
           }
         }
         
+        // Get the matched variant ID for this product
+        const matchedVariantId = productMatchInfo.get(product);
+        
         const productData = {
           id: product.id ? product.id.toString() : `temp-${Math.random().toString(36)}`,
           title: product.title || 'Unknown Product',
@@ -693,7 +704,8 @@ export class DatabaseStorage implements IStorage {
           handle: product.handle || null,
           url: product.handle ? `/products/${product.handle}` : null,
           adminCategory: adminCategory,
-          adminCategoryLabel: adminCategoryLabel
+          adminCategoryLabel: adminCategoryLabel,
+          matchedVariantId: matchedVariantId // ID of the variant that matched motorcycle's SKU
         };
         
         // Debug log to help identify any missing fields
