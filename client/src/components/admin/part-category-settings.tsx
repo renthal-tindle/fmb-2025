@@ -404,10 +404,10 @@ export default function PartCategorySettings() {
       return;
     }
 
-    // Reorder the categories array
+    // Reorder the categories array within this section
     const reorderedCategories = arrayMove(sectionCategories, oldIndex, newIndex);
 
-    // Create batch update with new sortOrder values
+    // Calculate new sortOrder values for the reordered categories
     const updates = reorderedCategories.map((cat, index) => ({
       categoryValue: cat.value,
       sortOrder: index,
