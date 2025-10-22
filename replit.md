@@ -48,16 +48,6 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
-- **Parts Mapping SKU Reference Update**:
-  - All part assignments now reference SKU instead of product description for FCW Group, RCW Group, and all other categories
-  - Parts mapping interface displays SKU as primary identifier with product title as supplementary information
-  - Database stores SKU values for consistent product identification across exports and displays
-  - Backward compatible: System supports both legacy title-based and new SKU-based assignments
-  - CSV exports now show SKU values instead of descriptions for accurate inventory management
-- **Delete Operation Bug Fix**:
-  - Fixed database delete operations for part categories and sections by adding `.returning()` clause
-  - Delete operations now properly verify success and return correct status codes
-  - Resolved 404 errors when attempting to delete categories or sections
 - **Settings Page Reorganization**:
   - Reorganized Settings into two tabbed sections for better user experience
   - **Motorcycle Settings Tab**: Contains motorcycle category management (add/edit categories and subcategories)
