@@ -722,6 +722,13 @@ export class DatabaseStorage implements IStorage {
             title: v.title || null,
             isOE: v.id?.toString() === matchedVariantId // Mark the OE variant
           }));
+          
+          // Sort so OE variant always appears first
+          alternativeVariants.sort((a, b) => {
+            if (a.isOE && !b.isOE) return -1;
+            if (!a.isOE && b.isOE) return 1;
+            return 0;
+          });
         }
         
         const productData = {

@@ -587,13 +587,14 @@
               <div class="fmb-variant-category">
                 <h3>${categoryInfo.name}</h3>
                 <div class="fmb-variant-cards">
-                  ${variants.map(variant => `
+                  ${variants.map((variant, index) => `
                     <div class="fmb-variant-card ${variant.isOE ? 'fmb-variant-oe' : ''}">
                       ${variant.isOE ? '<div class="fmb-oe-badge">OE Match</div>' : ''}
                       <div class="fmb-variant-sku">${variant.sku || 'N/A'}</div>
                       <div class="fmb-variant-price">$${variant.price || '0.00'}</div>
                       <button class="fmb-nav-btn fmb-add-to-cart-btn" data-variant-id="${variant.id}">Add to Cart</button>
                     </div>
+                    ${index === 0 && variants.length > 1 ? '<div class="fmb-variant-separator"></div>' : ''}
                   `).join('')}
                 </div>
                 ${moreOptionsCount > 0 ? `<a href="#${categoryId}" class="fmb-view-more">View ${moreOptionsCount} more products</a>` : ''}

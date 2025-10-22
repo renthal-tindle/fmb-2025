@@ -546,6 +546,29 @@
   margin-bottom: 1rem;
 }
 
+[data-fmb] .fmb-variant-separator {
+  grid-column: 1 / -1;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #666 20%, #666 80%, transparent);
+  margin: 0.5rem 0;
+  position: relative;
+}
+
+[data-fmb] .fmb-variant-separator::after {
+  content: "Alternative Options";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #333;
+  padding: 0.25rem 1rem;
+  color: #999;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 [data-fmb] .fmb-variant-card {
   position: relative;
   background-color: #333;
