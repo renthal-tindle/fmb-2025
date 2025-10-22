@@ -48,6 +48,15 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **Theme Extension Bug Fix - Direct Replacement Links**: 
+  - Fixed JavaScript error "Can't find variable: id" in native-parts-finder.liquid
+  - Changed undefined `${id}` to `${categoryId}` in Direct Replacement table "View more" links
+  - Bug only manifested when OE parts had multiple variants in their category
+  - Links now correctly navigate to category sections (e.g., #handlebars, #front-sprocket)
+- **Database Schema Update - biketype Now Optional**:
+  - Made biketype column nullable since system now uses bikeCategory and bikeSubcategory
+  - Resolves CSV import constraint violations when biketype field is omitted
+  - Legacy biketype field maintained for backward compatibility with existing data
 - **CSV Import Enhancement - Optional RECID Field**: 
   - RECID field is now optional in motorcycle and combined CSV imports
   - System auto-assigns sequential RECID values starting from max existing RECID + 1
