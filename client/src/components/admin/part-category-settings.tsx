@@ -690,39 +690,8 @@ export default function PartCategorySettings() {
     setEditingValue("");
   };
 
-  // Merge default categories with saved ones and add custom categories
-  const defaultCategoryValues = DEFAULT_CATEGORIES.map(cat => cat.value);
-  const defaultCategoriesUpdated = DEFAULT_CATEGORIES.map(defaultCategory => {
-    const savedCategory = categoryTags?.find(saved => saved.categoryValue === defaultCategory.value);
-    if (savedCategory) {
-      try {
-        const tags = JSON.parse(savedCategory.productTags);
-        return {
-          ...defaultCategory,
-          productTags: Array.isArray(tags) ? tags : [savedCategory.productTags],
-          assignedSection: savedCategory.assignedSection || "unassigned",
-          sortOrder: savedCategory.sortOrder || 0,
-          isSaved: true,
-          isDefault: true
-        };
-      } catch {
-        return {
-          ...defaultCategory,
-          productTags: [savedCategory.productTags],
-          assignedSection: savedCategory.assignedSection || "unassigned",
-          sortOrder: savedCategory.sortOrder || 0,
-          isSaved: true,
-          isDefault: true
-        };
-      }
-    }
-    return { ...defaultCategory, assignedSection: "unassigned", sortOrder: 0, isSaved: false, isDefault: true };
-  });
-
-  // Add custom categories (not in default list)
-  const customCategories = (categoryTags || [])
-    .filter(saved => !defaultCategoryValues.includes(saved.categoryValue))
-    .map(savedCategory => {
+  // Only show categories that exist in the database
+  const allCategories = (categoryTags || []).map(savedCategory => {
       try {
         const tags = JSON.parse(savedCategory.productTags);
         return {
@@ -746,8 +715,6 @@ export default function PartCategorySettings() {
         };
       }
     });
-
-  const allCategories = [...defaultCategoriesUpdated, ...customCategories];
 
   // Group categories by assigned section and sort by sortOrder within each section
   const categoriesBySection = allCategories.reduce((acc, category) => {
