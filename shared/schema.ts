@@ -5,7 +5,7 @@ import { z } from "zod";
 
 export const motorcycles = pgTable("motorcycles", {
   recid: integer("recid").primaryKey(),
-  biketype: integer("biketype").notNull(), // Legacy: 1=Street, 2=Dirt, 5=Dual Sport, 6=ATVs
+  biketype: integer("biketype"), // Legacy: 1=Street, 2=Dirt, 5=Dual Sport, 6=ATVs (nullable - replaced by bikeCategory/bikeSubcategory)
   bikeCategory: text("bike_category"), // New: "Off-Road", "Street", "ATV"
   bikeSubcategory: text("bike_subcategory"), // New: "MX/Enduro", "Sportbike", "Dual Sport", etc.
   bikemake: text("bikemake").notNull(),
