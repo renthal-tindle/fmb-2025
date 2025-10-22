@@ -117,7 +117,8 @@ function SortableCategory({
   saveCategory,
   cancelEditing,
   deleteCategoryMutation,
-  saveCategoryMutation 
+  saveCategoryMutation,
+  sectionOptions
 }: any) {
   const {
     attributes,
@@ -1082,6 +1083,7 @@ export default function PartCategorySettings() {
                           cancelEditing={cancelEditing}
                           deleteCategoryMutation={deleteCategoryMutation}
                           saveCategoryMutation={saveCategoryMutation}
+                          sectionOptions={sectionOptions}
                         />
                       ))}
                     </div>
