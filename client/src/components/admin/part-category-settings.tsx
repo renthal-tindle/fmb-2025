@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { PartCategoryTags } from "@shared/schema";
+import type { PartCategoryTags, PartSection } from "@shared/schema";
+import { GripVertical } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -69,6 +70,48 @@ const SECTION_OPTIONS = [
   { value: "driveConversions", label: "Drive Conversions" },
   { value: "others", label: "Others" },
 ];
+
+// Sortable section item component
+function SortableSection({ section }: { section: PartSection }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.sectionKey });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 p-3 bg-white border rounded-md hover:bg-gray-50 transition-colors group"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing p-1 text-gray-400 group-hover:text-gray-600"
+        data-testid={`drag-handle-section-${section.sectionKey}`}
+      >
+        <GripVertical className="w-5 h-5" />
+      </div>
+      <div className="flex-1">
+        <div className="font-medium text-gray-900">{section.sectionLabel}</div>
+        <div className="text-xs text-gray-500">Key: {section.sectionKey}</div>
+      </div>
+      <Badge variant="outline" className="text-xs">
+        Order: {section.sortOrder}
+      </Badge>
+    </div>
+  );
+}
 
 // Sortable category item component
 function SortableCategory({ 
@@ -260,6 +303,68 @@ export default function PartCategorySettings() {
     queryKey: ["/api/part-category-tags"],
   });
 
+  // Query for part sections
+  const { data: partSections, isLoading: isSectionsLoading } = useQuery<PartSection[]>({
+    queryKey: ["/api/part-sections"],
+  });
+
+  // Mutation for initializing default part sections
+  const initializeSectionsMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/part-sections/initialize", {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/part-sections"] });
+      toast({
+        title: "Success",
+        description: "Default part sections initialized",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to initialize sections",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for batch updating section sortOrder
+  const batchUpdateSectionSortOrderMutation = useMutation({
+    mutationFn: async (updates: Array<{ sectionKey: string; sortOrder: number }>) => {
+      await apiRequest("POST", "/api/part-sections/batch-update-sort-order", updates);
+    },
+    onMutate: async (updates) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/part-sections"] });
+      const previousSections = queryClient.getQueryData<PartSection[]>(["/api/part-sections"]);
+      
+      // Optimistically update to the new value
+      queryClient.setQueryData<PartSection[]>(["/api/part-sections"], (old) => {
+        if (!old) return old;
+        const updatesMap = new Map(updates.map(u => [u.sectionKey, u.sortOrder]));
+        return old.map(section => ({
+          ...section,
+          sortOrder: updatesMap.get(section.sectionKey) ?? section.sortOrder
+        })).sort((a, b) => a.sortOrder - b.sortOrder);
+      });
+
+      return { previousSections };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousSections) {
+        queryClient.setQueryData(["/api/part-sections"], context.previousSections);
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update section order",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/part-sections"] });
+    },
+  });
+
   // Mutation for creating/updating part category tags
   const saveCategoryMutation = useMutation({
     mutationFn: async ({ categoryValue, categoryLabel, productTags, assignedSection, sortOrder, originalValue }: {
@@ -421,7 +526,7 @@ export default function PartCategorySettings() {
     },
   });
 
-  // Handle drag end event
+  // Handle drag end event for categories
   const handleDragEnd = (event: DragEndEvent, sectionCategories: any[]) => {
     const { active, over } = event;
 
@@ -447,6 +552,34 @@ export default function PartCategorySettings() {
 
     // Update sortOrder in the database
     batchUpdateSortOrderMutation.mutate(updates);
+  };
+
+  // Handle drag end event for sections
+  const handleSectionDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id || !partSections) {
+      return;
+    }
+
+    const oldIndex = partSections.findIndex((section) => section.sectionKey === active.id);
+    const newIndex = partSections.findIndex((section) => section.sectionKey === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Reorder the sections array
+    const reorderedSections = arrayMove(partSections, oldIndex, newIndex);
+
+    // Calculate new sortOrder values for the reordered sections
+    const updates = reorderedSections.map((section, index) => ({
+      sectionKey: section.sectionKey,
+      sortOrder: index,
+    }));
+
+    // Update sortOrder in the database
+    batchUpdateSectionSortOrderMutation.mutate(updates);
   };
 
   // Initialize default categories if none exist
@@ -635,6 +768,56 @@ export default function PartCategorySettings() {
           </Button>
         </div>
       </div>
+
+      {/* Section Order Management */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-lg">Section Order</CardTitle>
+              <p className="text-sm text-gray-600 mt-1">Drag sections to reorder how they appear in the parts catalog</p>
+            </div>
+            {(!partSections || partSections.length === 0) && (
+              <Button
+                onClick={() => initializeSectionsMutation.mutate()}
+                disabled={initializeSectionsMutation.isPending}
+                data-testid="button-initialize-sections"
+                size="sm"
+              >
+                {initializeSectionsMutation.isPending ? "Initializing..." : "Initialize Sections"}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isSectionsLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : partSections && partSections.length > 0 ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleSectionDragEnd}
+            >
+              <SortableContext
+                items={partSections.map(s => s.sectionKey)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {partSections.map((section) => (
+                    <SortableSection key={section.sectionKey} section={section} />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No sections configured. Click "Initialize Sections" to set up default sections.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {showCreateForm && (
         <Card className="border-blue-200 bg-blue-50">
