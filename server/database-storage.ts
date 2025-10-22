@@ -366,8 +366,7 @@ export class DatabaseStorage implements IStorage {
         imageUrl: product.images?.[0]?.src || null,
         category: product.product_type || null,
         tags: product.tags || '', // Shopify returns tags as comma-separated string
-        variants: JSON.stringify(product.variants || []),
-        handle: product.handle || null // Shopify product handle for URL-safe links
+        variants: JSON.stringify(product.variants || [])
       })) || [];
       
       console.log(`✅ LIVE DATA: Fetched ${products.length} products from Shopify`);

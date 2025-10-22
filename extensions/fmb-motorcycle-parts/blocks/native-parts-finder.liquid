@@ -37,7 +37,7 @@
     if (!container) return;
 
     const config = {
-      apiBaseUrl: '/api/proxy',
+      apiBaseUrl: '/apps/fit-my-bike',
       shopDomain: window.Shopify?.shop || '{{ shop.permanent_domain }}',
       autoDetectPage: {{ auto_detect_page }},
       blockId: blockId
@@ -161,11 +161,10 @@
       
       const url1 = `${config.apiBaseUrl}/api/motorcycles?recid=${bikeid}`;
       const url2 = `${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/compatible-parts`;
-      const url3 = `${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/sprocket-alternatives`;
       
-      console.log('🔧 FMB Debug: Fetching URLs:', url1, url2, url3);
+      console.log('🔧 FMB Debug: Fetching URLs:', url1, url2);
       
-      // Load specific motorcycle data, compatible parts, and sprocket alternatives
+      // Load specific motorcycle data and compatible parts directly
       Promise.all([
         fetch(url1, { 
           cache: 'no-store', 
@@ -194,26 +193,11 @@
             throw new Error(`Parts API failed with status ${r.status}`);
           }
           return r.json();
-        }),
-        fetch(url3, { 
-          cache: 'no-store', 
-          headers: { 'Cache-Control': 'no-cache' } 
-        }).then(r => {
-          console.log('🔧 FMB Debug: Alternatives API response status:', r.status);
-          if (r.status === 304) {
-            // Handle 304 Not Modified - try again with cache reload
-            return fetch(url3, { cache: 'reload' }).then(rr => rr.json());
-          }
-          if (!r.ok) {
-            throw new Error(`Alternatives API failed with status ${r.status}`);
-          }
-          return r.json();
         })
       ])
-      .then(([motorcycles, parts, alternatives]) => {
+      .then(([motorcycles, parts]) => {
         console.log('🔧 FMB Debug: Received motorcycles:', motorcycles);
         console.log('🔧 FMB Debug: Received parts:', parts);
-        console.log('🔧 FMB Debug: Received alternatives:', alternatives);
         console.log('🔧 FMB Debug: Motorcycles type:', typeof motorcycles, 'Length:', Array.isArray(motorcycles) ? motorcycles.length : 'not array');
         console.log('🔧 FMB Debug: Parts type:', typeof parts, 'Length:', Array.isArray(parts) ? parts.length : 'not array');
 
@@ -223,8 +207,6 @@
             ✅ <strong>API Success!</strong><br>
             • Motorcycles: ${Array.isArray(motorcycles) ? motorcycles.length : 'Invalid'}<br>
             • Parts: ${Array.isArray(parts) ? parts.length : 'Invalid'}<br>
-            • FCW Alternatives: ${alternatives.frontSprocketAlternatives ? alternatives.frontSprocketAlternatives.length : 0}<br>
-            • RCW Alternatives: ${alternatives.rearSprocketAlternatives ? alternatives.rearSprocketAlternatives.length : 0}<br>
             • Rendering layout...<br>
           </div>
         `;
@@ -237,7 +219,7 @@
         
         updateSEOForMotorcycle(motorcycle, parts, bikeid);
         
-        container.innerHTML = generateMotorcyclePageHTML(motorcycle, parts, alternatives, config);
+        container.innerHTML = generateMotorcyclePageHTML(motorcycle, parts, config);
         setupPartInteractions(config, container);
       })
       .catch(error => {
@@ -374,7 +356,7 @@
       `;
     }
 
-    function generateMotorcyclePageHTML(motorcycle, parts, alternatives, config) {
+    function generateMotorcyclePageHTML(motorcycle, parts, config) {
       // Calculate year range  
       const bikeYear = motorcycle.firstyear && motorcycle.lastyear 
         ? (motorcycle.firstyear === motorcycle.lastyear 
@@ -392,10 +374,10 @@
       if (categorizedParts.handlebars.length > 0) {
         navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'handlebars\').scrollIntoView({behavior: \'smooth\'})">Handlebars</button>');
       }
-      if (categorizedParts.frontSprocket.length > 0 || alternatives.frontSprocketAlternatives.length > 0) {
+      if (categorizedParts.frontSprocket.length > 0) {
         navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'front-sprocket\').scrollIntoView({behavior: \'smooth\'})">Front Sprocket</button>');
       }
-      if (categorizedParts.rearSprockets.length > 0 || alternatives.rearSprocketAlternatives.length > 0) {
+      if (categorizedParts.rearSprockets.length > 0) {
         navButtons.push('<button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded fmb-nav-btn" onclick="document.getElementById(\'rear-sprockets\').scrollIntoView({behavior: \'smooth\'})">Rear Sprockets</button>');
       }
       if (categorizedParts.chain.length > 0) {
@@ -435,8 +417,8 @@
           <div class="fmb-parts-content">
             ${generateDirectReplacementSection(categorizedParts, motorcycle)}
             ${generateCategorySectionDynamic('handlebars', categorizedParts.handlebars)}
-            ${generateCategorySectionDynamic('front-sprocket', categorizedParts.frontSprocket, alternatives.frontSprocketAlternatives)}
-            ${generateCategorySectionDynamic('rear-sprockets', categorizedParts.rearSprockets, alternatives.rearSprocketAlternatives)}
+            ${generateCategorySectionDynamic('front-sprocket', categorizedParts.frontSprocket)}
+            ${generateCategorySectionDynamic('rear-sprockets', categorizedParts.rearSprockets)}
             ${generateCategorySectionDynamic('chain', categorizedParts.chain)}
             ${generateCategorySectionDynamic('brake-pads', categorizedParts.brakePads)}
             ${generateCategorySectionDynamic('bar-mounts', categorizedParts.barMounts)}
@@ -609,15 +591,11 @@
     function generateCategorySection(id, title, parts) {
       if (parts.length === 0) return '';
       
-      // Separate OE parts and alternatives
-      const oeParts = parts.filter(p => !p.isAlternative);
-      const alternativeParts = parts.filter(p => p.isAlternative);
-      
       return `
         <div id="${id}" class="fmb-category-section">
           <h3>${id}</h3>
           <div class="fmb-parts-grid">
-            ${oeParts.map(part => `
+            ${parts.map(part => `
               <div class="fmb-parts-card">
                 <div class="fmb-parts-card-title">${title}</div>
                 <h4><a href="${part.url}">${part.title}</a></h4>
@@ -625,43 +603,19 @@
                 <button class="fmb-add-to-cart-btn fmb-nav-btn" data-variant-id="${part.variants[0]?.id}">Add to Cart</button>
               </div>
             `).join('')}
-            ${alternativeParts.length > 0 ? `
-              ${alternativeParts.map(part => `
-                <div class="fmb-parts-card" style="border: 2px solid #28a745; position: relative;">
-                  <div style="position: absolute; top: 5px; right: 5px; background: #28a745; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">
-                    Alternative
-                  </div>
-                  <div class="fmb-parts-card-title">${title}</div>
-                  <h4><a href="${part.url}">${part.title}</a></h4>
-                  <p><strong>SKU:</strong> ${part.sku}</p>
-                  <button class="fmb-add-to-cart-btn fmb-nav-btn" data-variant-id="${part.variants[0]?.id}">Add to Cart</button>
-                </div>
-              `).join('')}
-            ` : ''}
           </div>
         </div>
       `;
     }
 
     // Dynamic category section that uses adminCategoryLabel from parts
-    function generateCategorySectionDynamic(id, parts, alternatives = []) {
-      if (parts.length === 0 && alternatives.length === 0) return '';
+    function generateCategorySectionDynamic(id, parts) {
+      if (parts.length === 0) return '';
       
       // Get the category label from the first part (all parts in a section should have the same category)
       const categoryLabel = parts[0]?.adminCategoryLabel || id.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       
-      // Combine OE parts and alternatives for display
-      const allParts = [...parts];
-      
-      // Add alternatives with special marking
-      alternatives.forEach(alt => {
-        allParts.push({
-          ...alt,
-          isAlternative: true
-        });
-      });
-      
-      return generateCategorySection(id, categoryLabel, allParts);
+      return generateCategorySection(id, categoryLabel, parts);
     }
 
     function searchMotorcycles(motorcycleData, query) {
