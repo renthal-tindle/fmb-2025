@@ -872,7 +872,7 @@ export default function PartCategorySettings() {
                   <SelectValue placeholder="Select a section..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {SECTION_OPTIONS.map((option) => (
+                  {sectionOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
