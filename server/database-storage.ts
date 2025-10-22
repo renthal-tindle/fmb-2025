@@ -762,7 +762,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePartCategoryTag(categoryValue: string): Promise<boolean> {
-    const result = await db.delete(partCategoryTags).where(eq(partCategoryTags.categoryValue, categoryValue));
+    const result = await db.delete(partCategoryTags).where(eq(partCategoryTags.categoryValue, categoryValue)).returning();
     return result.length > 0;
   }
 
@@ -790,7 +790,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePartSection(sectionKey: string): Promise<boolean> {
-    const result = await db.delete(partSections).where(eq(partSections.sectionKey, sectionKey));
+    const result = await db.delete(partSections).where(eq(partSections.sectionKey, sectionKey)).returning();
     return result.length > 0;
   }
 
