@@ -48,13 +48,19 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **Theme App Extension API Path Fix**:
+  - Fixed Theme App Extension to use correct Shopify App Proxy path (`/api/proxy` instead of `/apps/fit-my-bike`)
+  - Sprocket alternatives now display correctly with proper API communication
+  - Product URLs now use Shopify's native `handle` field (e.g., `/products/292-520-front-sprocket`)
+  - Previous broken URLs with special characters (e.g., parentheses) resolved
+  - Clean URL generation with fallback to sanitized slugs for products without handles
 - **FCW Group and RCW Group Sprocket Alternatives Feature**:
   - Implemented API endpoint (`/api/customer/motorcycles/:recid/sprocket-alternatives`) that returns alternative front and rear sprockets based on FCW Group and RCW Group fields
   - Alternative sprockets displayed with green borders and "Alternative" badge in Theme App Extension
   - Alternatives exclude the OE (Original Equipment) sprocket using SKU comparison
-  - Successfully tested with RECID 9206 (returns 2 FCW and 22 RCW alternatives)
+  - Successfully tested with RECID 9211 (returns 2 FCW alternatives - 12T and 14T variants)
   - Product data fetched directly from live Shopify catalog via REST API (not from database table)
-  - Product URLs use Shopify's native `handle` field with fallback to URL-safe slug generation for broken link prevention
+  - Alternatives show different size variants of the same sprocket product
 - **Settings Page Reorganization**:
   - Reorganized Settings into two tabbed sections for better user experience
   - **Motorcycle Settings Tab**: Contains motorcycle category management (add/edit categories and subcategories)
