@@ -48,6 +48,13 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **FCW Group and RCW Group Sprocket Alternatives Feature**:
+  - Implemented API endpoint (`/api/customer/motorcycles/:recid/sprocket-alternatives`) that returns alternative front and rear sprockets based on FCW Group and RCW Group fields
+  - Alternative sprockets displayed with green borders and "Alternative" badge in Theme App Extension
+  - Alternatives exclude the OE (Original Equipment) sprocket using SKU comparison
+  - Successfully tested with RECID 9206 (returns 2 FCW and 22 RCW alternatives)
+  - Product data fetched directly from live Shopify catalog via REST API (not from database table)
+  - Product URLs use Shopify's native `handle` field with fallback to URL-safe slug generation for broken link prevention
 - **Settings Page Reorganization**:
   - Reorganized Settings into two tabbed sections for better user experience
   - **Motorcycle Settings Tab**: Contains motorcycle category management (add/edit categories and subcategories)

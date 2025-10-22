@@ -3616,7 +3616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 sku: variant.sku,
                 price: variant.price,
                 imageUrl: fcwGroupProduct.imageUrl,
-                url: `/products/${fcwGroupProduct.title.toLowerCase().replace(/\s+/g, '-')}`,
+                url: `/products/${(fcwGroupProduct as any).handle || fcwGroupProduct.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
                 variants: [{
                   id: variant.id,
                   title: variant.title,
@@ -3650,7 +3650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 sku: variant.sku,
                 price: variant.price,
                 imageUrl: rcwGroupProduct.imageUrl,
-                url: `/products/${rcwGroupProduct.title.toLowerCase().replace(/\s+/g, '-')}`,
+                url: `/products/${(rcwGroupProduct as any).handle || rcwGroupProduct.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
                 variants: [{
                   id: variant.id,
                   title: variant.title,
@@ -4314,7 +4314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 sku: variant.sku,
                 price: variant.price,
                 imageUrl: fcwGroupProduct.imageUrl,
-                url: `/products/${fcwGroupProduct.title.toLowerCase().replace(/\s+/g, '-')}`,
+                url: `/products/${(fcwGroupProduct as any).handle || fcwGroupProduct.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
                 variants: [{
                   id: variant.id,
                   title: variant.title,
@@ -4348,7 +4348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 sku: variant.sku,
                 price: variant.price,
                 imageUrl: rcwGroupProduct.imageUrl,
-                url: `/products/${rcwGroupProduct.title.toLowerCase().replace(/\s+/g, '-')}`,
+                url: `/products/${(rcwGroupProduct as any).handle || rcwGroupProduct.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
                 variants: [{
                   id: variant.id,
                   title: variant.title,
