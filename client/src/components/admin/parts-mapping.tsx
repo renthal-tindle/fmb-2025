@@ -8,30 +8,72 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { ShopifyProduct, ShopifyProductWithVariants, Motorcycle, PartCategoryTags } from "@shared/schema";
+import type { ShopifyProduct, ShopifyProductWithVariants, Motorcycle, PartCategoryTags, PartSection } from "@shared/schema";
 
 interface PartsMappingProps {
   selectedMotorcycle?: Motorcycle | null;
 }
 
-// Build dynamic sections from database categories
-const buildDynamicPartSections = (categoryTags: PartCategoryTags[]) => {
-  const sectionTitles = {
-    handlebars: "Handlebars",
-    frontSprocket: "Front Sprocket", 
-    rearSprockets: "Rear Sprockets",
-    chain: "Chain",
-    brakePads: "Brake Pads",
-    barMounts: "Bar Mounts",
-    driveConversions: "Drive Conversions",
-    others: "Others",
-  };
+// Build dynamic sections from database categories and sections
+const buildDynamicPartSections = (categoryTags: PartCategoryTags[], partSections: PartSection[] | undefined) => {
+  // If no sections from database, use default fallback
+  if (!partSections || partSections.length === 0) {
+    const defaultSectionTitles = {
+      handlebars: "Handlebars",
+      frontSprocket: "Front Sprocket", 
+      rearSprockets: "Rear Sprockets",
+      chain: "Chain",
+      brakePads: "Brake Pads",
+      barMounts: "Bar Mounts",
+      driveConversions: "Drive Conversions",
+      others: "Others",
+    };
+    
+    const sections: Record<string, { title: string; icon: string; categories: any[]; sortOrder: number }> = {};
+    
+    Object.entries(defaultSectionTitles).forEach(([key, title], index) => {
+      sections[key] = { title, icon: "", categories: [], sortOrder: index };
+    });
 
-  const sections: Record<string, { title: string; icon: string; categories: any[] }> = {};
+    categoryTags.forEach(categoryTag => {
+      let productTags: string[] = [];
+      try {
+        productTags = JSON.parse(categoryTag.productTags);
+        if (!Array.isArray(productTags)) {
+          productTags = [categoryTag.productTags];
+        }
+      } catch {
+        productTags = [categoryTag.productTags];
+      }
+
+      const category = {
+        value: categoryTag.categoryValue,
+        label: categoryTag.categoryLabel || categoryTag.categoryValue,
+        productTags
+      };
+
+      const assignedSection = categoryTag.assignedSection || "others";
+      if (sections[assignedSection]) {
+        sections[assignedSection].categories.push(category);
+      } else {
+        sections.others.categories.push(category);
+      }
+    });
+
+    return sections;
+  }
+
+  // Build sections from database configuration (sorted by sortOrder)
+  const sections: Record<string, { title: string; icon: string; categories: any[]; sortOrder: number }> = {};
   
-  // Initialize all sections
-  Object.entries(sectionTitles).forEach(([key, title]) => {
-    sections[key] = { title, icon: "", categories: [] };
+  // Initialize sections from database
+  partSections.forEach(section => {
+    sections[section.sectionKey] = { 
+      title: section.sectionLabel, 
+      icon: "", 
+      categories: [],
+      sortOrder: section.sortOrder
+    };
   });
 
   // Add categories to their assigned sections
@@ -56,8 +98,10 @@ const buildDynamicPartSections = (categoryTags: PartCategoryTags[]) => {
     if (sections[assignedSection]) {
       sections[assignedSection].categories.push(category);
     } else {
-      // If section doesn't exist, add to others
-      sections.others.categories.push(category);
+      // If section doesn't exist in database, add to others if it exists
+      if (sections.others) {
+        sections.others.categories.push(category);
+      }
     }
   });
 
@@ -124,54 +168,17 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
   const { data: categoryTags } = useQuery<PartCategoryTags[]>({
     queryKey: ["/api/part-category-tags"],
   });
+
+  // Query for part sections to get dynamic section ordering
+  const { data: partSections } = useQuery<PartSection[]>({
+    queryKey: ["/api/part-sections"],
+  });
   
-  // Build dynamic sections based on category tag assignments
+  // Build dynamic sections based on category tag assignments and section ordering from database
   const dynamicSections = useMemo(() => {
-    if (!categoryTags) return buildDynamicPartSections([]);
-    
-    const sections: any = {};
-    const sectionTitles: Record<string, string> = {
-      handlebars: "Handlebars",
-      frontSprocket: "Front Sprocket", 
-      rearSprockets: "Rear Sprockets",
-      chain: "Chain",
-      brakePads: "Brake Pads",
-      barMounts: "Bar Mounts",
-      driveConversions: "Drive Conversions",
-      others: "Others"
-    };
-    
-    // Group categories by their assigned sections
-    categoryTags.forEach(tag => {
-      const section = tag.assignedSection || 'others';
-      if (!sections[section]) {
-        sections[section] = {
-          title: sectionTitles[section] || section,
-          icon: "",
-          categories: []
-        };
-      }
-      
-      sections[section].categories.push({
-        value: tag.categoryValue,
-        label: tag.categoryLabel,
-        productTags: JSON.parse(tag.productTags)
-      });
-    });
-    
-    // Initialize empty sections that don't have any categories yet
-    Object.entries(sectionTitles).forEach(([sectionKey, title]) => {
-      if (!sections[sectionKey]) {
-        sections[sectionKey] = {
-          title: title,
-          icon: "",
-          categories: []
-        };
-      }
-    });
-    
-    return sections;
-  }, [categoryTags]);
+    if (!categoryTags) return buildDynamicPartSections([], partSections);
+    return buildDynamicPartSections(categoryTags, partSections);
+  }, [categoryTags, partSections]);
   
   // Update current motorcycle if prop changes
   useEffect(() => {
@@ -553,7 +560,13 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
         <div className="space-y-6">
           <h3 className="font-semibold text-lg">Part Assignments - Click to Edit</h3>
           
-          {Object.entries(dynamicSections).map(([sectionKey, section]) => {
+          {Object.entries(dynamicSections)
+            .sort((a, b) => {
+              const sectionA = a[1] as { sortOrder: number };
+              const sectionB = b[1] as { sortOrder: number };
+              return sectionA.sortOrder - sectionB.sortOrder;
+            })
+            .map(([sectionKey, section]) => {
             const sectionData = section as { title: string; categories: any[] };
             return (
               <div key={sectionKey} className="space-y-4">
