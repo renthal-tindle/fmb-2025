@@ -122,6 +122,16 @@ export const motorcycleCategoryConfig = pgTable("motorcycle_category_config", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const partSections = pgTable("part_sections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sectionKey: text("section_key").notNull().unique(), // handlebars, frontSprocket, rearSprockets, etc.
+  sectionLabel: text("section_label").notNull(), // Display name: "Handlebars", "Front Sprocket", etc.
+  sortOrder: integer("sort_order").notNull().default(0), // Display order for sections
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertMotorcycleSchema = createInsertSchema(motorcycles);
 
 export const insertShopifyProductSchema = createInsertSchema(shopifyProducts);
@@ -141,9 +151,17 @@ export const insertPartCategoryTagsSchema = createInsertSchema(partCategoryTags)
   updatedAt: true,
 });
 
+export const insertPartSectionSchema = createInsertSchema(partSections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertMotorcycle = z.infer<typeof insertMotorcycleSchema>;
 export type PartCategoryTags = typeof partCategoryTags.$inferSelect;
 export type InsertPartCategoryTags = z.infer<typeof insertPartCategoryTagsSchema>;
+export type PartSection = typeof partSections.$inferSelect;
+export type InsertPartSection = z.infer<typeof insertPartSectionSchema>;
 export type Motorcycle = typeof motorcycles.$inferSelect;
 
 export type InsertShopifyProduct = z.infer<typeof insertShopifyProductSchema>;

@@ -7,6 +7,7 @@ import {
   partMappings,
   importHistory,
   partCategoryTags,
+  partSections,
   shopifySessions,
   searchAnalytics,
   motorcycleCategoryConfig,
@@ -21,6 +22,8 @@ import {
   type InsertImportHistory,
   type PartCategoryTags,
   type InsertPartCategoryTags,
+  type PartSection,
+  type InsertPartSection,
   type ShopifySessionData,
   type InsertShopifySession,
   type SearchAnalytics,
@@ -761,6 +764,50 @@ export class DatabaseStorage implements IStorage {
   async deletePartCategoryTag(categoryValue: string): Promise<boolean> {
     const result = await db.delete(partCategoryTags).where(eq(partCategoryTags.categoryValue, categoryValue));
     return result.length > 0;
+  }
+
+  // Part Sections
+  async getPartSections(): Promise<PartSection[]> {
+    return await db.select().from(partSections).orderBy(asc(partSections.sortOrder));
+  }
+
+  async getPartSection(sectionKey: string): Promise<PartSection | undefined> {
+    const result = await db.select().from(partSections).where(eq(partSections.sectionKey, sectionKey));
+    return result[0];
+  }
+
+  async createPartSection(partSection: InsertPartSection): Promise<PartSection> {
+    const result = await db.insert(partSections).values(partSection).returning();
+    return result[0];
+  }
+
+  async updatePartSection(sectionKey: string, updates: Partial<InsertPartSection>): Promise<PartSection | undefined> {
+    const result = await db.update(partSections)
+      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .where(eq(partSections.sectionKey, sectionKey))
+      .returning();
+    return result[0];
+  }
+
+  async deletePartSection(sectionKey: string): Promise<boolean> {
+    const result = await db.delete(partSections).where(eq(partSections.sectionKey, sectionKey));
+    return result.length > 0;
+  }
+
+  async initializeDefaultPartSections(): Promise<PartSection[]> {
+    const defaultSections = [
+      { sectionKey: "handlebars", sectionLabel: "Handlebars", sortOrder: 0, isActive: true },
+      { sectionKey: "frontSprocket", sectionLabel: "Front Sprocket", sortOrder: 1, isActive: true },
+      { sectionKey: "rearSprockets", sectionLabel: "Rear Sprockets", sortOrder: 2, isActive: true },
+      { sectionKey: "chain", sectionLabel: "Chain", sortOrder: 3, isActive: true },
+      { sectionKey: "brakePads", sectionLabel: "Brake Pads", sortOrder: 4, isActive: true },
+      { sectionKey: "barMounts", sectionLabel: "Bar Mounts", sortOrder: 5, isActive: true },
+      { sectionKey: "driveConversions", sectionLabel: "Drive Conversions", sortOrder: 6, isActive: true },
+      { sectionKey: "others", sectionLabel: "Others", sortOrder: 7, isActive: true },
+    ];
+
+    const result = await db.insert(partSections).values(defaultSections).returning();
+    return result;
   }
 
   // Shopify Sessions

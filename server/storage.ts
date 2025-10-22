@@ -10,7 +10,9 @@ import {
   type PartCategoryTags,
   type InsertPartCategoryTags,
   type SearchAnalytics,
-  type InsertSearchAnalytics
+  type InsertSearchAnalytics,
+  type PartSection,
+  type InsertPartSection
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -68,6 +70,14 @@ export interface IStorage {
   createPartCategoryTag(partCategoryTag: InsertPartCategoryTags): Promise<PartCategoryTags>;
   updatePartCategoryTag(categoryValue: string, updates: Partial<InsertPartCategoryTags>): Promise<PartCategoryTags | undefined>;
   deletePartCategoryTag(categoryValue: string): Promise<boolean>;
+
+  // Part Sections
+  getPartSections(): Promise<PartSection[]>;
+  getPartSection(sectionKey: string): Promise<PartSection | undefined>;
+  createPartSection(partSection: InsertPartSection): Promise<PartSection>;
+  updatePartSection(sectionKey: string, updates: Partial<InsertPartSection>): Promise<PartSection | undefined>;
+  deletePartSection(sectionKey: string): Promise<boolean>;
+  initializeDefaultPartSections(): Promise<PartSection[]>;
 
   // Search Analytics
   createSearchAnalytics(analytics: InsertSearchAnalytics): Promise<SearchAnalytics>;
