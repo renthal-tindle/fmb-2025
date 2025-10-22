@@ -59,18 +59,6 @@ const DEFAULT_CATEGORIES = [
   { value: "rcwcarrier", label: "RCW Carrier", productTags: ["carrier", "sprocket", "chainwheel"] },
 ];
 
-const SECTION_OPTIONS = [
-  { value: "unassigned", label: "Unassigned" },
-  { value: "handlebars", label: "Handlebars" },
-  { value: "frontSprocket", label: "Front Sprocket" },
-  { value: "rearSprockets", label: "Rear Sprockets" },
-  { value: "chain", label: "Chain" },
-  { value: "brakePads", label: "Brake Pads" },
-  { value: "barMounts", label: "Bar Mounts" },
-  { value: "driveConversions", label: "Drive Conversions" },
-  { value: "others", label: "Others" },
-];
-
 // Sortable section item component
 function SortableSection({ section }: { section: PartSection }) {
   const {
@@ -198,7 +186,7 @@ function SortableCategory({
                 <SelectValue placeholder="Select a section..." />
               </SelectTrigger>
               <SelectContent>
-                {SECTION_OPTIONS.map((option) => (
+                {sectionOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -288,6 +276,9 @@ export default function PartCategorySettings() {
   const [newCategoryValue, setNewCategoryValue] = useState("");
   const [newCategoryTags, setNewCategoryTags] = useState("");
   const [newCategorySection, setNewCategorySection] = useState("unassigned");
+  const [showCreateSectionForm, setShowCreateSectionForm] = useState(false);
+  const [newSectionKey, setNewSectionKey] = useState("");
+  const [newSectionLabel, setNewSectionLabel] = useState("");
   const { toast } = useToast();
 
   // Drag and drop sensors
@@ -307,6 +298,15 @@ export default function PartCategorySettings() {
   const { data: partSections, isLoading: isSectionsLoading } = useQuery<PartSection[]>({
     queryKey: ["/api/part-sections"],
   });
+
+  // Build dynamic section options from database
+  const sectionOptions = [
+    { value: "unassigned", label: "Unassigned" },
+    ...(partSections || []).map(section => ({
+      value: section.sectionKey,
+      label: section.sectionLabel
+    }))
+  ];
 
   // Mutation for initializing default part sections
   const initializeSectionsMutation = useMutation({
@@ -362,6 +362,38 @@ export default function PartCategorySettings() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/part-sections"] });
+    },
+  });
+
+  // Mutation for creating a new section
+  const createSectionMutation = useMutation({
+    mutationFn: async () => {
+      const maxSortOrder = partSections && partSections.length > 0 
+        ? Math.max(...partSections.map(s => s.sortOrder)) 
+        : -1;
+      await apiRequest("POST", "/api/part-sections", {
+        sectionKey: newSectionKey,
+        sectionLabel: newSectionLabel,
+        sortOrder: maxSortOrder + 1,
+        isActive: true
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/part-sections"] });
+      setShowCreateSectionForm(false);
+      setNewSectionKey("");
+      setNewSectionLabel("");
+      toast({
+        title: "Success",
+        description: "New section created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create section",
+        variant: "destructive",
+      });
     },
   });
 
@@ -884,16 +916,29 @@ export default function PartCategorySettings() {
               <CardTitle className="text-lg">Section Order</CardTitle>
               <p className="text-sm text-gray-600 mt-1">Drag sections to reorder how they appear in the parts catalog</p>
             </div>
-            {(!partSections || partSections.length === 0) && (
-              <Button
-                onClick={() => initializeSectionsMutation.mutate()}
-                disabled={initializeSectionsMutation.isPending}
-                data-testid="button-initialize-sections"
-                size="sm"
-              >
-                {initializeSectionsMutation.isPending ? "Initializing..." : "Initialize Sections"}
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {(!partSections || partSections.length === 0) && (
+                <Button
+                  onClick={() => initializeSectionsMutation.mutate()}
+                  disabled={initializeSectionsMutation.isPending}
+                  data-testid="button-initialize-sections"
+                  size="sm"
+                >
+                  {initializeSectionsMutation.isPending ? "Initializing..." : "Initialize Sections"}
+                </Button>
+              )}
+              {partSections && partSections.length > 0 && (
+                <Button
+                  onClick={() => setShowCreateSectionForm(true)}
+                  disabled={showCreateSectionForm}
+                  data-testid="button-create-section"
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Create New Section
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -902,22 +947,85 @@ export default function PartCategorySettings() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : partSections && partSections.length > 0 ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleSectionDragEnd}
-            >
-              <SortableContext
-                items={partSections.map(s => s.sectionKey)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-2">
-                  {partSections.map((section) => (
-                    <SortableSection key={section.sectionKey} section={section} />
-                  ))}
+            <div className="space-y-4">
+              {/* Create Section Form */}
+              {showCreateSectionForm && (
+                <div className="border-2 border-green-200 bg-green-50 p-4 rounded-md">
+                  <h3 className="font-semibold text-green-900 mb-3">Create New Section</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <Label htmlFor="new-section-label" className="text-sm font-medium">
+                        Section Label
+                      </Label>
+                      <p className="text-xs text-gray-600 mt-1 mb-2">
+                        Display name (e.g., "Exhaust Systems")
+                      </p>
+                      <Input
+                        id="new-section-label"
+                        value={newSectionLabel}
+                        onChange={(e) => setNewSectionLabel(e.target.value)}
+                        placeholder="Exhaust Systems"
+                        data-testid="input-new-section-label"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="new-section-key" className="text-sm font-medium">
+                        Section Key
+                      </Label>
+                      <p className="text-xs text-gray-600 mt-1 mb-2">
+                        Internal identifier (lowercase, camelCase)
+                      </p>
+                      <Input
+                        id="new-section-key"
+                        value={newSectionKey}
+                        onChange={(e) => setNewSectionKey(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+                        placeholder="exhaustSystems"
+                        data-testid="input-new-section-key"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => createSectionMutation.mutate()}
+                      disabled={createSectionMutation.isPending || !newSectionLabel || !newSectionKey}
+                      data-testid="button-create-new-section"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {createSectionMutation.isPending ? "Creating..." : "Create Section"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowCreateSectionForm(false);
+                        setNewSectionKey("");
+                        setNewSectionLabel("");
+                      }}
+                      data-testid="button-cancel-create-section"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
-              </SortableContext>
-            </DndContext>
+              )}
+
+              {/* Sections List */}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleSectionDragEnd}
+              >
+                <SortableContext
+                  items={partSections.map(s => s.sectionKey)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-2">
+                    {partSections.map((section) => (
+                      <SortableSection key={section.sectionKey} section={section} />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
               <p>No sections configured. Click "Initialize Sections" to set up default sections.</p>
@@ -934,7 +1042,7 @@ export default function PartCategorySettings() {
           if (b === "unassigned") return -1;
           return a.localeCompare(b);
         }).map(([sectionKey, categories]) => {
-          const sectionTitle = SECTION_OPTIONS.find(opt => opt.value === sectionKey)?.label || "Unassigned";
+          const sectionTitle = sectionOptions.find(opt => opt.value === sectionKey)?.label || "Unassigned";
           const categoryIds = categories.map(cat => cat.value);
           
           return (
