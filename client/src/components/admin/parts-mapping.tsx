@@ -696,13 +696,17 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                                           {filteredProducts.map((product: any) => (
                                             <SelectItem 
                                               key={product.id} 
-                                              value={product.title || `product-${product.id}`}
+                                              value={product.sku || product.title || `product-${product.id}`}
                                               data-testid={`option-product-${product.id}`}
                                             >
                                               <div className="flex flex-col">
-                                                <span className="font-medium">{product.title}</span>
+                                                <span className="font-medium">{product.sku || product.title}</span>
+                                                {product.sku && product.title && (
+                                                  <div className="flex gap-2 text-xs text-gray-500">
+                                                    <span>{product.title}</span>
+                                                  </div>
+                                                )}
                                                 <div className="flex gap-2 text-xs text-gray-500">
-                                                  {product.sku && <span>Base SKU: {product.sku}</span>}
                                                   <span>${product.price}</span>
                                                   {product.variants && (
                                                     <span className="text-blue-600">
@@ -723,13 +727,17 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                                           {filteredProducts.map((product: any) => (
                                             <SelectItem 
                                               key={product.id} 
-                                              value={product.title || `product-${product.id}`}
+                                              value={product.sku || product.title || `product-${product.id}`}
                                               data-testid={`option-product-${product.id}`}
                                             >
                                               <div className="flex flex-col">
-                                                <span className="font-medium">{product.title}</span>
+                                                <span className="font-medium">{product.sku || product.title}</span>
+                                                {product.sku && product.title && (
+                                                  <div className="flex gap-2 text-xs text-gray-500">
+                                                    <span>{product.title}</span>
+                                                  </div>
+                                                )}
                                                 <div className="flex gap-2 text-xs text-gray-500">
-                                                  {product.sku && <span>Base SKU: {product.sku}</span>}
                                                   <span>${product.price}</span>
                                                   {product.variants && (
                                                     <span className="text-blue-600">
@@ -752,8 +760,8 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                                         );
                                       }
                                       
-                                      // Find the selected RCW Group product
-                                      const selectedProduct = products.find(p => p.title === selectedRCWGroup) as ShopifyProductWithVariants;
+                                      // Find the selected RCW Group product by SKU (or fallback to title for legacy data)
+                                      const selectedProduct = products.find(p => p.sku === selectedRCWGroup || p.title === selectedRCWGroup) as ShopifyProductWithVariants;
                                       
                                       if (!selectedProduct || !selectedProduct.variants || selectedProduct.variants.length === 0) {
                                         return (
@@ -802,8 +810,8 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                                         );
                                       }
                                       
-                                      // Find the selected FCW Group product
-                                      const selectedProduct = products.find(p => p.title === selectedFCWGroup) as ShopifyProductWithVariants;
+                                      // Find the selected FCW Group product by SKU (or fallback to title for legacy data)
+                                      const selectedProduct = products.find(p => p.sku === selectedFCWGroup || p.title === selectedFCWGroup) as ShopifyProductWithVariants;
                                       
                                       if (!selectedProduct || !selectedProduct.variants || selectedProduct.variants.length === 0) {
                                         return (
@@ -856,9 +864,13 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                                                 data-testid={`option-product-${product.id}`}
                                               >
                                                 <div className="flex flex-col">
-                                                  <span className="font-medium">{product.title}</span>
+                                                  <span className="font-medium">{product.sku || product.title}</span>
+                                                  {product.sku && product.title && (
+                                                    <div className="flex gap-2 text-xs text-gray-500">
+                                                      <span>{product.title}</span>
+                                                    </div>
+                                                  )}
                                                   <div className="flex gap-2 text-xs text-gray-500">
-                                                    {product.sku && <span>SKU: {product.sku}</span>}
                                                     <span>${product.price}</span>
                                                   </div>
                                                 </div>
