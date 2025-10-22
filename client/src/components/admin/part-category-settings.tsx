@@ -185,11 +185,12 @@ export default function PartCategorySettings() {
   // Initialize default categories if none exist
   const initializeDefaultsMutation = useMutation({
     mutationFn: async () => {
-      const promises = DEFAULT_CATEGORIES.map(category => 
+      const promises = DEFAULT_CATEGORIES.map((category, index) => 
         apiRequest("POST", "/api/part-category-tags", {
           categoryValue: category.value,
           categoryLabel: category.label,
-          productTags: JSON.stringify(category.productTags)
+          productTags: JSON.stringify(category.productTags),
+          sortOrder: index
         })
       );
       await Promise.all(promises);

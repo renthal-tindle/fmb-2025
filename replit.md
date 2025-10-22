@@ -48,6 +48,13 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **Part Category Sort Order Management**:
+  - Added sortOrder field to part_category_tags table (integer, defaults to 0)
+  - Settings page now includes sortOrder input for configuring category display order
+  - Backend returns categories sorted by sortOrder (ascending) for consistent ordering
+  - Default categories initialized with sequential sortOrder values (0, 1, 2, 3...)
+  - Categories with same sortOrder value may appear in arbitrary order relative to each other
+  - Note: Future enhancement could add uniqueness validation to prevent sortOrder conflicts
 - **Admin Dashboard Enhancement - RECID Sorting**: 
   - Added ability to sort motorcycles table by RECID column
   - Clickable RECID header toggles between ascending and descending order
