@@ -10,6 +10,23 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { PartCategoryTags } from "@shared/schema";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const DEFAULT_CATEGORIES = [
   { value: "oe_handlebar", label: "OE Handlebar", productTags: ["handlebar"] },
@@ -53,6 +70,169 @@ const SECTION_OPTIONS = [
   { value: "others", label: "Others" },
 ];
 
+// Sortable category item component
+function SortableCategory({ 
+  category, 
+  editingCategory,
+  editingTags,
+  editingLabel,
+  editingValue,
+  editingSection,
+  setEditingTags,
+  setEditingLabel,
+  setEditingValue,
+  setEditingSection,
+  startEditing,
+  saveCategory,
+  cancelEditing,
+  deleteCategoryMutation,
+  saveCategoryMutation 
+}: any) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category.value });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`p-4 hover:bg-gray-50 transition-colors ${editingCategory === category.value ? 'bg-blue-50' : ''}`}
+    >
+      {editingCategory === category.value ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor={`label-${category.value}`} className="text-xs font-medium">Label</Label>
+              <Input
+                id={`label-${category.value}`}
+                value={editingLabel}
+                onChange={(e) => setEditingLabel(e.target.value)}
+                placeholder="V-Twin Handlebars"
+                className="h-8 text-sm"
+                data-testid={`input-label-${category.value}`}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`value-${category.value}`} className="text-xs font-medium">Value</Label>
+              <Input
+                id={`value-${category.value}`}
+                value={editingValue}
+                onChange={(e) => setEditingValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
+                placeholder="vtwin_handlebars"
+                className="h-8 text-sm"
+                data-testid={`input-value-${category.value}`}
+              />
+            </div>
+          </div>
+          
+          <div>
+            <Label htmlFor={`tags-${category.value}`} className="text-xs font-medium">Product Tags (comma-separated)</Label>
+            <Textarea
+              id={`tags-${category.value}`}
+              value={editingTags}
+              onChange={(e) => setEditingTags(e.target.value)}
+              placeholder="handlebar, fatbar, twinwall"
+              className="min-h-[60px] text-sm mt-1"
+              data-testid={`textarea-tags-${category.value}`}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor={`section-${category.value}`} className="text-xs font-medium">Section</Label>
+            <Select value={editingSection} onValueChange={setEditingSection}>
+              <SelectTrigger className="h-8 text-sm mt-1" data-testid={`select-section-${category.value}`}>
+                <SelectValue placeholder="Select a section..." />
+              </SelectTrigger>
+              <SelectContent>
+                {SECTION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button
+              onClick={() => saveCategory(category)}
+              disabled={saveCategoryMutation.isPending}
+              size="sm"
+              data-testid={`button-save-${category.value}`}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {saveCategoryMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={cancelEditing}
+              data-testid={`button-cancel-${category.value}`}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => deleteCategoryMutation.mutate(category.value)}
+              disabled={deleteCategoryMutation.isPending}
+              data-testid={`button-delete-${category.value}`}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            >
+              {deleteCategoryMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-4">
+          <div 
+            {...listeners} 
+            {...attributes} 
+            className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+          >
+            <span className="material-icons text-gray-400">drag_indicator</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h4 className="font-medium text-sm text-gray-900">{category.label}</h4>
+              {category.isSaved && <Badge variant="outline" className="text-xs text-green-600 border-green-300">Saved</Badge>}
+              {!category.isDefault && <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Custom</Badge>}
+            </div>
+            <p className="text-xs text-gray-500 mb-2">{category.value}</p>
+            <div className="flex flex-wrap gap-1">
+              {category.productTags.map((tag: string, index: number) => (
+                <Badge key={index} variant="secondary" className="text-xs px-2 py-0">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => startEditing(category)}
+            className="shrink-0"
+            data-testid={`button-edit-${category.value}`}
+          >
+            <span className="material-icons text-base">edit</span>
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PartCategorySettings() {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [originalCategoryValue, setOriginalCategoryValue] = useState<string | null>(null);
@@ -60,14 +240,20 @@ export default function PartCategorySettings() {
   const [editingSection, setEditingSection] = useState("unassigned");
   const [editingLabel, setEditingLabel] = useState("");
   const [editingValue, setEditingValue] = useState("");
-  const [editingSortOrder, setEditingSortOrder] = useState(0);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState("");
   const [newCategoryValue, setNewCategoryValue] = useState("");
   const [newCategoryTags, setNewCategoryTags] = useState("");
   const [newCategorySection, setNewCategorySection] = useState("unassigned");
-  const [newCategorySortOrder, setNewCategorySortOrder] = useState(0);
   const { toast } = useToast();
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Query for existing part category tags
   const { data: categoryTags, isLoading } = useQuery<PartCategoryTags[]>({
@@ -112,7 +298,6 @@ export default function PartCategorySettings() {
       setEditingSection("unassigned");
       setEditingLabel("");
       setEditingValue("");
-      setEditingSortOrder(0);
       toast({
         title: "Success",
         description: "Part category tags updated successfully",
@@ -131,12 +316,15 @@ export default function PartCategorySettings() {
   const createCategoryMutation = useMutation({
     mutationFn: async () => {
       const tagsArray = newCategoryTags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0);
+      // Get the max sortOrder for new categories in the same section
+      const categoriesInSection = categoryTags?.filter(cat => cat.assignedSection === (newCategorySection === "unassigned" ? null : newCategorySection)) || [];
+      const maxSortOrder = categoriesInSection.length > 0 ? Math.max(...categoriesInSection.map(cat => cat.sortOrder || 0)) : -1;
       await apiRequest("POST", "/api/part-category-tags", {
         categoryValue: newCategoryValue,
         categoryLabel: newCategoryLabel,
         productTags: JSON.stringify(tagsArray),
         assignedSection: newCategorySection === "unassigned" ? null : newCategorySection,
-        sortOrder: newCategorySortOrder
+        sortOrder: maxSortOrder + 1
       });
     },
     onSuccess: () => {
@@ -146,7 +334,6 @@ export default function PartCategorySettings() {
       setNewCategoryValue("");
       setNewCategoryTags("");
       setNewCategorySection("unassigned");
-      setNewCategorySortOrder(0);
       toast({
         title: "Success",
         description: "New part category created successfully",
@@ -181,6 +368,54 @@ export default function PartCategorySettings() {
       });
     },
   });
+
+  // Mutation for batch updating sortOrder
+  const batchUpdateSortOrderMutation = useMutation({
+    mutationFn: async (updates: Array<{ categoryValue: string; sortOrder: number }>) => {
+      const promises = updates.map(({ categoryValue, sortOrder }) =>
+        apiRequest("PUT", `/api/part-category-tags/${categoryValue}`, { sortOrder })
+      );
+      await Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/part-category-tags"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update sort order",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle drag end event
+  const handleDragEnd = (event: DragEndEvent, sectionCategories: any[]) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = sectionCategories.findIndex((cat) => cat.value === active.id);
+    const newIndex = sectionCategories.findIndex((cat) => cat.value === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Reorder the categories array
+    const reorderedCategories = arrayMove(sectionCategories, oldIndex, newIndex);
+
+    // Create batch update with new sortOrder values
+    const updates = reorderedCategories.map((cat, index) => ({
+      categoryValue: cat.value,
+      sortOrder: index,
+    }));
+
+    // Update sortOrder in the database
+    batchUpdateSortOrderMutation.mutate(updates);
+  };
 
   // Initialize default categories if none exist
   const initializeDefaultsMutation = useMutation({
@@ -226,24 +461,24 @@ export default function PartCategorySettings() {
       setEditingSection(existingCategory.assignedSection || "unassigned");
       setEditingLabel(existingCategory.categoryLabel || category.label);
       setEditingValue(existingCategory.categoryValue);
-      setEditingSortOrder(existingCategory.sortOrder || 0);
     } else {
       setEditingTags(category.productTags.join(", "));
       setEditingSection("unassigned");
       setEditingLabel(category.label);
       setEditingValue(category.value);
-      setEditingSortOrder(0);
     }
   };
 
   const saveCategory = (category: any) => {
     const tagsArray = editingTags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0);
+    // Get the existing sortOrder from the category
+    const existingCategory = categoryTags?.find(cat => cat.categoryValue === originalCategoryValue || category.value);
     saveCategoryMutation.mutate({
       categoryValue: editingValue,
       categoryLabel: editingLabel,
       productTags: JSON.stringify(tagsArray),
       assignedSection: editingSection === "unassigned" ? undefined : editingSection,
-      sortOrder: editingSortOrder,
+      sortOrder: existingCategory?.sortOrder || 0,
       originalValue: originalCategoryValue || undefined
     });
   };
@@ -255,7 +490,6 @@ export default function PartCategorySettings() {
     setEditingSection("unassigned");
     setEditingLabel("");
     setEditingValue("");
-    setEditingSortOrder(0);
   };
 
   // Merge default categories with saved ones and add custom categories
@@ -419,43 +653,25 @@ export default function PartCategorySettings() {
               />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="new-category-section" className="text-sm font-medium">
-                  Assign to Section
-                </Label>
-                <p className="text-xs text-gray-600 mt-1 mb-2">
-                  Choose which section this category will appear in during part assignment
-                </p>
-                <Select value={newCategorySection} onValueChange={setNewCategorySection}>
-                  <SelectTrigger data-testid="select-new-category-section">
-                    <SelectValue placeholder="Select a section..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SECTION_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="new-category-sort-order" className="text-sm font-medium">
-                  Sort Order
-                </Label>
-                <p className="text-xs text-gray-600 mt-1 mb-2">
-                  Lower numbers appear first (e.g., 1 before 10)
-                </p>
-                <Input
-                  id="new-category-sort-order"
-                  type="number"
-                  value={newCategorySortOrder}
-                  onChange={(e) => setNewCategorySortOrder(parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                  data-testid="input-new-category-sort-order"
-                />
-              </div>
+            <div>
+              <Label htmlFor="new-category-section" className="text-sm font-medium">
+                Assign to Section
+              </Label>
+              <p className="text-xs text-gray-600 mt-1 mb-2">
+                Choose which section this category will appear in during part assignment
+              </p>
+              <Select value={newCategorySection} onValueChange={setNewCategorySection}>
+                <SelectTrigger data-testid="select-new-category-section">
+                  <SelectValue placeholder="Select a section..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {SECTION_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="flex gap-3 pt-2">
@@ -475,7 +691,6 @@ export default function PartCategorySettings() {
                   setNewCategoryValue("");
                   setNewCategoryTags("");
                   setNewCategorySection("unassigned");
-                  setNewCategorySortOrder(0);
                 }}
                 data-testid="button-cancel-create"
               >
@@ -486,7 +701,7 @@ export default function PartCategorySettings() {
         </Card>
       )}
 
-      {/* Grouped categories by section */}
+      {/* Grouped categories by section with drag-and-drop */}
       <div className="space-y-4">
         {Object.entries(categoriesBySection).sort(([a], [b]) => {
           // Sort sections: put specific sections first, unassigned last
@@ -495,145 +710,50 @@ export default function PartCategorySettings() {
           return a.localeCompare(b);
         }).map(([sectionKey, categories]) => {
           const sectionTitle = SECTION_OPTIONS.find(opt => opt.value === sectionKey)?.label || "Unassigned";
+          const categoryIds = categories.map(cat => cat.value);
           
           return (
             <Card key={sectionKey}>
               <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-indigo-50">
-                <CardTitle className="text-lg font-bold text-gray-900">{sectionTitle}</CardTitle>
-                <p className="text-sm text-gray-600">{categories.length} {categories.length === 1 ? 'category' : 'categories'}</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-bold text-gray-900">{sectionTitle}</CardTitle>
+                    <p className="text-sm text-gray-600">{categories.length} {categories.length === 1 ? 'category' : 'categories'}</p>
+                  </div>
+                  <p className="text-xs text-gray-500">Drag to reorder</p>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="divide-y">
-                  {categories.map((category) => (
-                    <div key={category.value} className={`p-4 hover:bg-gray-50 transition-colors ${editingCategory === category.value ? 'bg-blue-50' : ''}`}>
-                      {editingCategory === category.value ? (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div>
-                              <Label htmlFor={`label-${category.value}`} className="text-xs font-medium">Label</Label>
-                              <Input
-                                id={`label-${category.value}`}
-                                value={editingLabel}
-                                onChange={(e) => setEditingLabel(e.target.value)}
-                                placeholder="V-Twin Handlebars"
-                                className="h-8 text-sm"
-                                data-testid={`input-label-${category.value}`}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`value-${category.value}`} className="text-xs font-medium">Value</Label>
-                              <Input
-                                id={`value-${category.value}`}
-                                value={editingValue}
-                                onChange={(e) => setEditingValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
-                                placeholder="vtwin_handlebars"
-                                className="h-8 text-sm"
-                                data-testid={`input-value-${category.value}`}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`sort-order-${category.value}`} className="text-xs font-medium">Sort Order</Label>
-                              <Input
-                                id={`sort-order-${category.value}`}
-                                type="number"
-                                value={editingSortOrder}
-                                onChange={(e) => setEditingSortOrder(parseInt(e.target.value) || 0)}
-                                placeholder="0"
-                                className="h-8 text-sm"
-                                data-testid={`input-sort-order-${category.value}`}
-                              />
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor={`tags-${category.value}`} className="text-xs font-medium">Product Tags (comma-separated)</Label>
-                            <Textarea
-                              id={`tags-${category.value}`}
-                              value={editingTags}
-                              onChange={(e) => setEditingTags(e.target.value)}
-                              placeholder="handlebar, fatbar, twinwall"
-                              className="min-h-[60px] text-sm mt-1"
-                              data-testid={`textarea-tags-${category.value}`}
-                            />
-                          </div>
-                          
-                          <div>
-                            <Label htmlFor={`section-${category.value}`} className="text-xs font-medium">Section</Label>
-                            <Select value={editingSection} onValueChange={setEditingSection}>
-                              <SelectTrigger className="h-8 text-sm mt-1" data-testid={`select-section-${category.value}`}>
-                                <SelectValue placeholder="Select a section..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {SECTION_OPTIONS.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => saveCategory(category)}
-                              disabled={saveCategoryMutation.isPending}
-                              size="sm"
-                              data-testid={`button-save-${category.value}`}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                              {saveCategoryMutation.isPending ? "Saving..." : "Save"}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={cancelEditing}
-                              data-testid={`button-cancel-${category.value}`}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => deleteCategoryMutation.mutate(category.value)}
-                              disabled={deleteCategoryMutation.isPending}
-                              data-testid={`button-delete-${category.value}`}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                            >
-                              {deleteCategoryMutation.isPending ? "Deleting..." : "Delete"}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium text-sm text-gray-900">{category.label}</h4>
-                              {category.isSaved && <Badge variant="outline" className="text-xs text-green-600 border-green-300">Saved</Badge>}
-                              {!category.isDefault && <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Custom</Badge>}
-                            </div>
-                            <p className="text-xs text-gray-500 mb-2">{category.value}</p>
-                            <div className="flex flex-wrap gap-1">
-                              {category.productTags.map((tag, index) => (
-                                <Badge key={index} variant="secondary" className="text-xs px-2 py-0">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => startEditing(category)}
-                            className="shrink-0"
-                            data-testid={`button-edit-${category.value}`}
-                          >
-                            <span className="material-icons text-base">edit</span>
-                          </Button>
-                        </div>
-                      )}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(event) => handleDragEnd(event, categories)}
+                >
+                  <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>
+                    <div className="divide-y">
+                      {categories.map((category) => (
+                        <SortableCategory
+                          key={category.value}
+                          category={category}
+                          editingCategory={editingCategory}
+                          editingTags={editingTags}
+                          editingLabel={editingLabel}
+                          editingValue={editingValue}
+                          editingSection={editingSection}
+                          setEditingTags={setEditingTags}
+                          setEditingLabel={setEditingLabel}
+                          setEditingValue={setEditingValue}
+                          setEditingSection={setEditingSection}
+                          startEditing={startEditing}
+                          saveCategory={saveCategory}
+                          cancelEditing={cancelEditing}
+                          deleteCategoryMutation={deleteCategoryMutation}
+                          saveCategoryMutation={saveCategoryMutation}
+                        />
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                </DndContext>
               </CardContent>
             </Card>
           );
