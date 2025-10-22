@@ -72,6 +72,10 @@ export interface IStorage {
   // Search Analytics
   createSearchAnalytics(analytics: InsertSearchAnalytics): Promise<SearchAnalytics>;
   getTopSearches(dateFrom?: string, dateTo?: string, limit?: number): Promise<{searchQuery: string, searchCount: number}[]>;
+  
+  // Advisory Locks (for preventing concurrent operations)
+  acquireAdvisoryLock(lockId: number): Promise<boolean>;
+  releaseAdvisoryLock(lockId: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -682,6 +686,17 @@ export class MemStorage implements IStorage {
       .map(([searchQuery, searchCount]) => ({ searchQuery, searchCount }))
       .sort((a, b) => b.searchCount - a.searchCount)
       .slice(0, limit);
+  }
+
+  // Advisory Locks - Stub implementation for in-memory storage
+  async acquireAdvisoryLock(lockId: number): Promise<boolean> {
+    // In-memory storage doesn't need locks (single-threaded)
+    return true;
+  }
+
+  async releaseAdvisoryLock(lockId: number): Promise<boolean> {
+    // In-memory storage doesn't need locks (single-threaded)
+    return true;
   }
 }
 

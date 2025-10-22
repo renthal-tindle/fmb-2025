@@ -2843,6 +2843,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (importType === 'combined') {
         // Handle combined motorcycles + parts import
         const validCombined: any[] = [];
+        
+        // Acquire advisory lock to prevent concurrent RECID allocation
+        // Lock ID: 1234567890 (same as motorcycle-only import for consistency)
+        const lockAcquired = await storage.acquireAdvisoryLock(1234567890);
+        if (!lockAcquired) {
+          return res.status(503).json({
+            success: false,
+            totalRows: 0,
+            successCount: 0,
+            errorCount: 1,
+            errors: [{ row: 0, field: 'system', message: 'Another import is in progress. Please wait and try again.' }]
+          });
+        }
+        
+        try {
+          // Pre-allocate RECID range for auto-assignment (protected by advisory lock)
+          let nextRecid = await storage.getNextMotorcycleRecid();
 
         // Define the parts columns mapping (ALL available categories)
         const partsColumnMap: Record<string, string> = {
@@ -2881,11 +2898,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const rowErrors: Array<{ field: string; message: string }> = [];
 
           try {
-            // Validate motorcycle fields (first 8 columns)
-            if (!row.RECID) {
-              rowErrors.push({ field: 'RECID', message: 'RECID is required' });
+            // Validate motorcycle fields - RECID is now optional
+            let assignedRecid: number;
+            
+            if (!row.RECID || row.RECID.toString().trim() === '') {
+              // Auto-assign RECID if not provided
+              assignedRecid = nextRecid++;
             } else if (isNaN(parseInt(row.RECID))) {
-              rowErrors.push({ field: 'RECID', message: 'RECID must be a number' });
+              rowErrors.push({ field: 'RECID', message: 'RECID must be a number if provided' });
+              // Auto-assign RECID on error
+              assignedRecid = nextRecid++;
+            } else {
+              assignedRecid = parseInt(row.RECID);
             }
 
             if (!row.BIKEMAKE?.trim()) {
@@ -2900,7 +2924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (rowErrors.length === 0) {
               // Create motorcycle data
               const motorcycleData = {
-                recid: parseInt(row.RECID),
+                recid: assignedRecid,
                 bikemake: row.BIKEMAKE.trim(),
                 bikemodel: row.BIKEMODEL.trim(),
                 capacity: row.CAPACITY ? parseInt(row.CAPACITY) : null,
@@ -2959,29 +2983,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rowNumber++;
         }
 
-        savedRecords = validCombined;
+          savedRecords = validCombined;
 
-        // Create import history record
-        await storage.createImportHistory({
-          type: "combined",
-          filename: req.file.originalname,
-          recordsCount: savedRecords.length,
-          status: savedRecords.length > 0 ? "success" : "error",
-        });
+          // Create import history record
+          await storage.createImportHistory({
+            type: "combined",
+            filename: req.file.originalname,
+            recordsCount: savedRecords.length,
+            status: savedRecords.length > 0 ? "success" : "error",
+          });
+        } finally {
+          // Always release the advisory lock
+          await storage.releaseAdvisoryLock(1234567890);
+        }
 
       } else {
         // Handle motorcycles import
         const validMotorcycles: any[] = [];
+        
+        // Acquire advisory lock to prevent concurrent RECID allocation
+        // Lock ID: 1234567890 (arbitrary unique identifier for motorcycle imports)
+        const lockAcquired = await storage.acquireAdvisoryLock(1234567890);
+        if (!lockAcquired) {
+          return res.status(503).json({
+            success: false,
+            totalRows: 0,
+            successCount: 0,
+            errorCount: 1,
+            errors: [{ row: 0, field: 'system', message: 'Another import is in progress. Please wait and try again.' }]
+          });
+        }
+        
+        try {
+          // Pre-allocate RECID range for auto-assignment (protected by advisory lock)
+          let nextRecid = await storage.getNextMotorcycleRecid();
 
         for (const row of records) {
           const rowErrors: Array<{ field: string; message: string }> = [];
 
           try {
-            // Basic validation for motorcycles
-            if (!row.RECID) {
-              rowErrors.push({ field: 'RECID', message: 'RECID is required' });
+            // Basic validation for motorcycles - RECID is now optional
+            let assignedRecid: number;
+            
+            if (!row.RECID || row.RECID.toString().trim() === '') {
+              // Auto-assign RECID if not provided
+              assignedRecid = nextRecid++;
             } else if (isNaN(parseInt(row.RECID))) {
-              rowErrors.push({ field: 'RECID', message: 'RECID must be a number' });
+              rowErrors.push({ field: 'RECID', message: 'RECID must be a number if provided' });
+              // Auto-assign RECID on error
+              assignedRecid = nextRecid++;
+            } else {
+              assignedRecid = parseInt(row.RECID);
             }
 
             if (!row.BIKEMAKE?.trim()) {
@@ -3001,7 +3053,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // If validation passed, create the motorcycle object
             if (rowErrors.length === 0) {
               const motorcycleData = {
-                recid: parseInt(row.RECID),
+                recid: assignedRecid,
                 biketype: parseInt(row.BIKETYPE),
                 bikemake: row.BIKEMAKE.trim(),
                 bikemodel: row.BIKEMODEL.trim(),
@@ -3059,13 +3111,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        // Create import history record
-        await storage.createImportHistory({
-          type: "motorcycles",
-          filename: req.file.originalname,
-          recordsCount: savedRecords.length,
-          status: savedRecords.length > 0 ? "success" : "error",
-        });
+          // Create import history record
+          await storage.createImportHistory({
+            type: "motorcycles",
+            filename: req.file.originalname,
+            recordsCount: savedRecords.length,
+            status: savedRecords.length > 0 ? "success" : "error",
+          });
+        } finally {
+          // Always release the advisory lock
+          await storage.releaseAdvisoryLock(1234567890);
+        }
       }
 
       const result = {

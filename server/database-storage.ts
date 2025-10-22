@@ -1146,4 +1146,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(motorcycleCategoryConfig.id, id));
     return result.length > 0;
   }
+
+  // Advisory Locks - PostgreSQL session-level locks for preventing concurrent operations
+  async acquireAdvisoryLock(lockId: number): Promise<boolean> {
+    try {
+      // pg_try_advisory_lock returns true if lock acquired, false if already held
+      const result = await sqlConnection`SELECT pg_try_advisory_lock(${lockId}) as acquired`;
+      return result[0]?.acquired || false;
+    } catch (error) {
+      console.error('Error acquiring advisory lock:', error);
+      return false;
+    }
+  }
+
+  async releaseAdvisoryLock(lockId: number): Promise<boolean> {
+    try {
+      // pg_advisory_unlock returns true if lock was held and released
+      const result = await sqlConnection`SELECT pg_advisory_unlock(${lockId}) as released`;
+      return result[0]?.released || false;
+    } catch (error) {
+      console.error('Error releasing advisory lock:', error);
+      return false;
+    }
+  }
 }
