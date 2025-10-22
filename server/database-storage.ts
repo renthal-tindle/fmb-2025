@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, like, ilike, and, or, gte, lte, sql } from "drizzle-orm";
+import { eq, like, ilike, and, or, gte, lte, sql, asc } from "drizzle-orm";
 import {
   motorcycles,
   shopifyProducts,
@@ -734,7 +734,7 @@ export class DatabaseStorage implements IStorage {
 
   // Part Category Tags
   async getPartCategoryTags(): Promise<PartCategoryTags[]> {
-    return await db.select().from(partCategoryTags);
+    return await db.select().from(partCategoryTags).orderBy(asc(partCategoryTags.sortOrder));
   }
 
   async getPartCategoryTag(categoryValue: string): Promise<PartCategoryTags | undefined> {
