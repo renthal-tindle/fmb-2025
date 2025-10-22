@@ -48,6 +48,12 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **Variant Matching Fix - Correct SKU Display**:
+  - Fixed critical bug where multi-variant products always displayed first variant (variants[0]) instead of matched variant
+  - Backend now correctly returns the matched variant's SKU and price based on motorcycle's OE fields
+  - Example: RECID 9211 (KTM 150 SX 2023) now correctly shows 13T front sprocket (292U-520-13GP) instead of 12T (292U-520-12GP)
+  - Theme extension "Add to Cart" buttons now add the correct variant matching the motorcycle specifications
+  - matchedVariantId field tracks which specific variant matches each motorcycle's part values
 - **Parts Mapping SKU Reference Update**:
   - All part assignments now reference SKU instead of product description for FCW Group, RCW Group, and all other categories
   - Parts mapping interface displays SKU as primary identifier with product title as supplementary information
