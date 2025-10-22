@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Download } from "lucide-react";
+import { Download, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import MotorcycleForm from "@/components/admin/motorcycle-form";
 import PartsMapping from "@/components/admin/parts-mapping";
 import DataImport from "@/components/admin/data-import";
@@ -27,6 +27,7 @@ export default function AdminDashboard() {
   const [filters, setFilters] = useState({ bikemake: "", biketype: "", bikeCategory: "", bikeSubcategory: "", firstyear: "" });
   const [showMotorcycleForm, setShowMotorcycleForm] = useState(false);
   const [selectedMotorcycle, setSelectedMotorcycle] = useState<Motorcycle | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const { toast } = useToast();
 
   // Delete motorcycle mutation
@@ -150,7 +151,19 @@ export default function AdminDashboard() {
   };
 
   // No need for client-side filtering anymore - backend handles it all
-  const filteredMotorcycles = motorcycles || [];
+  // Sort motorcycles by RECID
+  const filteredMotorcycles = motorcycles ? [...motorcycles].sort((a, b) => {
+    if (sortOrder === "asc") {
+      return a.recid - b.recid;
+    } else {
+      return b.recid - a.recid;
+    }
+  }) : [];
+
+  // Toggle sort order handler
+  const toggleSortOrder = () => {
+    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+  };
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: "dashboard" },
@@ -538,8 +551,19 @@ export default function AdminDashboard() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    RECID
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={toggleSortOrder}
+                    data-testid="header-recid-sort"
+                  >
+                    <div className="flex items-center gap-2">
+                      RECID
+                      {sortOrder === "asc" ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )}
+                    </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Motorcycle

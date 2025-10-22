@@ -48,6 +48,11 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **Admin Dashboard Enhancement - RECID Sorting**: 
+  - Added ability to sort motorcycles table by RECID column
+  - Clickable RECID header toggles between ascending and descending order
+  - Visual arrow indicators show current sort direction
+  - Default sort order is ascending (lowest to highest RECID)
 - **Theme Extension Bug Fix - Direct Replacement Links**: 
   - Fixed JavaScript error "Can't find variable: id" in native-parts-finder.liquid
   - Changed undefined `${id}` to `${categoryId}` in Direct Replacement table "View more" links
