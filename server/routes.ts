@@ -4172,6 +4172,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // App proxy route for part category tags (used by Theme App Extension)
+  app.get("/api/proxy/api/part-category-tags", appProxySecurityMiddleware, async (req, res) => {
+    try {
+      const tags = await storage.getPartCategoryTags();
+      res.json(tags);
+    } catch (error) {
+      console.error("Error fetching part category tags via app proxy:", error);
+      res.status(500).json({ error: "Failed to fetch part category tags" });
+    }
+  });
+
   // Motorcycle Category Configuration routes
   app.get("/api/motorcycle-category-config", async (req, res) => {
     try {

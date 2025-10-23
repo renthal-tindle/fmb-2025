@@ -161,7 +161,7 @@
       
       const url1 = `${config.apiBaseUrl}/api/motorcycles?recid=${bikeid}`;
       const url2 = `${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/compatible-parts`;
-      const url3 = `${config.apiBaseUrl}/api/part-category-tags`;
+      const url3 = `/api/proxy/api/part-category-tags`;
       
       console.log('🔧 FMB Debug: Fetching URLs:', url1, url2, url3);
       
