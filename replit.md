@@ -48,6 +48,13 @@ Preferred communication style: Simple, everyday language.
 ### Recent Changes
 
 **October 22, 2025**
+- **FCW/RCW Group Prefix Matching for CSV Imports**:
+  - Updated product matching logic to support both exact matches and prefix matches
+  - CSV imports can now use partial SKUs (e.g., "292U-520") instead of full product titles (e.g., "292U-520 Ultralight Rear Sprocket (KTM/Husq/Gas Gas)")
+  - System checks if product title starts with the fcwgroup/rcwgroup value when exact match fails
+  - Maintains full backward compatibility with existing full-title data in database
+  - Simplifies CSV import process - users only need to provide the base SKU prefix
+  - Example: Importing fcwgroup="292U-520" will match "292U-520 Ultralight Rear Sprocket..." product
 - **Alternative Variants Card Display Feature**:
   - Implemented card-based display for all gearing options within FCW/RCW Group products (sprockets)
   - Backend identifies products matching motorcycle's fcwgroup/rcwgroup fields and includes all variants as alternativeVariants array
