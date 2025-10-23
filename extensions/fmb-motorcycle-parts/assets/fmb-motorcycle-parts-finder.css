@@ -324,14 +324,15 @@
   padding:2%;
 }
 
+/* Mobile-first: Default styles for phones */
 [data-fmb] .fmb-parts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, 25%);
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
 }
 
 [data-fmb] .fmb-parts-card {
-  padding: 1.5rem;
+  padding: 1rem;
   border: 1px solid #666; 
   border-radius: 8px; 
   text-align: center;
@@ -342,7 +343,35 @@
   color:#FFF;
   font-weight: 900;
   text-decoration: none;
-  font-size: calc(var(--font-heading-scale) * 2.4rem);
+  font-size: calc(var(--font-heading-scale) * 1.6rem);
+}
+
+/* Tablet: 2 columns at 481px and up */
+@media (min-width: 481px) {
+  [data-fmb] .fmb-parts-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  [data-fmb] .fmb-parts-card a {
+    font-size: calc(var(--font-heading-scale) * 1.8rem);
+  }
+}
+
+/* Desktop: 4 columns at 769px and up */
+@media (min-width: 769px) {
+  [data-fmb] .fmb-parts-grid {
+    grid-template-columns: repeat(auto-fit, 25%);
+    gap: 1.5rem;
+  }
+
+  [data-fmb] .fmb-parts-card {
+    padding: 1.5rem;
+  }
+
+  [data-fmb] .fmb-parts-card a {
+    font-size: calc(var(--font-heading-scale) * 2.4rem);
+  }
 }
 
 [data-fmb] .fmb-parts-card-title{
@@ -451,7 +480,7 @@
   text-align: center;
 }
 
-/* Responsive design */
+/* Responsive design - tablet and below */
 @media (max-width: 768px) {
   [data-fmb] .fmb-native-parts-finder {
     padding: 1rem;
@@ -476,21 +505,7 @@
     /* inherit theme title size */
   }
 
-  /* Mobile-optimized large product cards - 2 columns on tablets */
-  [data-fmb] .fmb-parts-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-
-  [data-fmb] .fmb-parts-card {
-    padding: 1rem;
-  }
-
-  [data-fmb] .fmb-parts-card a {
-    font-size: calc(var(--font-heading-scale) * 1.8rem);
-  }
-
-  /* Make "Add to Cart" button larger for touch */
+  /* Touch-friendly button styling */
   [data-fmb] .fmb-add-to-cart-btn {
     width: 100%;
     padding: 12px 20px;
@@ -498,7 +513,7 @@
     min-height: 44px;
   }
 
-  /* Reduce OE badge size slightly */
+  /* Compact OE badge for smaller screens */
   [data-fmb] .fmb-oe-badge-large {
     font-size: 0.75rem;
     padding: 3px 10px;
@@ -512,6 +527,7 @@
   }
 }
 
+/* Phone-specific refinements */
 @media (max-width: 480px) {
 
   [data-fmb] .fmb-finder-form,
@@ -528,21 +544,7 @@
     padding: 0.5rem 0.25rem;
   }
 
-  /* Mobile-optimized large product cards - 1 column on phones */
-  [data-fmb] .fmb-parts-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-
-  [data-fmb] .fmb-parts-card {
-    padding: 1rem;
-  }
-
-  [data-fmb] .fmb-parts-card a {
-    font-size: calc(var(--font-heading-scale) * 1.6rem);
-  }
-
-  /* Optimize card content spacing for small screens */
+  /* Fine-tune card content spacing for smallest screens */
   [data-fmb] .fmb-parts-card p {
     margin-bottom: 0.5rem;
     font-size: 1.3rem;
@@ -554,16 +556,14 @@
     margin-bottom: 8px;
   }
 
-  /* Full-width touch-friendly button */
+  /* Extra padding for button on smallest screens */
   [data-fmb] .fmb-add-to-cart-btn {
-    width: 100%;
     padding: 14px 20px;
-    font-size: 1.4rem;
     min-height: 48px;
     margin-top: 8px;
   }
 
-  /* Compact OE badge for small screens */
+  /* Most compact OE badge for phones */
   [data-fmb] .fmb-oe-badge-large {
     font-size: 0.7rem;
     padding: 3px 8px;
@@ -578,10 +578,7 @@
     background-color: rgb(var(--color-background, 18 18 18));
     border-color: rgba(var(--color-foreground, 255 255 255), 0.1);
   }
-
-  [data-fmb] .fmb-parts-grid {
-    grid-template-columns: repeat(auto-fit, 50%);
-  }
+  /* Note: Grid layout is controlled by screen width breakpoints, not color scheme */
 }
 
 /* High contrast mode support */
