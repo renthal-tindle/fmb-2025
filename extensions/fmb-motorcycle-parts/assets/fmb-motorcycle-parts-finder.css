@@ -675,6 +675,137 @@
   }
 }
 
+/* OE Parts Table Styling */
+[data-fmb] .fmb-oe-table-section {
+  margin-bottom: 3rem;
+}
+
+[data-fmb] .fmb-oe-table-section h2 {
+  background-color: #666;
+  padding: 1.5rem 2%;
+  margin: 0 0 1rem 0;
+  font-weight: 700;
+  color: #FFF;
+}
+
+[data-fmb] .fmb-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #666;
+  border-radius: 8px;
+}
+
+[data-fmb] .fmb-oe-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #333;
+  color: #FFF;
+}
+
+[data-fmb] .fmb-oe-table thead {
+  background-color: #444;
+}
+
+[data-fmb] .fmb-oe-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 700;
+  border-bottom: 2px solid #666;
+  white-space: nowrap;
+}
+
+[data-fmb] .fmb-oe-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #555;
+}
+
+[data-fmb] .fmb-oe-table tbody tr:hover {
+  background-color: #3a3a3a;
+}
+
+[data-fmb] .fmb-oe-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+[data-fmb] .fmb-oe-table td[data-label="Part Number"] strong {
+  color: #28a745;
+  font-family: monospace;
+  font-size: 1.05em;
+}
+
+[data-fmb] .fmb-oe-table td[data-label="Available Options"] {
+  text-align: center;
+  font-weight: 600;
+}
+
+[data-fmb] .fmb-oe-table .fmb-add-to-cart-btn {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Mobile responsive table */
+@media (max-width: 768px) {
+  [data-fmb] .fmb-oe-table-section h2 {
+    padding: 1.2rem 1rem;
+    font-size: 1.3em;
+  }
+
+  [data-fmb] .fmb-oe-table thead {
+    display: none;
+  }
+
+  [data-fmb] .fmb-oe-table,
+  [data-fmb] .fmb-oe-table tbody,
+  [data-fmb] .fmb-oe-table tr,
+  [data-fmb] .fmb-oe-table td {
+    display: block;
+  }
+
+  [data-fmb] .fmb-oe-table tr {
+    margin-bottom: 1.5rem;
+    border: 1px solid #666;
+    border-radius: 8px;
+    padding: 1rem;
+    background-color: #333;
+  }
+
+  [data-fmb] .fmb-oe-table td {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #444;
+    position: relative;
+    padding-left: 50%;
+    text-align: right;
+  }
+
+  [data-fmb] .fmb-oe-table td:last-child {
+    border-bottom: none;
+    text-align: center;
+    padding-left: 0;
+    padding-top: 1rem;
+  }
+
+  [data-fmb] .fmb-oe-table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  [data-fmb] .fmb-oe-table td[data-label="Action"]::before {
+    content: '';
+  }
+
+  [data-fmb] .fmb-oe-table .fmb-add-to-cart-btn {
+    width: 100%;
+    padding: 0.8rem 1rem;
+  }
+}
+
 /* Variant Cards Styling */
 [data-fmb] .fmb-variant-category {
   margin-bottom: 2rem;

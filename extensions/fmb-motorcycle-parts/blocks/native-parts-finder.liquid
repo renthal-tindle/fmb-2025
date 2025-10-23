@@ -544,64 +544,91 @@
         .map(part => ({ ...part, categoryInfo: getCategoryInfo(part, categorizedParts) }))
         .sort((a, b) => a.categoryInfo.order - b.categoryInfo.order);
       
+      // Build table rows for OE parts only
+      const oeTableRows = categorizedOEParts.map(part => {
+        const categoryInfo = part.categoryInfo;
+        
+        // Parse part.variants to get all available variants
+        let allVariants = [];
+        if (part.variants) {
+          try {
+            if (typeof part.variants === 'string') {
+              allVariants = JSON.parse(part.variants);
+            } else if (Array.isArray(part.variants)) {
+              allVariants = part.variants;
+            }
+          } catch(e) {
+            allVariants = [];
+          }
+        }
+        
+        // Parse alternativeVariants to count total options
+        let alternativeVariants = [];
+        if (part.alternativeVariants && typeof part.alternativeVariants === 'string') {
+          try {
+            alternativeVariants = JSON.parse(part.alternativeVariants);
+          } catch(e) {
+            alternativeVariants = [];
+          }
+        } else if (Array.isArray(part.alternativeVariants)) {
+          alternativeVariants = part.alternativeVariants;
+        }
+        
+        // Calculate total available options
+        // If there are alternative variants, include the base variant + alternatives
+        // Otherwise, count all variants or default to 1
+        const totalOptions = alternativeVariants.length > 0 
+          ? alternativeVariants.length + 1  // +1 for the base OE variant
+          : (allVariants.length > 0 ? allVariants.length : 1);
+        
+        // Get the variant ID for Add to Cart
+        let variantId = part.matchedVariantId;
+        if (!variantId) {
+          if (alternativeVariants.length > 0) {
+            variantId = alternativeVariants[0].id;
+          } else if (allVariants.length > 0) {
+            variantId = allVariants[0].id;
+          }
+        }
+        
+        return {
+          category: categoryInfo.name,
+          sku: part.sku,
+          title: part.title,
+          totalOptions: totalOptions,
+          variantId: variantId
+        };
+      });
+
       return `
-        <div class="fmb-direct-replacement">
-          <h2>Direct Replacement</h2>
-          ${categorizedOEParts.map(part => {
-            const categoryInfo = part.categoryInfo;
-            const categoryId = categoryInfo.name.toLowerCase().replace(/\s+/g, '-');
-            const moreOptionsCount = categoryInfo.categoryParts.length - 1;
-            
-            // Parse alternativeVariants if it exists
-            let variants = [];
-            if (part.alternativeVariants && typeof part.alternativeVariants === 'string') {
-              try {
-                variants = JSON.parse(part.alternativeVariants);
-              } catch(e) {
-                variants = [];
-              }
-            } else if (Array.isArray(part.alternativeVariants)) {
-              variants = part.alternativeVariants;
-            }
-            
-            // If no alternative variants, show single card with the matched variant
-            if (variants.length === 0) {
-              const variantId = part.matchedVariantId || part.variants[0]?.id;
-              return `
-                <div class="fmb-variant-category">
-                  <h3>${categoryInfo.name}</h3>
-                  <div class="fmb-variant-cards">
-                    <div class="fmb-variant-card ${part.isOE ? 'fmb-variant-oe' : ''}">
-                      ${part.isOE ? '<div class="fmb-oe-badge">OE Match</div>' : ''}
-                      <div class="fmb-variant-sku">${part.sku}</div>
-                      <div class="fmb-variant-title">${part.title}</div>
-                      <button class="fmb-nav-btn fmb-add-to-cart-btn" data-variant-id="${variantId}">Add to Cart</button>
-                    </div>
-                  </div>
-                  ${moreOptionsCount > 0 ? `<a href="#${categoryId}" class="fmb-view-more">View ${moreOptionsCount} more options</a>` : ''}
-                </div>
-              `;
-            }
-            
-            // Show all variant options as cards
-            return `
-              <div class="fmb-variant-category">
-                <h3>${categoryInfo.name}</h3>
-                <div class="fmb-variant-cards">
-                  ${variants.map((variant, index) => `
-                    <div class="fmb-variant-card ${variant.isOE ? 'fmb-variant-oe' : ''}">
-                      ${variant.isOE ? '<div class="fmb-oe-badge">OE Match</div>' : ''}
-                      <div class="fmb-variant-sku">${variant.sku || 'N/A'}</div>
-                      <div class="fmb-variant-price">$${variant.price || '0.00'}</div>
-                      <button class="fmb-nav-btn fmb-add-to-cart-btn" data-variant-id="${variant.id}">Add to Cart</button>
-                    </div>
-                    ${index === 0 && variants.length > 1 ? '<div class="fmb-variant-separator"></div>' : ''}
-                  `).join('')}
-                </div>
-                ${moreOptionsCount > 0 ? `<a href="#${categoryId}" class="fmb-view-more">View ${moreOptionsCount} more products</a>` : ''}
-              </div>
-            `;
-          }).join('')}
+        <div class="fmb-oe-table-section">
+          <h2>OE (Original Equipment) Parts</h2>
+          <div class="fmb-table-wrapper">
+            <table class="fmb-oe-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Part Number</th>
+                  <th>Product Description</th>
+                  <th>Available Options</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${oeTableRows.map(row => `
+                  <tr>
+                    <td data-label="Category">${row.category}</td>
+                    <td data-label="Part Number"><strong>${row.sku}</strong></td>
+                    <td data-label="Product Description">${row.title}</td>
+                    <td data-label="Available Options">${row.totalOptions}</td>
+                    <td data-label="Action">
+                      <button class="fmb-nav-btn fmb-add-to-cart-btn" data-variant-id="${row.variantId}">Add to Cart</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
       `;
     }
