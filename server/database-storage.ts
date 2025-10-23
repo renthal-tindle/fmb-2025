@@ -849,11 +849,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Part Category Tags
-  async getPartCategoryTags(): Promise<PartCategoryTags[]> {
-    return await db.select().from(partCategoryTags).orderBy(
-      asc(partCategoryTags.assignedSection),
-      asc(partCategoryTags.sortOrder)
-    );
+  async getPartCategoryTags(): Promise<Array<PartCategoryTags & { sectionLabel: string | null }>> {
+    const result = await db
+      .select({
+        id: partCategoryTags.id,
+        categoryValue: partCategoryTags.categoryValue,
+        categoryLabel: partCategoryTags.categoryLabel,
+        productTags: partCategoryTags.productTags,
+        assignedSection: partCategoryTags.assignedSection,
+        sortOrder: partCategoryTags.sortOrder,
+        createdAt: partCategoryTags.createdAt,
+        updatedAt: partCategoryTags.updatedAt,
+        sectionLabel: partSections.sectionLabel,
+      })
+      .from(partCategoryTags)
+      .leftJoin(partSections, eq(partCategoryTags.assignedSection, partSections.sectionKey))
+      .orderBy(
+        asc(partCategoryTags.assignedSection),
+        asc(partCategoryTags.sortOrder)
+      );
+    return result;
   }
 
   async getPartCategoryTag(categoryValue: string): Promise<PartCategoryTags | undefined> {

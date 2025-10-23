@@ -232,16 +232,17 @@
           throw new Error(`Motorcycle with bikeid ${bikeid} not found`);
         }
         
-        // Create category mapping from assignedSection to categoryLabel
+        // Create category mapping from assignedSection to sectionLabel (canonical section name)
         const categoryMapping = {};
         if (Array.isArray(categoryTags)) {
           categoryTags.forEach(tag => {
-            if (tag.assignedSection && tag.categoryLabel) {
-              categoryMapping[tag.assignedSection] = tag.categoryLabel;
+            if (tag.assignedSection && tag.sectionLabel) {
+              // Use the canonical section label from partSections table
+              categoryMapping[tag.assignedSection] = tag.sectionLabel;
             }
           });
         }
-        console.log('🔧 FMB Debug: Category mapping:', categoryMapping);
+        console.log('🔧 FMB Debug: Category mapping (section labels):', categoryMapping);
         
         updateSEOForMotorcycle(motorcycle, parts, bikeid);
         
