@@ -704,12 +704,19 @@ export class DatabaseStorage implements IStorage {
         }
         
         // Check if this is an FCW/RCW group product by comparing product title with fcwgroup/rcwgroup fields
+        // Supports both exact match and prefix match (e.g., "292U-520" matches "292U-520 Ultralight Rear Sprocket...")
         const fcwGroupTitle = motorcycle.fcwgroup;
         const rcwGroupTitle = motorcycle.rcwgroup;
         
         const isFcwRcwGroupProduct = (
-          (fcwGroupTitle && product.title && product.title.toLowerCase().trim() === fcwGroupTitle.toLowerCase().trim()) ||
-          (rcwGroupTitle && product.title && product.title.toLowerCase().trim() === rcwGroupTitle.toLowerCase().trim())
+          (fcwGroupTitle && product.title && (
+            product.title.toLowerCase().trim() === fcwGroupTitle.toLowerCase().trim() || 
+            product.title.toLowerCase().trim().startsWith(fcwGroupTitle.toLowerCase().trim())
+          )) ||
+          (rcwGroupTitle && product.title && (
+            product.title.toLowerCase().trim() === rcwGroupTitle.toLowerCase().trim() || 
+            product.title.toLowerCase().trim().startsWith(rcwGroupTitle.toLowerCase().trim())
+          ))
         );
         
         // If this is an FCW/RCW group product with multiple variants, include all variants as alternatives
