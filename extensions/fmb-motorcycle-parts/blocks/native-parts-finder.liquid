@@ -571,7 +571,8 @@
                 <div class="fmb-variant-category">
                   <h3>${categoryInfo.name}</h3>
                   <div class="fmb-variant-cards">
-                    <div class="fmb-variant-card">
+                    <div class="fmb-variant-card ${part.isOE ? 'fmb-variant-oe' : ''}">
+                      ${part.isOE ? '<div class="fmb-oe-badge">OE Match</div>' : ''}
                       <div class="fmb-variant-sku">${part.sku}</div>
                       <div class="fmb-variant-title">${part.title}</div>
                       <button class="fmb-nav-btn fmb-add-to-cart-btn" data-variant-id="${variantId}">Add to Cart</button>
@@ -641,7 +642,8 @@
           expandedParts.push({
             ...part,
             variantId: part.matchedVariantId || part.variants[0]?.id,
-            hasAlternatives: false  // Not part of alternative variants group
+            hasAlternatives: false,  // Not part of alternative variants group
+            isOE: part.isOE || false  // Preserve OE status for green highlighting
           });
         }
       });

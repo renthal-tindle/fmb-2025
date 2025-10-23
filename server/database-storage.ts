@@ -753,7 +753,8 @@ export class DatabaseStorage implements IStorage {
           adminCategory: adminCategory,
           adminCategoryLabel: adminCategoryLabel,
           matchedVariantId: matchedVariantId, // ID of the variant that matched motorcycle's SKU
-          alternativeVariants: alternativeVariants // All variants for FCW/RCW group products
+          alternativeVariants: alternativeVariants, // All variants for FCW/RCW group products
+          isOE: isOEPart // Flag indicating this product matches an OE field (for green highlighting)
         };
         
         // Debug log to help identify any missing fields
