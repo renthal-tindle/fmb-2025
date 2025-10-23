@@ -671,26 +671,72 @@ export class DatabaseStorage implements IStorage {
           }
         }
         
-        // If not an OE part, use the standard tag matching logic
+        // If not an OE part, check if the SKU matches specific non-OE fields (handlebars_78, twinwall, fatbar, etc.)
+        // This allows us to assign the correct category label for alternative handlebar types and other specific parts
         if (!isOEPart) {
+          const matchedVariant = product.variants?.find((v: any) => v.id?.toString() === productMatchInfo.get(product));
+          const skuToCheck = matchedVariant?.sku || product.sku;
+          
+          if (skuToCheck) {
+            // Check against categoryTags to find a matching field
+            for (const categoryTag of categoryTags) {
+              const fieldValue = (motorcycle as any)[categoryTag.categoryValue.toLowerCase()];
+              if (fieldValue && typeof fieldValue === 'string' && 
+                  fieldValue.toLowerCase().trim() === skuToCheck.toLowerCase().trim()) {
+                // Found a match - use this category label
+                adminCategory = categoryTag.assignedSection || 'others';
+                adminCategoryLabel = categoryTag.categoryLabel || 'Others';
+                break;
+              }
+            }
+          }
+        }
+        
+        // If still not assigned, use the standard tag matching logic
+        // Find the MOST SPECIFIC match (exact tag match) instead of just the first match
+        if (adminCategory === 'others') {
+          let bestMatch: { categoryTag: any; matchType: 'exact' | 'partial'; matchCount: number } | null = null;
+          
           for (const categoryTag of categoryTags) {
             if (categoryTag.assignedSection) {
               const categoryProductTags = JSON.parse(categoryTag.productTags || '[]')
                 .map((tag: string) => tag.toLowerCase().trim());
               
-              // Check if any product tag matches any category tag
-              const hasMatch = productTags.some((productTag: string) => 
+              // Count how many exact matches we have
+              const exactMatches = productTags.filter((productTag: string) => 
                 categoryProductTags.some((categoryTag: string) => 
-                  productTag.includes(categoryTag) || categoryTag.includes(productTag)
+                  productTag === categoryTag
                 )
               );
               
-              if (hasMatch) {
-                adminCategory = categoryTag.assignedSection;
-                adminCategoryLabel = categoryTag.categoryLabel;
-                break; // Use first match
+              if (exactMatches.length > 0) {
+                // Prefer matches with MORE exact tag matches (more specific)
+                // and prefer matches with FEWER total category tags (more precise)
+                if (!bestMatch || 
+                    bestMatch.matchType === 'partial' ||
+                    exactMatches.length > bestMatch.matchCount ||
+                    (exactMatches.length === bestMatch.matchCount && categoryProductTags.length < JSON.parse(bestMatch.categoryTag.productTags || '[]').length)) {
+                  bestMatch = { categoryTag, matchType: 'exact', matchCount: exactMatches.length };
+                }
+              } else {
+                // Check for partial matches (includes)
+                const hasPartialMatch = productTags.some((productTag: string) => 
+                  categoryProductTags.some((categoryTag: string) => 
+                    productTag.includes(categoryTag) || categoryTag.includes(productTag)
+                  )
+                );
+                
+                if (hasPartialMatch && !bestMatch) {
+                  bestMatch = { categoryTag, matchType: 'partial', matchCount: 0 };
+                }
               }
             }
+          }
+          
+          // Apply the best match
+          if (bestMatch) {
+            adminCategory = bestMatch.categoryTag.assignedSection;
+            adminCategoryLabel = bestMatch.categoryTag.categoryLabel;
           }
         }
         
