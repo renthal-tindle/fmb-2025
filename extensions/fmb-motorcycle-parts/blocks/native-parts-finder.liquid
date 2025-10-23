@@ -632,15 +632,16 @@
               price: variant.price || part.price,
               variantId: variant.id,
               isOE: variant.isOE || false,
-              variantTitle: variant.title || ''
+              variantTitle: variant.title || '',
+              hasAlternatives: true  // Flag to track this is from alternativeVariants
             });
           });
         } else {
-          // No alternative variants, use the product as-is
+          // No alternative variants, use the product as-is with its own category label
           expandedParts.push({
             ...part,
             variantId: part.matchedVariantId || part.variants[0]?.id,
-            isOE: false
+            hasAlternatives: false  // Not part of alternative variants group
           });
         }
       });
@@ -650,8 +651,17 @@
           <h3>${id}</h3>
           <div class="fmb-parts-grid">
             ${expandedParts.map(part => {
-              // Dynamically set title: OE variants show original label, alternatives get "Alternative" prefix
-              const cardTitle = part.isOE ? title : `Alternative ${title.replace(/^OE\s+/i, '')}`;
+              // Card title logic:
+              // - For products with alternative variants (sprockets): OE shows original label, alternatives get "Alternative" prefix
+              // - For products without alternative variants (handlebars, etc.): use their individual adminCategoryLabel
+              let cardTitle;
+              if (part.hasAlternatives) {
+                // This is from FCWGROUP/RCWGROUP - apply OE/Alternative logic
+                cardTitle = part.isOE ? title : `Alternative ${title.replace(/^OE\s+/i, '')}`;
+              } else {
+                // Regular product - use its own category label
+                cardTitle = part.adminCategoryLabel || title;
+              }
               
               return `
                 <div class="fmb-parts-card ${part.isOE ? 'fmb-parts-card-oe' : ''}">

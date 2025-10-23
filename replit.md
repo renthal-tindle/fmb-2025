@@ -52,7 +52,9 @@ Preferred communication style: Simple, everyday language.
   - Extended alternative variants display to the main results section (large product cards)
   - Products with multiple variants (like sprockets) now show each tooth count option as a separate large card
   - OE variant highlighted with green 3px border and "OE Match" badge in top-right corner
-  - Dynamic card titles: OE variants show original category label (e.g., "OE Front Sprocket"), alternatives show "Alternative" prefix (e.g., "Alternative Front Sprocket")
+  - Dynamic card titles: 
+    - FCWGROUP/RCWGROUP products (sprockets): OE variants show original label (e.g., "OE Front Sprocket"), alternatives show "Alternative" prefix (e.g., "Alternative Front Sprocket")
+    - Other products (handlebars, etc.): Each uses its own category label from parts mapping (e.g., "Fatbar", "Twinwall", "OE Handlebar")
   - Each variant card displays: product title, SKU, option name (e.g., "12T"), price, and Add to Cart button
   - Add to Cart buttons use the correct variant ID for each specific option
   - Maintains consistent layout with existing large cards - only adds green OE styling when applicable
