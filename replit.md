@@ -52,10 +52,11 @@ Preferred communication style: Simple, everyday language.
   - Extended alternative variants display to the main results section (large product cards)
   - Products with multiple variants (like sprockets) now show each tooth count option as a separate large card
   - OE variant highlighted with green 3px border and "OE Match" badge in top-right corner
+  - Dynamic card titles: OE variants show original category label (e.g., "OE Front Sprocket"), alternatives show "Alternative" prefix (e.g., "Alternative Front Sprocket")
   - Each variant card displays: product title, SKU, option name (e.g., "12T"), price, and Add to Cart button
   - Add to Cart buttons use the correct variant ID for each specific option
   - Maintains consistent layout with existing large cards - only adds green OE styling when applicable
-  - Example: Yamaha MT-03 (RECID 9215) with fcwgroup="292U-520" and oe_fcw="292U-520-14GP" shows 3 separate front sprocket cards (12T, 13T, 14T) with 14T highlighted as OE
+  - Example: Yamaha MT-03 (RECID 9215) with fcwgroup="292U-520" and oe_fcw="292U-520-14GP" shows 3 separate front sprocket cards (12T, 13T, 14T) with 14T highlighted as OE and labeled "OE Front Sprocket", others labeled "Alternative Front Sprocket"
 - **FCW/RCW Group Prefix Matching - Fully Implemented**:
   - Product matching logic now supports both exact matches and prefix matches
   - CSV imports can use partial SKUs (e.g., "292U-520") instead of full product titles (e.g., "292U-520 Ultralight Rear Sprocket (KTM/Husq/Gas Gas)")
