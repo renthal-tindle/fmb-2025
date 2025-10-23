@@ -36,6 +36,7 @@ Preferred communication style: Simple, everyday language.
 - **Dynamic Category Management**: Admin panel for motorcycle categories and subcategories.
 - **Responsive Design**: Mobile-first approach.
 - **OE Match Highlighting**: Visual identification of Original Equipment parts.
+- **OE Parts Table**: Professional table displaying all OE parts with Category, Part Number, Description, Available Options count, and Add to Cart action. Responsive design transforms to stacked cards on mobile.
 - **Alternative Variants Display**: Show all gearing options for multi-variant products.
 - **Dynamic Section Management**: Create and reorder part sections and categories via drag-and-drop.
 - **SKU-based Part Mapping**: References SKU for consistent product identification.
