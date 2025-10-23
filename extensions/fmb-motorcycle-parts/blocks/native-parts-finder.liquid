@@ -161,10 +161,11 @@
       
       const url1 = `${config.apiBaseUrl}/api/motorcycles?recid=${bikeid}`;
       const url2 = `${config.apiBaseUrl}/api/customer/motorcycles/${bikeid}/compatible-parts`;
+      const url3 = `${config.apiBaseUrl}/api/part-category-tags`;
       
-      console.log('🔧 FMB Debug: Fetching URLs:', url1, url2);
+      console.log('🔧 FMB Debug: Fetching URLs:', url1, url2, url3);
       
-      // Load specific motorcycle data and compatible parts directly
+      // Load specific motorcycle data, compatible parts, and category configuration
       Promise.all([
         fetch(url1, { 
           cache: 'no-store', 
@@ -193,9 +194,23 @@
             throw new Error(`Parts API failed with status ${r.status}`);
           }
           return r.json();
+        }),
+        fetch(url3, { 
+          cache: 'no-store', 
+          headers: { 'Cache-Control': 'no-cache' } 
+        }).then(r => {
+          console.log('🔧 FMB Debug: Category tags API response status:', r.status);
+          if (r.status === 304) {
+            // Handle 304 Not Modified - try again with cache reload
+            return fetch(url3, { cache: 'reload' }).then(rr => rr.json());
+          }
+          if (!r.ok) {
+            throw new Error(`Category tags API failed with status ${r.status}`);
+          }
+          return r.json();
         })
       ])
-      .then(([motorcycles, parts]) => {
+      .then(([motorcycles, parts, categoryTags]) => {
         console.log('🔧 FMB Debug: Received motorcycles:', motorcycles);
         console.log('🔧 FMB Debug: Received parts:', parts);
         console.log('🔧 FMB Debug: Motorcycles type:', typeof motorcycles, 'Length:', Array.isArray(motorcycles) ? motorcycles.length : 'not array');
@@ -217,9 +232,20 @@
           throw new Error(`Motorcycle with bikeid ${bikeid} not found`);
         }
         
+        // Create category mapping from assignedSection to categoryLabel
+        const categoryMapping = {};
+        if (Array.isArray(categoryTags)) {
+          categoryTags.forEach(tag => {
+            if (tag.assignedSection && tag.categoryLabel) {
+              categoryMapping[tag.assignedSection] = tag.categoryLabel;
+            }
+          });
+        }
+        console.log('🔧 FMB Debug: Category mapping:', categoryMapping);
+        
         updateSEOForMotorcycle(motorcycle, parts, bikeid);
         
-        container.innerHTML = generateMotorcyclePageHTML(motorcycle, parts, config);
+        container.innerHTML = generateMotorcyclePageHTML(motorcycle, parts, config, categoryMapping);
         setupPartInteractions(config, container);
       })
       .catch(error => {
@@ -356,7 +382,7 @@
       `;
     }
 
-    function generateMotorcyclePageHTML(motorcycle, parts, config) {
+    function generateMotorcyclePageHTML(motorcycle, parts, config, categoryMapping = {}) {
       // Calculate year range  
       const bikeYear = motorcycle.firstyear && motorcycle.lastyear 
         ? (motorcycle.firstyear === motorcycle.lastyear 
@@ -416,14 +442,14 @@
           
           <div class="fmb-parts-content">
             ${generateDirectReplacementSection(categorizedParts, motorcycle)}
-            ${generateCategorySectionDynamic('handlebars', categorizedParts.handlebars)}
-            ${generateCategorySectionDynamic('front-sprocket', categorizedParts.frontSprocket)}
-            ${generateCategorySectionDynamic('rear-sprockets', categorizedParts.rearSprockets)}
-            ${generateCategorySectionDynamic('chain', categorizedParts.chain)}
-            ${generateCategorySectionDynamic('brake-pads', categorizedParts.brakePads)}
-            ${generateCategorySectionDynamic('bar-mounts', categorizedParts.barMounts)}
-            ${generateCategorySectionDynamic('drive-conversions', categorizedParts.driveConversions)}
-            ${generateCategorySectionDynamic('others', categorizedParts.others)}
+            ${generateCategorySectionDynamic('handlebars', categorizedParts.handlebars, categoryMapping)}
+            ${generateCategorySectionDynamic('front-sprocket', categorizedParts.frontSprocket, categoryMapping)}
+            ${generateCategorySectionDynamic('rear-sprockets', categorizedParts.rearSprockets, categoryMapping)}
+            ${generateCategorySectionDynamic('chain', categorizedParts.chain, categoryMapping)}
+            ${generateCategorySectionDynamic('brake-pads', categorizedParts.brakePads, categoryMapping)}
+            ${generateCategorySectionDynamic('bar-mounts', categorizedParts.barMounts, categoryMapping)}
+            ${generateCategorySectionDynamic('drive-conversions', categorizedParts.driveConversions, categoryMapping)}
+            ${generateCategorySectionDynamic('others', categorizedParts.others, categoryMapping)}
           </div>
         </div>
       `;
