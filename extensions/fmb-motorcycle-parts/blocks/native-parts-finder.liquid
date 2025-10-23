@@ -739,12 +739,16 @@
       `;
     }
 
-    // Dynamic category section that uses adminCategoryLabel from parts
-    function generateCategorySectionDynamic(id, parts) {
+    // Dynamic category section that uses category mapping from parts configuration
+    function generateCategorySectionDynamic(id, parts, categoryMapping = {}) {
       if (parts.length === 0) return '';
       
-      // Get the category label from the first part (all parts in a section should have the same category)
-      const categoryLabel = parts[0]?.adminCategoryLabel || id.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      // Get the category label from the parts mapping configuration
+      // Priority: categoryMapping > adminCategoryLabel (fallback) > formatted ID (last resort)
+      let categoryLabel = categoryMapping[id];
+      if (!categoryLabel) {
+        categoryLabel = parts[0]?.adminCategoryLabel || id.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      }
       
       return generateCategorySection(id, categoryLabel, parts);
     }
