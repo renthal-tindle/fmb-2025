@@ -317,11 +317,64 @@
   text-transform: capitalize;
   padding-bottom:2%;
   border-bottom:solid 1px #666;
+  margin-bottom: 1.5rem;
 }
 
-[data-fmb] .fmb-category-section h3{
+/* Collapsible section header */
+[data-fmb] .fmb-section-header {
   background-color: #666;
-  padding:2%;
+  padding: 1.5rem 2%;
+  margin: 0;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+[data-fmb] .fmb-section-header:hover {
+  background-color: #777;
+}
+
+[data-fmb] .fmb-section-header:active {
+  background-color: #555;
+}
+
+[data-fmb] .fmb-section-title {
+  font-weight: 700;
+  flex: 1;
+}
+
+[data-fmb] .fmb-section-count {
+  opacity: 0.8;
+  font-size: 0.9em;
+  margin: 0 1rem;
+  font-weight: 400;
+}
+
+[data-fmb] .fmb-section-toggle {
+  font-size: 1.2em;
+  transition: transform 0.2s ease;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Collapsed state */
+[data-fmb] .fmb-category-section.fmb-section-collapsed .fmb-parts-grid {
+  display: none;
+}
+
+/* Mobile-specific: Make headers more prominent and touch-friendly */
+@media (max-width: 768px) {
+  [data-fmb] .fmb-section-header {
+    padding: 1.2rem 1rem;
+    font-size: 1.1em;
+  }
+
+  [data-fmb] .fmb-section-count {
+    font-size: 0.85em;
+  }
 }
 
 /* Mobile-first: Default styles for phones */

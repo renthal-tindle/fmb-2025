@@ -649,9 +649,13 @@
       });
       
       return `
-        <div id="${id}" class="fmb-category-section">
-          <h3>${id}</h3>
-          <div class="fmb-parts-grid">
+        <div id="${id}" class="fmb-category-section" data-section="${id}">
+          <h3 class="fmb-section-header" onclick="toggleSection('${id}')">
+            <span class="fmb-section-title">${title}</span>
+            <span class="fmb-section-count">(${expandedParts.length} ${expandedParts.length === 1 ? 'item' : 'items'})</span>
+            <span class="fmb-section-toggle">▼</span>
+          </h3>
+          <div class="fmb-parts-grid" data-grid="${id}">
             ${expandedParts.map(part => {
               // Card title logic:
               // - For products with alternative variants (sprockets): OE shows original label, alternatives get "Alternative" prefix
@@ -1016,6 +1020,78 @@
       });
     }
   });
+
+  // Toggle section collapse/expand
+  window.toggleSection = function(sectionId) {
+    const section = document.querySelector(`[data-section="${sectionId}"]`);
+    if (!section) return;
+    
+    const toggle = section.querySelector('.fmb-section-toggle');
+    
+    // Mark as user-toggled so resize doesn't override
+    section.dataset.userToggled = 'true';
+    
+    if (section.classList.contains('fmb-section-collapsed')) {
+      section.classList.remove('fmb-section-collapsed');
+      if (toggle) toggle.textContent = '▼';
+    } else {
+      section.classList.add('fmb-section-collapsed');
+      if (toggle) toggle.textContent = '▶';
+    }
+  };
+
+  // Initialize sections as collapsed on mobile, expanded on desktop
+  // Respects user-toggled states across resize events
+  function initializeSectionCollapse() {
+    const isMobile = window.innerWidth <= 768;
+    const sections = document.querySelectorAll('.fmb-category-section');
+    
+    sections.forEach(section => {
+      // Skip sections that user has manually toggled
+      if (section.dataset.userToggled === 'true') {
+        return;
+      }
+      
+      const toggle = section.querySelector('.fmb-section-toggle');
+      
+      if (isMobile) {
+        // Collapse on mobile (only if not user-toggled)
+        section.classList.add('fmb-section-collapsed');
+        if (toggle) toggle.textContent = '▶';
+      } else {
+        // Expand on desktop (only if not user-toggled)
+        section.classList.remove('fmb-section-collapsed');
+        if (toggle) toggle.textContent = '▼';
+      }
+    });
+  }
+
+  // Debounce resize events
+  let resizeTimer;
+  function handleResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(initializeSectionCollapse, 150);
+  }
+
+  // Run on load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeSectionCollapse);
+  } else {
+    initializeSectionCollapse();
+  }
+
+  // Run on resize
+  window.addEventListener('resize', handleResize);
+
+  // Re-initialize when parts are loaded
+  const observer = new MutationObserver(() => {
+    const sections = document.querySelectorAll('.fmb-category-section');
+    if (sections.length > 0) {
+      initializeSectionCollapse();
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 </script>
 
 {% schema %}
