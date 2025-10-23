@@ -475,6 +475,41 @@
   [data-fmb] .fmb-native-title {
     /* inherit theme title size */
   }
+
+  /* Mobile-optimized large product cards - 2 columns on tablets */
+  [data-fmb] .fmb-parts-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  [data-fmb] .fmb-parts-card {
+    padding: 1rem;
+  }
+
+  [data-fmb] .fmb-parts-card a {
+    font-size: calc(var(--font-heading-scale) * 1.8rem);
+  }
+
+  /* Make "Add to Cart" button larger for touch */
+  [data-fmb] .fmb-add-to-cart-btn {
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 1.4rem;
+    min-height: 44px;
+  }
+
+  /* Reduce OE badge size slightly */
+  [data-fmb] .fmb-oe-badge-large {
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    top: 8px;
+    right: 8px;
+  }
+
+  /* Reduce OE border width */
+  [data-fmb] .fmb-parts-card.fmb-parts-card-oe {
+    border-width: 2px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -491,6 +526,49 @@
   [data-fmb] .fmb-parts-table th,
   [data-fmb] .fmb-parts-table td {
     padding: 0.5rem 0.25rem;
+  }
+
+  /* Mobile-optimized large product cards - 1 column on phones */
+  [data-fmb] .fmb-parts-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  [data-fmb] .fmb-parts-card {
+    padding: 1rem;
+  }
+
+  [data-fmb] .fmb-parts-card a {
+    font-size: calc(var(--font-heading-scale) * 1.6rem);
+  }
+
+  /* Optimize card content spacing for small screens */
+  [data-fmb] .fmb-parts-card p {
+    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+  }
+
+  [data-fmb] .fmb-parts-card-title {
+    font-size: 1.4rem;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+
+  /* Full-width touch-friendly button */
+  [data-fmb] .fmb-add-to-cart-btn {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 1.4rem;
+    min-height: 48px;
+    margin-top: 8px;
+  }
+
+  /* Compact OE badge for small screens */
+  [data-fmb] .fmb-oe-badge-large {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    top: 6px;
+    right: 6px;
   }
 }
 
