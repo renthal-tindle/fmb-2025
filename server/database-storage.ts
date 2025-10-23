@@ -627,11 +627,17 @@ export class DatabaseStorage implements IStorage {
         let isOEPart = false;
         let oeFieldMatch = null;
         
+        // Define OE fields to check (including both oe_* fields and other OE spec fields)
+        const oeFieldsToCheck = [
+          'oe_handlebar', 'oe_fcw', 'oe_rcw', 'oe_barmount', 'oe_chain',
+          'front_brakepads', 'rear_brakepads', 'grips', 'oe_grips'
+        ];
+        
         // Check main product SKU against OE values
         const mainSKU = product.sku;
         if (mainSKU) {
           for (const categoryTag of categoryTags) {
-            if (categoryTag.categoryValue.startsWith('oe_')) {
+            if (oeFieldsToCheck.includes(categoryTag.categoryValue.toLowerCase())) {
               const oeFieldValue = (motorcycle as any)[categoryTag.categoryValue.toLowerCase()];
               if (oeFieldValue && typeof oeFieldValue === 'string' && oeFieldValue.toLowerCase().trim() === mainSKU.toLowerCase().trim()) {
                 isOEPart = true;
@@ -649,7 +655,7 @@ export class DatabaseStorage implements IStorage {
           for (const variant of product.variants) {
             if (variant.sku) {
               for (const categoryTag of categoryTags) {
-                if (categoryTag.categoryValue.startsWith('oe_')) {
+                if (oeFieldsToCheck.includes(categoryTag.categoryValue.toLowerCase())) {
                   const oeFieldValue = (motorcycle as any)[categoryTag.categoryValue.toLowerCase()];
                   if (oeFieldValue && typeof oeFieldValue === 'string' && oeFieldValue.toLowerCase().trim() === variant.sku.toLowerCase().trim()) {
                     isOEPart = true;
