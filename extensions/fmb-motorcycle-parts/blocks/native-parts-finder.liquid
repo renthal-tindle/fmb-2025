@@ -649,17 +649,22 @@
         <div id="${id}" class="fmb-category-section">
           <h3>${id}</h3>
           <div class="fmb-parts-grid">
-            ${expandedParts.map(part => `
-              <div class="fmb-parts-card ${part.isOE ? 'fmb-parts-card-oe' : ''}">
-                ${part.isOE ? '<div class="fmb-oe-badge-large">OE Match</div>' : ''}
-                <div class="fmb-parts-card-title">${title}</div>
-                <h4><a href="${part.url}">${part.title}</a></h4>
-                <p><strong>SKU:</strong> ${part.sku}</p>
-                ${part.variantTitle ? `<p><strong>Option:</strong> ${part.variantTitle}</p>` : ''}
-                ${part.price ? `<p><strong>Price:</strong> $${part.price}</p>` : ''}
-                <button class="fmb-add-to-cart-btn fmb-nav-btn" data-variant-id="${part.variantId}">Add to Cart</button>
-              </div>
-            `).join('')}
+            ${expandedParts.map(part => {
+              // Dynamically set title: OE variants show original label, alternatives get "Alternative" prefix
+              const cardTitle = part.isOE ? title : `Alternative ${title.replace(/^OE\s+/i, '')}`;
+              
+              return `
+                <div class="fmb-parts-card ${part.isOE ? 'fmb-parts-card-oe' : ''}">
+                  ${part.isOE ? '<div class="fmb-oe-badge-large">OE Match</div>' : ''}
+                  <div class="fmb-parts-card-title">${cardTitle}</div>
+                  <h4><a href="${part.url}">${part.title}</a></h4>
+                  <p><strong>SKU:</strong> ${part.sku}</p>
+                  ${part.variantTitle ? `<p><strong>Option:</strong> ${part.variantTitle}</p>` : ''}
+                  ${part.price ? `<p><strong>Price:</strong> $${part.price}</p>` : ''}
+                  <button class="fmb-add-to-cart-btn fmb-nav-btn" data-variant-id="${part.variantId}">Add to Cart</button>
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
       `;
