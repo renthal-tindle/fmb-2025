@@ -233,12 +233,14 @@
         }
         
         // Create category mapping from assignedSection to sectionLabel (canonical section name)
+        // Convert camelCase assignedSection to hyphenated format to match section IDs
         const categoryMapping = {};
         if (Array.isArray(categoryTags)) {
           categoryTags.forEach(tag => {
             if (tag.assignedSection && tag.sectionLabel) {
-              // Use the canonical section label from partSections table
-              categoryMapping[tag.assignedSection] = tag.sectionLabel;
+              // Convert camelCase to hyphenated (e.g., frontSprocket → front-sprocket)
+              const hyphenatedKey = tag.assignedSection.replace(/([A-Z])/g, '-$1').toLowerCase();
+              categoryMapping[hyphenatedKey] = tag.sectionLabel;
             }
           });
         }
