@@ -45,6 +45,7 @@ Preferred communication style: Simple, everyday language.
 - **UI/UX**: Utilizes Radix UI and Tailwind CSS for a consistent, accessible, and responsive design, with specific styling for OE matches and variant displays.
 - **Technical Implementations**: Employs TypeScript throughout for type safety, Drizzle ORM for database interactions, and Zod for validation across layers.
 - **Feature Specifications**: Supports complex product matching logic including prefix matching for SKUs, dynamic UI updates for reordering, and robust CSV import capabilities with optional RECID assignment and concurrency control.
+- **Category Label Management**: Section headers dynamically fetch and display category labels from parts mapping configuration (via `/api/part-category-tags`), ensuring headers reflect admin-configured names (e.g., "Handlebars", "Front Sprocket") rather than product-specific labels (e.g., "OE Handlebar"). Falls back to product labels if mapping is unavailable.
 
 ## External Dependencies
 
