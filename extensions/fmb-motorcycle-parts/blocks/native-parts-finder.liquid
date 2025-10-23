@@ -608,16 +608,56 @@
     function generateCategorySection(id, title, parts) {
       if (parts.length === 0) return '';
       
+      // Expand parts with alternative variants into individual cards
+      const expandedParts = [];
+      parts.forEach(part => {
+        // Parse alternativeVariants if it exists
+        let variants = [];
+        if (part.alternativeVariants && typeof part.alternativeVariants === 'string') {
+          try {
+            variants = JSON.parse(part.alternativeVariants);
+          } catch(e) {
+            variants = [];
+          }
+        } else if (Array.isArray(part.alternativeVariants)) {
+          variants = part.alternativeVariants;
+        }
+        
+        // If this product has alternative variants, create a card for each variant
+        if (variants.length > 0) {
+          variants.forEach(variant => {
+            expandedParts.push({
+              ...part,
+              sku: variant.sku || part.sku,
+              price: variant.price || part.price,
+              variantId: variant.id,
+              isOE: variant.isOE || false,
+              variantTitle: variant.title || ''
+            });
+          });
+        } else {
+          // No alternative variants, use the product as-is
+          expandedParts.push({
+            ...part,
+            variantId: part.matchedVariantId || part.variants[0]?.id,
+            isOE: false
+          });
+        }
+      });
+      
       return `
         <div id="${id}" class="fmb-category-section">
           <h3>${id}</h3>
           <div class="fmb-parts-grid">
-            ${parts.map(part => `
-              <div class="fmb-parts-card">
+            ${expandedParts.map(part => `
+              <div class="fmb-parts-card ${part.isOE ? 'fmb-parts-card-oe' : ''}">
+                ${part.isOE ? '<div class="fmb-oe-badge-large">OE Match</div>' : ''}
                 <div class="fmb-parts-card-title">${title}</div>
                 <h4><a href="${part.url}">${part.title}</a></h4>
                 <p><strong>SKU:</strong> ${part.sku}</p>
-                <button class="fmb-add-to-cart-btn fmb-nav-btn" data-variant-id="${part.variants[0]?.id}">Add to Cart</button>
+                ${part.variantTitle ? `<p><strong>Option:</strong> ${part.variantTitle}</p>` : ''}
+                ${part.price ? `<p><strong>Price:</strong> $${part.price}</p>` : ''}
+                <button class="fmb-add-to-cart-btn fmb-nav-btn" data-variant-id="${part.variantId}">Add to Cart</button>
               </div>
             `).join('')}
           </div>
