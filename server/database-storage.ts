@@ -463,17 +463,28 @@ export class DatabaseStorage implements IStorage {
         'barmount28', 'barmount36',
         'fcwgroup', 'fcwconv', 'rcwconv', 'rcwgroup', 'rcwgroup_range', 'twinring',
         'chainconv', 'r1_chain', 'r3_chain', 'r4_chain', 'rr4_chain',
-        'clipon', 'rcwcarrier', 'active_handlecompare'
+        'clipon', 'rcwcarrier', 'active_handlecompare', 'other_fcw'
       ];
       
       // Count parts for each motorcycle using the shared product list
       return motorcycles.map(motorcycle => {
-        // Extract all non-empty part values from this motorcycle
+        // Extract all non-empty part values from this motorcycle (hardcoded columns)
         const motorcyclePartValues: string[] = [];
         for (const fieldName of partFieldsToCheck) {
           const motorcycleValue = (motorcycle as any)[fieldName];
           if (motorcycleValue && typeof motorcycleValue === 'string' && motorcycleValue.trim() !== '') {
             motorcyclePartValues.push(motorcycleValue.trim());
+          }
+        }
+        
+        // Also extract values from customParts JSONB column
+        if (motorcycle.customParts) {
+          const customParts = motorcycle.customParts as Record<string, string | null>;
+          for (const categoryValue in customParts) {
+            const partValue = customParts[categoryValue];
+            if (partValue && typeof partValue === 'string' && partValue.trim() !== '') {
+              motorcyclePartValues.push(partValue.trim());
+            }
           }
         }
         
@@ -563,14 +574,25 @@ export class DatabaseStorage implements IStorage {
         // Chain fields
         'chainconv', 'r1_chain', 'r3_chain', 'r4_chain', 'rr4_chain',
         // Other specialized fields
-        'clipon', 'rcwcarrier', 'active_handlecompare'
+        'clipon', 'rcwcarrier', 'active_handlecompare', 'other_fcw'
       ];
       
-      // Extract all non-empty part values from motorcycle database
+      // Extract all non-empty part values from motorcycle database (hardcoded columns)
       for (const fieldName of partFieldsToCheck) {
         const motorcycleValue = (motorcycle as any)[fieldName];
         if (motorcycleValue && typeof motorcycleValue === 'string' && motorcycleValue.trim() !== '') {
           motorcyclePartValues.push(motorcycleValue.trim());
+        }
+      }
+      
+      // Also extract values from customParts JSONB column
+      if (motorcycle.customParts) {
+        const customParts = motorcycle.customParts as Record<string, string | null>;
+        for (const categoryValue in customParts) {
+          const partValue = customParts[categoryValue];
+          if (partValue && typeof partValue === 'string' && partValue.trim() !== '') {
+            motorcyclePartValues.push(partValue.trim());
+          }
         }
       }
       

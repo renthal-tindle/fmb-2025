@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -45,6 +45,8 @@ export const motorcycles = pgTable("motorcycles", {
   clipon: text("clipon"),
   rcwcarrier: text("rcwcarrier"),
   active_handlecompare: text("active_handlecompare"),
+  other_fcw: text("other_fcw"),
+  customParts: jsonb("custom_parts"), // Store dynamically created categories as {"category_value": "product_variant"}
 });
 
 export const shopifyProducts = pgTable("xx_shopify_products", {

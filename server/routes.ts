@@ -1875,17 +1875,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Part category is required" });
       }
       
-      // Build update object dynamically based on part category
-      const updateData = {
-        [partCategory]: productVariant || null
-      };
+      // List of hardcoded column names in the motorcycles table
+      const hardcodedColumns = [
+        'oe_handlebar', 'oe_fcw', 'oe_rcw', 'front_brakepads', 'rear_brakepads',
+        'handlebars_78', 'twinwall', 'fatbar', 'fatbar36', 'grips', 'cam',
+        'oe_barmount', 'barmount28', 'barmount36', 'fcwgroup', 'fcwconv',
+        'rcwconv', 'rcwgroup', 'rcwgroup_range', 'twinring', 'oe_chain',
+        'chainconv', 'r1_chain', 'r3_chain', 'r4_chain', 'rr4_chain',
+        'clipon', 'rcwcarrier', 'active_handlecompare', 'other_fcw'
+      ];
       
-      const motorcycle = await storage.updateMotorcycle(recid, updateData);
-      if (!motorcycle) {
-        return res.status(404).json({ message: "Motorcycle not found" });
+      // Check if this is a hardcoded column or a custom category
+      if (hardcodedColumns.includes(partCategory)) {
+        // Use direct column update for hardcoded categories
+        const updateData = {
+          [partCategory]: productVariant || null
+        };
+        const motorcycle = await storage.updateMotorcycle(recid, updateData);
+        if (!motorcycle) {
+          return res.status(404).json({ message: "Motorcycle not found" });
+        }
+        res.json(motorcycle);
+      } else {
+        // Use customParts JSONB for dynamic categories
+        const motorcycle = await storage.getMotorcycle(recid);
+        if (!motorcycle) {
+          return res.status(404).json({ message: "Motorcycle not found" });
+        }
+        
+        // Get existing customParts or initialize empty object
+        const customParts = (motorcycle.customParts as Record<string, string | null>) || {};
+        
+        // Update or remove the category
+        if (productVariant) {
+          customParts[partCategory] = productVariant;
+        } else {
+          delete customParts[partCategory];
+        }
+        
+        // Save back to database
+        const updated = await storage.updateMotorcycle(recid, { customParts });
+        res.json(updated);
       }
-      res.json(motorcycle);
     } catch (error) {
+      console.error("Error assigning part:", error);
       res.status(500).json({ message: "Failed to assign part to motorcycle" });
     }
   });
@@ -1899,8 +1932,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Motorcycle not found" });
       }
       
-      // Extract all part category assignments
-      const partCategories = {
+      // Extract all part category assignments from hardcoded columns
+      const partCategories: Record<string, string | null> = {
         oe_handlebar: motorcycle.oe_handlebar,
         oe_fcw: motorcycle.oe_fcw,
         oe_rcw: motorcycle.oe_rcw,
@@ -1929,8 +1962,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rr4_chain: motorcycle.rr4_chain,
         clipon: motorcycle.clipon,
         rcwcarrier: motorcycle.rcwcarrier,
-        active_handlecompare: motorcycle.active_handlecompare
+        active_handlecompare: motorcycle.active_handlecompare,
+        other_fcw: motorcycle.other_fcw
       };
+      
+      // Merge in custom parts from JSONB column
+      if (motorcycle.customParts) {
+        const customParts = motorcycle.customParts as Record<string, string | null>;
+        Object.assign(partCategories, customParts);
+      }
       
       res.json(partCategories);
     } catch (error) {
