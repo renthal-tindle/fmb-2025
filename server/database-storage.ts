@@ -50,7 +50,7 @@ const db = drizzle(sqlConnection);
 export class DatabaseStorage implements IStorage {
   // Helper method to check current system mode
   private async getActiveMode(): Promise<'legacy' | 'extended'> {
-    const setting = await db.select().from(systemSettings).where(eq(systemSettings.settingKey, 'active_mode'));
+    const setting = await db.select().from(systemSettings).where(eq(systemSettings.settingKey, 'motorcycle_data_mode'));
     return (setting[0]?.settingValue as 'legacy' | 'extended') || 'legacy';
   }
 
