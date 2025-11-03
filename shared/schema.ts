@@ -134,6 +134,34 @@ export const partSections = pgTable("part_sections", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const motorcyclesExtended = pgTable("motorcycles_extended", {
+  recid: integer("recid").primaryKey(),
+  biketype: integer("biketype"),
+  bikeCategory: text("bike_category"),
+  bikeSubcategory: text("bike_subcategory"),
+  bikemake: text("bikemake").notNull(),
+  bikemodel: text("bikemodel").notNull(),
+  firstyear: integer("firstyear").notNull(),
+  lastyear: integer("lastyear").notNull(),
+  capacity: integer("capacity"),
+  oe_handlebar: text("oe_handlebar"),
+  oe_fcw: text("oe_fcw"),
+  oe_rcw: text("oe_rcw"),
+  front_brakepads: text("front_brakepads"),
+  rear_brakepads: text("rear_brakepads"),
+  dynamicParts: jsonb("dynamic_parts"), // All dynamic categories stored as {"category_value": "product_sku"}
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const systemSettings = pgTable("system_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  settingKey: text("setting_key").notNull().unique(),
+  settingValue: text("setting_value").notNull(),
+  description: text("description"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertMotorcycleSchema = createInsertSchema(motorcycles);
 
 export const insertShopifyProductSchema = createInsertSchema(shopifyProducts);
@@ -159,7 +187,21 @@ export const insertPartSectionSchema = createInsertSchema(partSections).omit({
   updatedAt: true,
 });
 
+export const insertMotorcycleExtendedSchema = createInsertSchema(motorcyclesExtended).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export type InsertMotorcycle = z.infer<typeof insertMotorcycleSchema>;
+export type InsertMotorcycleExtended = z.infer<typeof insertMotorcycleExtendedSchema>;
+export type MotorcycleExtended = typeof motorcyclesExtended.$inferSelect;
+export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
+export type SystemSetting = typeof systemSettings.$inferSelect;
 export type PartCategoryTags = typeof partCategoryTags.$inferSelect;
 export type InsertPartCategoryTags = z.infer<typeof insertPartCategoryTagsSchema>;
 export type PartSection = typeof partSections.$inferSelect;

@@ -4270,6 +4270,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // System Settings Routes - Mode Switching
+  app.get("/api/system/mode", async (req, res) => {
+    try {
+      const mode = await storage.getSystemSetting("motorcycle_data_mode") || "legacy";
+      res.json({ mode });
+    } catch (error) {
+      console.error("Error getting system mode:", error);
+      res.status(500).json({ message: "Failed to get system mode" });
+    }
+  });
+
+  app.post("/api/system/mode", async (req, res) => {
+    try {
+      const { mode } = req.body;
+      if (mode !== "legacy" && mode !== "extended") {
+        return res.status(400).json({ message: "Invalid mode. Must be 'legacy' or 'extended'" });
+      }
+      await storage.setSystemSetting("motorcycle_data_mode", mode, "Active data mode: legacy (motorcycles table) or extended (motorcycles_extended table with JSONB)");
+      res.json({ success: true, mode });
+    } catch (error) {
+      console.error("Error setting system mode:", error);
+      res.status(500).json({ message: "Failed to set system mode" });
+    }
+  });
+
+  app.post("/api/system/sync-to-extended", async (req, res) => {
+    try {
+      const count = await storage.syncMotorcyclesToExtended();
+      res.json({ success: true, syncedCount: count });
+    } catch (error) {
+      console.error("Error syncing to extended table:", error);
+      res.status(500).json({ message: "Failed to sync motorcycles to extended table" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

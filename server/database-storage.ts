@@ -3,6 +3,8 @@ import postgres from "postgres";
 import { eq, like, ilike, and, or, gte, lte, sql, asc } from "drizzle-orm";
 import {
   motorcycles,
+  motorcyclesExtended,
+  systemSettings,
   shopifyProducts,
   partMappings,
   importHistory,
@@ -13,6 +15,10 @@ import {
   motorcycleCategoryConfig,
   type Motorcycle,
   type InsertMotorcycle,
+  type MotorcycleExtended,
+  type InsertMotorcycleExtended,
+  type SystemSetting,
+  type InsertSystemSetting,
   type ShopifyProduct,
   type ShopifyProductWithCategory,
   type InsertShopifyProduct,
@@ -1368,5 +1374,98 @@ export class DatabaseStorage implements IStorage {
       console.error('Error releasing advisory lock:', error);
       return false;
     }
+  }
+
+  // System Settings
+  async getSystemSetting(key: string): Promise<string | undefined> {
+    const result = await db.select().from(systemSettings).where(eq(systemSettings.settingKey, key));
+    return result[0]?.settingValue;
+  }
+
+  async setSystemSetting(key: string, value: string, description?: string): Promise<void> {
+    await db.insert(systemSettings)
+      .values({ settingKey: key, settingValue: value, description })
+      .onConflictDoUpdate({
+        target: systemSettings.settingKey,
+        set: { settingValue: value, description, updatedAt: sql`CURRENT_TIMESTAMP` }
+      });
+  }
+
+  // Motorcycles Extended (parallel testing table)
+  async getMotorcyclesExtended(): Promise<MotorcycleExtended[]> {
+    return await db.select().from(motorcyclesExtended);
+  }
+
+  async getMotorcycleExtended(recid: number): Promise<MotorcycleExtended | undefined> {
+    const result = await db.select().from(motorcyclesExtended).where(eq(motorcyclesExtended.recid, recid));
+    return result[0];
+  }
+
+  async createMotorcycleExtended(motorcycle: InsertMotorcycleExtended): Promise<MotorcycleExtended> {
+    const result = await db.insert(motorcyclesExtended).values(motorcycle).returning();
+    return result[0];
+  }
+
+  async updateMotorcycleExtended(recid: number, updates: Partial<InsertMotorcycleExtended>): Promise<MotorcycleExtended | undefined> {
+    const result = await db.update(motorcyclesExtended)
+      .set({ ...updates, updatedAt: sql`CURRENT_TIMESTAMP` })
+      .where(eq(motorcyclesExtended.recid, recid))
+      .returning();
+    return result[0];
+  }
+
+  async syncMotorcyclesToExtended(): Promise<number> {
+    const allMotorcycles = await db.select().from(motorcycles);
+    
+    let syncedCount = 0;
+    
+    for (const moto of allMotorcycles) {
+      const newBikeData: InsertMotorcycleExtended = {
+        recid: moto.recid,
+        biketype: moto.biketype,
+        bikeCategory: moto.bikeCategory,
+        bikeSubcategory: moto.bikeSubcategory,
+        bikemake: moto.bikemake,
+        bikemodel: moto.bikemodel,
+        firstyear: moto.firstyear,
+        lastyear: moto.lastyear,
+        capacity: moto.capacity,
+        oe_handlebar: moto.oe_handlebar,
+        oe_fcw: moto.oe_fcw,
+        oe_rcw: moto.oe_rcw,
+        front_brakepads: moto.front_brakepads,
+        rear_brakepads: moto.rear_brakepads,
+        dynamicParts: null
+      };
+      
+      // On conflict, update only basic motorcycle info, preserve dynamicParts
+      const updateData = {
+        biketype: moto.biketype,
+        bikeCategory: moto.bikeCategory,
+        bikeSubcategory: moto.bikeSubcategory,
+        bikemake: moto.bikemake,
+        bikemodel: moto.bikemodel,
+        firstyear: moto.firstyear,
+        lastyear: moto.lastyear,
+        capacity: moto.capacity,
+        oe_handlebar: moto.oe_handlebar,
+        oe_fcw: moto.oe_fcw,
+        oe_rcw: moto.oe_rcw,
+        front_brakepads: moto.front_brakepads,
+        rear_brakepads: moto.rear_brakepads,
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      };
+      
+      await db.insert(motorcyclesExtended)
+        .values(newBikeData)
+        .onConflictDoUpdate({
+          target: motorcyclesExtended.recid,
+          set: updateData
+        });
+      
+      syncedCount++;
+    }
+    
+    return syncedCount;
   }
 }

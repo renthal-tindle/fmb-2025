@@ -1,6 +1,10 @@
 import { 
   type Motorcycle, 
   type InsertMotorcycle,
+  type MotorcycleExtended,
+  type InsertMotorcycleExtended,
+  type SystemSetting,
+  type InsertSystemSetting,
   type ShopifyProduct,
   type InsertShopifyProduct,
   type PartMapping,
@@ -86,6 +90,17 @@ export interface IStorage {
   // Advisory Locks (for preventing concurrent operations)
   acquireAdvisoryLock(lockId: number): Promise<boolean>;
   releaseAdvisoryLock(lockId: number): Promise<boolean>;
+
+  // System Settings
+  getSystemSetting(key: string): Promise<string | undefined>;
+  setSystemSetting(key: string, value: string, description?: string): Promise<void>;
+
+  // Motorcycles Extended (parallel testing table)
+  getMotorcyclesExtended(): Promise<MotorcycleExtended[]>;
+  getMotorcycleExtended(recid: number): Promise<MotorcycleExtended | undefined>;
+  createMotorcycleExtended(motorcycle: InsertMotorcycleExtended): Promise<MotorcycleExtended>;
+  updateMotorcycleExtended(recid: number, motorcycle: Partial<InsertMotorcycleExtended>): Promise<MotorcycleExtended | undefined>;
+  syncMotorcyclesToExtended(): Promise<number>;
 }
 
 export class MemStorage implements IStorage {
