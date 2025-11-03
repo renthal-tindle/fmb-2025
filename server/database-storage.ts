@@ -48,12 +48,27 @@ const sqlConnection = postgres(process.env.DATABASE_URL!, {
 const db = drizzle(sqlConnection);
 
 export class DatabaseStorage implements IStorage {
+  // Helper method to check current system mode
+  private async getActiveMode(): Promise<'legacy' | 'extended'> {
+    const setting = await db.select().from(systemSettings).where(eq(systemSettings.settingKey, 'active_mode'));
+    return (setting[0]?.settingValue as 'legacy' | 'extended') || 'legacy';
+  }
+
   // Motorcycles
   async getMotorcycles(): Promise<Motorcycle[]> {
+    const mode = await this.getActiveMode();
+    if (mode === 'extended') {
+      return await db.select().from(motorcyclesExtended) as any;
+    }
     return await db.select().from(motorcycles);
   }
 
   async getMotorcycle(recid: number): Promise<Motorcycle | undefined> {
+    const mode = await this.getActiveMode();
+    if (mode === 'extended') {
+      const result = await db.select().from(motorcyclesExtended).where(eq(motorcyclesExtended.recid, recid));
+      return result[0] as any;
+    }
     const result = await db.select().from(motorcycles).where(eq(motorcycles.recid, recid));
     return result[0];
   }
@@ -77,6 +92,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchMotorcycles(query: string): Promise<Motorcycle[]> {
+    const mode = await this.getActiveMode();
+    const table = mode === 'extended' ? motorcyclesExtended : motorcycles;
+    
     const searchTerm = query.toLowerCase().trim();
     
     if (!searchTerm) {
@@ -87,7 +105,7 @@ export class DatabaseStorage implements IStorage {
     const numericRecid = parseInt(searchTerm);
     if (!isNaN(numericRecid) && searchTerm === numericRecid.toString()) {
       // Direct RECID search
-      const result = await db.select().from(motorcycles).where(eq(motorcycles.recid, numericRecid));
+      const result = await db.select().from(table).where(eq(table.recid, numericRecid));
       return result;
     }
     
@@ -105,10 +123,10 @@ export class DatabaseStorage implements IStorage {
     
     if (words.length === 0 && searchYear) {
       // Only year was provided, search by year range
-      return await db.select().from(motorcycles).where(
+      return await db.select().from(table).where(
         and(
-          lte(motorcycles.firstyear, searchYear),
-          gte(motorcycles.lastyear, searchYear)
+          lte(table.firstyear, searchYear),
+          gte(table.lastyear, searchYear)
         )
       );
     }
@@ -117,16 +135,16 @@ export class DatabaseStorage implements IStorage {
       // Single word: search in make OR model OR RECID (if numeric)
       const pattern = `%${words[0]}%`;
       const conditions = [
-        ilike(motorcycles.bikemake, pattern),
-        ilike(motorcycles.bikemodel, pattern)
+        ilike(table.bikemake, pattern),
+        ilike(table.bikemodel, pattern)
       ];
       
       // If the word contains digits, also search RECID as string  
       if (/\d/.test(words[0])) {
-        conditions.push(sql`CAST(${motorcycles.recid} AS TEXT) ILIKE ${pattern}`);
+        conditions.push(sql`CAST(${table.recid} AS TEXT) ILIKE ${pattern}`);
       }
       
-      let results = await db.select().from(motorcycles).where(or(...conditions));
+      let results = await db.select().from(table).where(or(...conditions)) as any;
       
       // Filter by year if year was in search
       if (searchYear) {
@@ -143,25 +161,25 @@ export class DatabaseStorage implements IStorage {
       // Create conditions for each word in either make or model
       const wordConditions = patterns.map(pattern => 
         or(
-          ilike(motorcycles.bikemake, pattern),
-          ilike(motorcycles.bikemodel, pattern)
+          ilike(table.bikemake, pattern),
+          ilike(table.bikemodel, pattern)
         )
       );
       
       // Also try the full search term in make or model
       const fullPattern = `%${searchWithoutYear}%`;
       const fullTermCondition = or(
-        ilike(motorcycles.bikemake, fullPattern),
-        ilike(motorcycles.bikemodel, fullPattern)
+        ilike(table.bikemake, fullPattern),
+        ilike(table.bikemodel, fullPattern)
       );
       
       // Return results where either the full term matches OR all individual words match
-      let results = await db.select().from(motorcycles).where(
+      let results = await db.select().from(table).where(
         or(
           fullTermCondition,
           and(...wordConditions)
         )
-      );
+      ) as any;
       
       // Filter by year if year was in search
       if (searchYear) {
@@ -182,53 +200,62 @@ export class DatabaseStorage implements IStorage {
     bikeCategory?: string;
     bikeSubcategory?: string;
   }): Promise<Motorcycle[]> {
+    const mode = await this.getActiveMode();
+    const table = mode === 'extended' ? motorcyclesExtended : motorcycles;
+    
     const conditions = [];
     
     if (filters.bikemake) {
-      conditions.push(eq(motorcycles.bikemake, filters.bikemake));
+      conditions.push(eq(table.bikemake, filters.bikemake));
     }
     if (filters.firstyear) {
       // If user selects a year like 2021, find bikes that were available in 2021
       // This means: firstyear <= 2021 AND lastyear >= 2021
-      conditions.push(lte(motorcycles.firstyear, filters.firstyear));
-      conditions.push(gte(motorcycles.lastyear, filters.firstyear));
+      conditions.push(lte(table.firstyear, filters.firstyear));
+      conditions.push(gte(table.lastyear, filters.firstyear));
     }
     if (filters.lastyear) {
       // If user filters by lastyear, find bikes that were available in that year
-      conditions.push(lte(motorcycles.firstyear, filters.lastyear));
-      conditions.push(gte(motorcycles.lastyear, filters.lastyear));
+      conditions.push(lte(table.firstyear, filters.lastyear));
+      conditions.push(gte(table.lastyear, filters.lastyear));
     }
     if (filters.biketype) {
-      conditions.push(eq(motorcycles.biketype, filters.biketype));
+      conditions.push(eq(table.biketype, filters.biketype));
     }
     if (filters.bikeCategory) {
-      conditions.push(eq(motorcycles.bikeCategory, filters.bikeCategory));
+      conditions.push(eq(table.bikeCategory, filters.bikeCategory));
     }
     if (filters.bikeSubcategory) {
-      conditions.push(eq(motorcycles.bikeSubcategory, filters.bikeSubcategory));
+      conditions.push(eq(table.bikeSubcategory, filters.bikeSubcategory));
     }
 
     if (conditions.length === 0) {
       return await this.getMotorcycles();
     }
 
-    return await db.select().from(motorcycles).where(and(...conditions));
+    return await db.select().from(table).where(and(...conditions)) as any;
   }
 
   async getDistinctMotorcycleMakes(): Promise<string[]> {
-    const result = await db.select({ bikemake: motorcycles.bikemake })
-      .from(motorcycles)
-      .groupBy(motorcycles.bikemake)
-      .orderBy(motorcycles.bikemake);
+    const mode = await this.getActiveMode();
+    const table = mode === 'extended' ? motorcyclesExtended : motorcycles;
+    
+    const result = await db.select({ bikemake: table.bikemake })
+      .from(table)
+      .groupBy(table.bikemake)
+      .orderBy(table.bikemake);
     
     return result.map(row => row.bikemake);
   }
 
   async getDistinctMotorcycleYears(): Promise<number[]> {
+    const mode = await this.getActiveMode();
+    const table = mode === 'extended' ? motorcyclesExtended : motorcycles;
+    
     const result = await db.select({ 
-      firstyear: motorcycles.firstyear, 
-      lastyear: motorcycles.lastyear 
-    }).from(motorcycles);
+      firstyear: table.firstyear, 
+      lastyear: table.lastyear 
+    }).from(table);
     
     // Create a Set to collect all unique years from the ranges
     const allYears = new Set<number>();
@@ -245,23 +272,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDistinctMotorcycleModelsByMake(make: string): Promise<string[]> {
-    const result = await db.select({ bikemodel: motorcycles.bikemodel })
-      .from(motorcycles)
-      .where(ilike(motorcycles.bikemake, make))
-      .groupBy(motorcycles.bikemodel)
-      .orderBy(motorcycles.bikemodel);
+    const mode = await this.getActiveMode();
+    const table = mode === 'extended' ? motorcyclesExtended : motorcycles;
+    
+    const result = await db.select({ bikemodel: table.bikemodel })
+      .from(table)
+      .where(ilike(table.bikemake, make))
+      .groupBy(table.bikemodel)
+      .orderBy(table.bikemodel);
     
     return result.map(row => row.bikemodel);
   }
 
   async getDistinctYearsByMakeModel(make: string, model: string): Promise<string[]> {
+    const mode = await this.getActiveMode();
+    const table = mode === 'extended' ? motorcyclesExtended : motorcycles;
+    
     const result = await db.select({ 
-      firstyear: motorcycles.firstyear, 
-      lastyear: motorcycles.lastyear 
-    }).from(motorcycles)
+      firstyear: table.firstyear, 
+      lastyear: table.lastyear 
+    }).from(table)
     .where(and(
-      ilike(motorcycles.bikemake, make),
-      ilike(motorcycles.bikemodel, model)
+      ilike(table.bikemake, make),
+      ilike(table.bikemodel, model)
     ));
     
     // Create a Set to collect all unique years from the ranges
@@ -319,34 +352,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async filterMotorcyclesByMakeModelYear(make: string, model: string, year?: number): Promise<Motorcycle[]> {
+    const mode = await this.getActiveMode();
+    const table = mode === 'extended' ? motorcyclesExtended : motorcycles;
+    
     const conditions = [
-      ilike(motorcycles.bikemake, make),
-      ilike(motorcycles.bikemodel, model)
+      ilike(table.bikemake, make),
+      ilike(table.bikemodel, model)
     ];
 
     // Year is optional - if provided, check if the year falls within the bike's production range
     if (year) {
-      conditions.push(lte(motorcycles.firstyear, year));
-      conditions.push(gte(motorcycles.lastyear, year));
+      conditions.push(lte(table.firstyear, year));
+      conditions.push(gte(table.lastyear, year));
     }
 
-    return await db.select().from(motorcycles).where(and(...conditions));
+    return await db.select().from(table).where(and(...conditions)) as any;
   }
 
   async filterMotorcyclesByMakeModelYearRange(make: string, model: string, startYear?: number, endYear?: number): Promise<Motorcycle[]> {
+    const mode = await this.getActiveMode();
+    const table = mode === 'extended' ? motorcyclesExtended : motorcycles;
+    
     const conditions = [
-      ilike(motorcycles.bikemake, make),
-      ilike(motorcycles.bikemodel, model)
+      ilike(table.bikemake, make),
+      ilike(table.bikemodel, model)
     ];
 
     // Year range is optional - if provided, check if the ranges overlap
     if (startYear !== undefined && endYear !== undefined) {
       // Ranges overlap if: motorcycle.firstyear <= endYear AND motorcycle.lastyear >= startYear
-      conditions.push(lte(motorcycles.firstyear, endYear));
-      conditions.push(gte(motorcycles.lastyear, startYear));
+      conditions.push(lte(table.firstyear, endYear));
+      conditions.push(gte(table.lastyear, startYear));
     }
 
-    return await db.select().from(motorcycles).where(and(...conditions));
+    return await db.select().from(table).where(and(...conditions)) as any;
   }
 
   // Shopify Products - Fetches live data from Shopify API
@@ -1063,13 +1102,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getNextMotorcycleRecid(): Promise<number> {
-    const rows = await db
+    // Check both tables to avoid RECID conflicts
+    const legacyRows = await db
       .select({ 
         maxRecid: sql<number>`max(${motorcycles.recid})` 
       })
       .from(motorcycles);
     
-    const max = rows[0]?.maxRecid == null ? 9999 : Number(rows[0].maxRecid);
+    const extendedRows = await db
+      .select({ 
+        maxRecid: sql<number>`max(${motorcyclesExtended.recid})` 
+      })
+      .from(motorcyclesExtended);
+    
+    const legacyMax = legacyRows[0]?.maxRecid == null ? 9999 : Number(legacyRows[0].maxRecid);
+    const extendedMax = extendedRows[0]?.maxRecid == null ? 9999 : Number(extendedRows[0].maxRecid);
+    const max = Math.max(legacyMax, extendedMax);
+    
     return max + 1;
   }
 
