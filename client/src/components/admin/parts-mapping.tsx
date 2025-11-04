@@ -903,22 +903,17 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                                             </>
                                           );
                                         } else {
-                                          // Products mode (default) - show parent products
+                                          // Products mode (default) - show parent products like FCW Group
                                           return (
                                             <>
                                               {filteredProducts.map((product: any) => (
                                                 <SelectItem 
                                                   key={product.id} 
-                                                  value={product.sku || product.title || `product-${product.id}`}
+                                                  value={product.title || `product-${product.id}`}
                                                   data-testid={`option-product-${product.id}`}
                                                 >
                                                   <div className="flex flex-col">
-                                                    <span className="font-medium">{product.sku || product.title}</span>
-                                                    {product.sku && product.title && (
-                                                      <div className="flex gap-2 text-xs text-gray-500">
-                                                        <span>{product.title}</span>
-                                                      </div>
-                                                    )}
+                                                    <span className="font-medium">{product.title}</span>
                                                     <div className="flex gap-2 text-xs text-gray-500">
                                                       <span>${product.price}</span>
                                                       {product.variants && product.variants.length > 1 && (
