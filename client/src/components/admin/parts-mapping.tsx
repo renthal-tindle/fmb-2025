@@ -49,7 +49,8 @@ const buildDynamicPartSections = (categoryTags: PartCategoryTags[], partSections
       const category = {
         value: categoryTag.categoryValue,
         label: categoryTag.categoryLabel || categoryTag.categoryValue,
-        productTags
+        productTags,
+        displayMode: categoryTag.displayMode || 'products'
       };
 
       const assignedSection = categoryTag.assignedSection || "others";
@@ -91,7 +92,8 @@ const buildDynamicPartSections = (categoryTags: PartCategoryTags[], partSections
     const category = {
       value: categoryTag.categoryValue,
       label: categoryTag.categoryLabel || categoryTag.categoryValue,
-      productTags
+      productTags,
+      displayMode: categoryTag.displayMode || 'products'
     };
 
     const assignedSection = categoryTag.assignedSection || "others";
@@ -689,7 +691,7 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                                   (() => {
                                     // Get category's displayMode setting
                                     const categoryConfig = categoryTags?.find(ct => ct.categoryValue === category.value);
-                                    const displayMode = categoryConfig?.displayMode || 'products';
+                                    const displayMode = categoryConfig?.displayMode || (category as any).displayMode || 'products';
                                     
                                     // Special handling for two-step workflows
                                     if (isRCWGroup) {
