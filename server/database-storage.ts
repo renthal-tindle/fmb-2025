@@ -560,6 +560,9 @@ export class DatabaseStorage implements IStorage {
         
         // Collect prefix match values for FCW/RCW groups when OE is empty
         const prefixMatchValues: string[] = [];
+        const fcwToothRange = parseToothRange(motorcycle.fcwgroup_range);
+        const rcwToothRange = parseToothRange(motorcycle.rcwgroup_range);
+        
         if (motorcycle.fcwgroup && motorcycle.fcwgroup.trim() !== '' && 
             (!motorcycle.oe_fcw || motorcycle.oe_fcw.trim() === '')) {
           prefixMatchValues.push(motorcycle.fcwgroup.trim());
@@ -610,7 +613,39 @@ export class DatabaseStorage implements IStorage {
           }
 
           if (isCompatible) {
-            count++;
+            // Apply tooth count range filtering for accurate count
+            const matchedViaFCW = motorcycle.fcwgroup && 
+              (product.title?.toLowerCase().trim() === motorcycle.fcwgroup.toLowerCase().trim() ||
+               product.variants?.some((v: any) => v.sku?.toLowerCase().trim().startsWith(motorcycle.fcwgroup.toLowerCase().trim())));
+            
+            const matchedViaRCW = motorcycle.rcwgroup && 
+              (product.title?.toLowerCase().trim() === motorcycle.rcwgroup.toLowerCase().trim() ||
+               product.variants?.some((v: any) => v.sku?.toLowerCase().trim().startsWith(motorcycle.rcwgroup.toLowerCase().trim())));
+            
+            // Check if product would have variants after filtering
+            let hasValidVariants = true;
+            
+            if ((matchedViaFCW && fcwToothRange) || (matchedViaRCW && rcwToothRange)) {
+              if (product.variants && product.variants.length > 0) {
+                const validVariants = product.variants.filter((variant: any) => {
+                  const toothCount = extractToothCount(variant.sku) || extractToothCount(variant.title);
+                  if (toothCount === null) return true; // Keep if we can't extract tooth count
+                  
+                  if (matchedViaFCW && fcwToothRange) {
+                    return fcwToothRange.includes(toothCount);
+                  }
+                  if (matchedViaRCW && rcwToothRange) {
+                    return rcwToothRange.includes(toothCount);
+                  }
+                  return true;
+                });
+                hasValidVariants = validVariants.length > 0;
+              }
+            }
+            
+            if (hasValidVariants) {
+              count++;
+            }
           }
         }
         
