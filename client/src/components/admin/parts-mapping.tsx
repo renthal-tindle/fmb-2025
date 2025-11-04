@@ -687,6 +687,10 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                                   </div>
                                 ) : products && products.length > 0 ? (
                                   (() => {
+                                    // Get category's displayMode setting
+                                    const categoryConfig = categoryTags?.find(ct => ct.categoryValue === category.value);
+                                    const displayMode = categoryConfig?.displayMode || 'products';
+                                    
                                     // Special handling for two-step workflows
                                     if (isRCWGroup) {
                                       // RCW Group: Show base sprocket products (no variants) - use title as value
@@ -845,29 +849,88 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                                       const filteredProducts = getFilteredProducts(products, category.value, categoryTags || []);
                                       
                                       if (filteredProducts.length > 0) {
-                                        return (
-                                          <>
-                                            {filteredProducts.map((product: any) => (
-                                              <SelectItem 
-                                                key={product.id} 
-                                                value={product.sku || product.title || `product-${product.id}`}
-                                                data-testid={`option-product-${product.id}`}
-                                              >
-                                                <div className="flex flex-col">
-                                                  <span className="font-medium">{product.sku || product.title}</span>
-                                                  {product.sku && product.title && (
+                                        // Check if display mode is 'variants' - if so, flatten products into variants
+                                        if (displayMode === 'variants') {
+                                          // Flatten all variants from all filtered products
+                                          const allVariants: any[] = [];
+                                          filteredProducts.forEach((product: any) => {
+                                            if (product.variants && product.variants.length > 0) {
+                                              product.variants.forEach((variant: any) => {
+                                                allVariants.push({
+                                                  ...variant,
+                                                  productTitle: product.title,
+                                                  productSku: product.sku
+                                                });
+                                              });
+                                            }
+                                          });
+                                          
+                                          if (allVariants.length === 0) {
+                                            return <div className="p-4 text-center text-gray-500">No variants found for {category.label.toLowerCase()}</div>;
+                                          }
+                                          
+                                          return (
+                                            <>
+                                              <div className="px-3 py-2 text-xs font-semibold text-gray-600 bg-gray-50 sticky top-0">
+                                                🔧 Showing Individual Variants
+                                              </div>
+                                              {allVariants.map((variant, index) => (
+                                                <SelectItem 
+                                                  key={`${variant.id}-${index}`}
+                                                  value={variant.sku || `${variant.productSku || variant.productTitle}-${variant.title || variant.id}`}
+                                                  data-testid={`option-variant-${variant.id}`}
+                                                >
+                                                  <div className="flex flex-col">
+                                                    <span className="font-medium">
+                                                      {variant.sku || (variant.title !== 'Default Title' ? variant.title : 'Standard')}
+                                                    </span>
                                                     <div className="flex gap-2 text-xs text-gray-500">
-                                                      <span>{product.title}</span>
+                                                      <span>{variant.productTitle}</span>
+                                                      {variant.option1 && <span>• {variant.option1}</span>}
+                                                      {variant.option2 && <span>• {variant.option2}</span>}
                                                     </div>
-                                                  )}
-                                                  <div className="flex gap-2 text-xs text-gray-500">
-                                                    <span>${product.price}</span>
+                                                    <div className="flex gap-2 text-xs text-gray-500">
+                                                      <span>${variant.price}</span>
+                                                      <span className={variant.available ? "text-green-600" : "text-red-500"}>
+                                                        {variant.available ? "In Stock" : "Out of Stock"}
+                                                      </span>
+                                                    </div>
                                                   </div>
-                                                </div>
-                                              </SelectItem>
-                                            ))}
-                                          </>
-                                        );
+                                                </SelectItem>
+                                              ))}
+                                            </>
+                                          );
+                                        } else {
+                                          // Products mode (default) - show parent products
+                                          return (
+                                            <>
+                                              {filteredProducts.map((product: any) => (
+                                                <SelectItem 
+                                                  key={product.id} 
+                                                  value={product.sku || product.title || `product-${product.id}`}
+                                                  data-testid={`option-product-${product.id}`}
+                                                >
+                                                  <div className="flex flex-col">
+                                                    <span className="font-medium">{product.sku || product.title}</span>
+                                                    {product.sku && product.title && (
+                                                      <div className="flex gap-2 text-xs text-gray-500">
+                                                        <span>{product.title}</span>
+                                                      </div>
+                                                    )}
+                                                    <div className="flex gap-2 text-xs text-gray-500">
+                                                      <span>${product.price}</span>
+                                                      {product.variants && product.variants.length > 1 && (
+                                                        <span className="text-blue-600">
+                                                          {product.variants.length} variants available
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                </SelectItem>
+                                              ))}
+                                            </>
+                                          );
+                                        }
                                       } else {
                                         return <div className="p-4 text-center text-gray-500">No {category.label.toLowerCase()} products found</div>;
                                       }

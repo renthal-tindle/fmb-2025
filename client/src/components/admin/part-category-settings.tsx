@@ -110,10 +110,12 @@ function SortableCategory({
   editingLabel,
   editingValue,
   editingSection,
+  editingDisplayMode,
   setEditingTags,
   setEditingLabel,
   setEditingValue,
   setEditingSection,
+  setEditingDisplayMode,
   startEditing,
   saveCategory,
   cancelEditing,
@@ -215,6 +217,28 @@ function SortableCategory({
             </Select>
           </div>
           
+          <div>
+            <Label htmlFor={`displaymode-${category.value}`} className="text-xs font-medium">Display Mode</Label>
+            <Select value={editingDisplayMode} onValueChange={(value: "products" | "variants") => setEditingDisplayMode(value)}>
+              <SelectTrigger className="h-8 text-sm mt-1" data-testid={`select-displaymode-${category.value}`}>
+                <SelectValue placeholder="Select display mode..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="products">
+                  📦 Products (show parent products with variant count)
+                </SelectItem>
+                <SelectItem value="variants">
+                  🔧 Variants (show individual SKUs and sizes)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              {editingDisplayMode === "products" 
+                ? "Shows parent products like '292--520 Grooved Rear Sprocket' with variant count" 
+                : "Shows individual variants like '292--520-13P', '292--520-14P' for direct selection"}
+            </p>
+          </div>
+          
           <div className="flex gap-2">
             <Button
               onClick={() => saveCategory(category)}
@@ -299,6 +323,7 @@ export default function PartCategorySettings() {
   const [originalCategoryValue, setOriginalCategoryValue] = useState<string | null>(null);
   const [editingTags, setEditingTags] = useState("");
   const [editingSection, setEditingSection] = useState("unassigned");
+  const [editingDisplayMode, setEditingDisplayMode] = useState<"products" | "variants">("products");
   const [editingLabel, setEditingLabel] = useState("");
   const [editingValue, setEditingValue] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -306,6 +331,7 @@ export default function PartCategorySettings() {
   const [newCategoryValue, setNewCategoryValue] = useState("");
   const [newCategoryTags, setNewCategoryTags] = useState("");
   const [newCategorySection, setNewCategorySection] = useState("unassigned");
+  const [newCategoryDisplayMode, setNewCategoryDisplayMode] = useState<"products" | "variants">("products");
   const [showCreateSectionForm, setShowCreateSectionForm] = useState(false);
   const [newSectionKey, setNewSectionKey] = useState("");
   const [newSectionLabel, setNewSectionLabel] = useState("");
@@ -429,11 +455,12 @@ export default function PartCategorySettings() {
 
   // Mutation for creating/updating part category tags
   const saveCategoryMutation = useMutation({
-    mutationFn: async ({ categoryValue, categoryLabel, productTags, assignedSection, sortOrder, originalValue }: {
+    mutationFn: async ({ categoryValue, categoryLabel, productTags, assignedSection, displayMode, sortOrder, originalValue }: {
       categoryValue: string;
       categoryLabel: string;
       productTags: string;
       assignedSection?: string;
+      displayMode?: "products" | "variants";
       sortOrder?: number;
       originalValue?: string;
     }) => {
@@ -444,6 +471,7 @@ export default function PartCategorySettings() {
           categoryLabel,
           productTags,
           assignedSection,
+          displayMode,
           sortOrder
         });
       } else {
@@ -453,6 +481,7 @@ export default function PartCategorySettings() {
           categoryLabel,
           productTags,
           assignedSection,
+          displayMode,
           sortOrder
         });
       }
@@ -686,6 +715,7 @@ export default function PartCategorySettings() {
         setEditingTags(existingCategory.productTags);
       }
       setEditingSection(existingCategory.assignedSection || "unassigned");
+      setEditingDisplayMode((existingCategory.displayMode as "products" | "variants") || "products");
       setEditingLabel(existingCategory.categoryLabel || category.label);
       setEditingValue(existingCategory.categoryValue);
     } else {
@@ -705,6 +735,7 @@ export default function PartCategorySettings() {
       categoryLabel: editingLabel,
       productTags: JSON.stringify(tagsArray),
       assignedSection: editingSection === "unassigned" ? undefined : editingSection,
+      displayMode: editingDisplayMode,
       sortOrder: existingCategory?.sortOrder || 0,
       originalValue: originalCategoryValue || undefined
     });
@@ -715,6 +746,7 @@ export default function PartCategorySettings() {
     setOriginalCategoryValue(null);
     setEditingTags("");
     setEditingSection("unassigned");
+    setEditingDisplayMode("products");
     setEditingLabel("");
     setEditingValue("");
   };
@@ -1070,10 +1102,12 @@ export default function PartCategorySettings() {
                           editingLabel={editingLabel}
                           editingValue={editingValue}
                           editingSection={editingSection}
+                          editingDisplayMode={editingDisplayMode}
                           setEditingTags={setEditingTags}
                           setEditingLabel={setEditingLabel}
                           setEditingValue={setEditingValue}
                           setEditingSection={setEditingSection}
+                          setEditingDisplayMode={setEditingDisplayMode}
                           startEditing={startEditing}
                           saveCategory={saveCategory}
                           cancelEditing={cancelEditing}
