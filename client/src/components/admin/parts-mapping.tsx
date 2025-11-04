@@ -746,109 +746,34 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                                           ))}
                                         </>
                                       );
-                                    } else if (isOERearSprocket) {
-                                      // OE Rear Sprocket: Show variants of selected RCW Group only
-                                      if (!selectedRCWGroup) {
-                                        return (
-                                          <div className="p-4 text-center text-gray-500">
-                                            Please select RCW Group first
-                                          </div>
-                                        );
-                                      }
-                                      
-                                      // Find the selected RCW Group product by SKU (or fallback to title for legacy data)
-                                      const selectedProduct = products.find(p => p.sku === selectedRCWGroup || p.title === selectedRCWGroup) as ShopifyProductWithVariants;
-                                      
-                                      if (!selectedProduct || !selectedProduct.variants || selectedProduct.variants.length === 0) {
-                                        return (
-                                          <div className="p-4 text-center text-gray-500">
-                                            No variants found for selected RCW Group
-                                          </div>
-                                        );
-                                      }
-                                      
-                                      return (
-                                        <>
-                                          <div className="px-3 py-2 text-xs font-semibold text-gray-600 bg-gray-50">
-                                            {selectedProduct.title} - Select Variant
-                                          </div>
-                                          {selectedProduct.variants.map((variant) => (
-                                            <SelectItem 
-                                              key={variant.id} 
-                                              value={variant.sku || `${selectedProduct.sku || selectedProduct.title}-${variant.title || variant.id}`}
-                                              data-testid={`option-variant-${variant.id}`}
-                                            >
-                                              <div className="flex flex-col ml-4">
-                                                <span className="font-medium">
-                                                  {variant.title !== 'Default Title' ? variant.title : 'Standard'}
-                                                </span>
-                                                <div className="flex gap-2 text-xs text-gray-500">
-                                                  {variant.sku && <span>SKU: {variant.sku}</span>}
-                                                  <span>${variant.price}</span>
-                                                  {variant.option1 && <span>{variant.option1}</span>}
-                                                  {variant.option2 && <span>{variant.option2}</span>}
-                                                  <span className={variant.available ? "text-green-600" : "text-red-500"}>
-                                                    {variant.available ? "In Stock" : "Out of Stock"}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            </SelectItem>
-                                          ))}
-                                        </>
-                                      );
-                                    } else if (isOEFrontSprocket) {
-                                      // OE Front Sprocket: Show variants of selected FCW Group only
-                                      if (!selectedFCWGroup) {
-                                        return (
-                                          <div className="p-4 text-center text-gray-500">
-                                            Please select FCW Group first
-                                          </div>
-                                        );
-                                      }
-                                      
-                                      // Find the selected FCW Group product by SKU (or fallback to title for legacy data)
-                                      const selectedProduct = products.find(p => p.sku === selectedFCWGroup || p.title === selectedFCWGroup) as ShopifyProductWithVariants;
-                                      
-                                      if (!selectedProduct || !selectedProduct.variants || selectedProduct.variants.length === 0) {
-                                        return (
-                                          <div className="p-4 text-center text-gray-500">
-                                            No variants found for selected FCW Group
-                                          </div>
-                                        );
-                                      }
-                                      
-                                      return (
-                                        <>
-                                          <div className="px-3 py-2 text-xs font-semibold text-gray-600 bg-gray-50">
-                                            {selectedProduct.title} - Select Variant
-                                          </div>
-                                          {selectedProduct.variants.map((variant) => (
-                                            <SelectItem 
-                                              key={variant.id} 
-                                              value={variant.sku || `${selectedProduct.sku || selectedProduct.title}-${variant.title || variant.id}`}
-                                              data-testid={`option-variant-${variant.id}`}
-                                            >
-                                              <div className="flex flex-col ml-4">
-                                                <span className="font-medium">
-                                                  {variant.title !== 'Default Title' ? variant.title : 'Standard'}
-                                                </span>
-                                                <div className="flex gap-2 text-xs text-gray-500">
-                                                  {variant.sku && <span>SKU: {variant.sku}</span>}
-                                                  <span>${variant.price}</span>
-                                                  {variant.option1 && <span>{variant.option1}</span>}
-                                                  {variant.option2 && <span>{variant.option2}</span>}
-                                                  <span className={variant.available ? "text-green-600" : "text-red-500"}>
-                                                    {variant.available ? "In Stock" : "Out of Stock"}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            </SelectItem>
-                                          ))}
-                                        </>
-                                      );
                                     } else {
                                       // Regular product selection for other categories
-                                      const filteredProducts = getFilteredProducts(products, category.value, categoryTags || []);
+                                      let filteredProducts = getFilteredProducts(products, category.value, categoryTags || []);
+                                      
+                                      // Handle two-step dependencies (OE categories depend on parent group selection)
+                                      if (isOEFrontSprocket) {
+                                        // OE Front Sprocket: Filter to only selected FCW Group product
+                                        if (!selectedFCWGroup) {
+                                          return (
+                                            <div className="p-4 text-center text-gray-500">
+                                              Please select FCW Group first
+                                            </div>
+                                          );
+                                        }
+                                        const selectedProduct = products.find(p => p.sku === selectedFCWGroup || p.title === selectedFCWGroup);
+                                        filteredProducts = selectedProduct ? [selectedProduct] : [];
+                                      } else if (isOERearSprocket) {
+                                        // OE Rear Sprocket: Filter to only selected RCW Group product
+                                        if (!selectedRCWGroup) {
+                                          return (
+                                            <div className="p-4 text-center text-gray-500">
+                                              Please select RCW Group first
+                                            </div>
+                                          );
+                                        }
+                                        const selectedProduct = products.find(p => p.sku === selectedRCWGroup || p.title === selectedRCWGroup);
+                                        filteredProducts = selectedProduct ? [selectedProduct] : [];
+                                      }
                                       
                                       if (filteredProducts.length > 0) {
                                         // Check if display mode is 'variants' - if so, flatten products into variants
