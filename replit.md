@@ -43,6 +43,7 @@ Preferred communication style: Simple, everyday language.
 - **Alternative Variants Display**: Show all gearing options for multi-variant products.
 - **Dynamic Section Management**: Create and reorder part sections and categories via drag-and-drop.
 - **SKU-based Part Mapping**: References SKU for consistent product identification.
+- **Configurable Display Mode**: Part categories support two display modes: 'products' (shows parent products with variant counts) and 'variants' (shows individual SKUs/sizes for precise selection). Default is 'products' mode except for OE Front/Rear Sprockets which use 'variants' mode for size-specific selection.
 
 ### System Design Choices
 - **UI/UX**: Utilizes Radix UI and Tailwind CSS for a consistent, accessible, and responsive design, with specific styling for OE matches and variant displays.

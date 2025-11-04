@@ -208,7 +208,7 @@ function SortableCategory({
                 <SelectValue placeholder="Select a section..." />
               </SelectTrigger>
               <SelectContent>
-                {sectionOptions.map((option) => (
+                {sectionOptions.map((option: { value: string; label: string }) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
