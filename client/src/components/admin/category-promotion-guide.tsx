@@ -1,14 +1,32 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Code, Database, CheckCircle, AlertTriangle, Copy } from "lucide-react";
+import { BookOpen, Code, Database, CheckCircle, AlertTriangle, Copy, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+
+interface CategoryUsage {
+  fixedColumns: string[];
+  jsonbCategories: { category: string; count: number }[];
+}
 
 export default function CategoryPromotionGuide() {
   const { toast } = useToast();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // Fetch category usage data
+  const { data: categoryUsage, isLoading: isLoadingCategories, error: categoryError } = useQuery<CategoryUsage>({
+    queryKey: ['/api/motorcycles/category-usage'],
+    queryFn: async () => {
+      const response = await fetch('/api/motorcycles/category-usage');
+      if (!response.ok) {
+        throw new Error('Failed to fetch category usage');
+      }
+      return response.json();
+    },
+  });
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -58,8 +76,135 @@ WHERE footpegs IS NOT NULL OR customParts ? 'footpegs'
 LIMIT 10;`
   };
 
+  const getCategoryBadgeColor = (count: number) => {
+    if (count >= 100) return "bg-green-100 text-green-800 border-green-300";
+    if (count >= 10) return "bg-yellow-100 text-yellow-800 border-yellow-300";
+    return "bg-gray-100 text-gray-600 border-gray-300";
+  };
+
   return (
     <div className="space-y-6" data-testid="card-category-promotion-guide">
+      {/* Category Usage Overview */}
+      <Card data-testid="card-category-usage-overview">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-purple-600" />
+            <CardTitle>Category Usage Overview</CardTitle>
+          </div>
+          <CardDescription>
+            Live view of fixed database columns vs flexible JSONB categories
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {isLoadingCategories ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <span className="ml-2 text-gray-500">Loading category data...</span>
+            </div>
+          ) : categoryError ? (
+            <Alert variant="destructive" data-testid="alert-category-error">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Failed to Load Categories</AlertTitle>
+              <AlertDescription>
+                Unable to fetch category usage data. Please try refreshing the page or contact support if the problem persists.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              {/* Fixed Columns */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  Fixed Database Columns ({categoryUsage?.fixedColumns.length || 0})
+                </h3>
+                <p className="text-xs text-gray-600 mb-3">
+                  Permanent part categories with fast queries and easy CSV import
+                </p>
+                <div className="flex flex-wrap gap-2" data-testid="list-fixed-columns">
+                  {categoryUsage?.fixedColumns.map((column) => (
+                    <Badge 
+                      key={column} 
+                      variant="outline" 
+                      className="bg-green-50 text-green-700 border-green-200"
+                      data-testid={`badge-fixed-${column}`}
+                    >
+                      {column}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* JSONB Categories */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Database className="h-4 w-4 text-blue-600" />
+                  JSONB Categories ({categoryUsage?.jsonbCategories.length || 0})
+                </h3>
+                <p className="text-xs text-gray-600 mb-3">
+                  Flexible categories stored in customParts field. Ready to promote when usage is high.
+                </p>
+                
+                {categoryUsage && categoryUsage.jsonbCategories.length > 0 ? (
+                  <div className="border rounded-lg overflow-hidden" data-testid="table-jsonb-categories">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Category</th>
+                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Motorcycles Using</th>
+                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {categoryUsage.jsonbCategories.map(({ category, count }) => (
+                          <tr key={category} className="hover:bg-gray-50" data-testid={`row-jsonb-${category}`}>
+                            <td className="px-4 py-3 font-mono text-xs">{category}</td>
+                            <td className="px-4 py-3 text-right font-semibold">{count}</td>
+                            <td className="px-4 py-3 text-right">
+                              <Badge 
+                                variant="outline" 
+                                className={getCategoryBadgeColor(count)}
+                                data-testid={`badge-status-${category}`}
+                              >
+                                {count >= 100 ? '✓ Ready to promote' : count >= 10 ? 'Growing' : 'Experimental'}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <Alert>
+                    <AlertDescription>
+                      No JSONB categories found. All categories are currently using fixed columns.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Legend */}
+                {categoryUsage && categoryUsage.jsonbCategories.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">✓ Ready</Badge>
+                      <span>100+ motorcycles</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">Growing</Badge>
+                      <span>10-99 motorcycles</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300">Experimental</Badge>
+                      <span>1-9 motorcycles</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Category Promotion Guide */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">

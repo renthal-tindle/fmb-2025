@@ -1794,6 +1794,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/motorcycles/category-usage", async (req, res) => {
+    try {
+      const categoryUsage = await storage.getCategoryUsage();
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      res.json(categoryUsage);
+    } catch (error) {
+      console.error('Failed to fetch category usage:', error);
+      res.status(500).json({ message: "Failed to fetch category usage" });
+    }
+  });
+
   app.get("/api/motorcycles/next-recid", async (req, res) => {
     try {
       const nextRecid = await storage.getNextMotorcycleRecid();

@@ -36,6 +36,7 @@ export interface IStorage {
   filterMotorcyclesByMakeModelYear(make: string, model: string, year?: number): Promise<Motorcycle[]>;
   filterMotorcyclesByMakeModelYearRange(make: string, model: string, startYear?: number, endYear?: number): Promise<Motorcycle[]>;
   getNextMotorcycleRecid(): Promise<number>;
+  getCategoryUsage(): Promise<{ fixedColumns: string[], jsonbCategories: { category: string, count: number }[] }>;
 
   // Shopify Products
   getShopifyProducts(): Promise<ShopifyProduct[]>;
@@ -420,6 +421,39 @@ export class MemStorage implements IStorage {
     }
     const maxRecid = Math.max(...Array.from(this.motorcycles.keys()));
     return maxRecid + 1;
+  }
+
+  async getCategoryUsage(): Promise<{ fixedColumns: string[], jsonbCategories: { category: string, count: number }[] }> {
+    // Same fixed columns list as DatabaseStorage
+    const fixedColumns = [
+      'oe_handlebar', 'oe_fcw', 'oe_rcw', 'front_brakepads', 'rear_brakepads',
+      'handlebars_78', 'twinwall', 'fatbar', 'fatbar36', 'grips', 'cam',
+      'oe_barmount', 'barmount28', 'barmount36', 'fcwgroup', 'fcwconv',
+      'rcwconv', 'rcwgroup', 'rcwgroup_range', 'twinring', 'oe_chain',
+      'chainconv', 'r1_chain', 'r3_chain', 'r4_chain', 'rr4_chain',
+      'clipon', 'rcwcarrier', 'active_handlecompare', 'other_fcw'
+    ];
+
+    // Count JSONB category usage from in-memory motorcycles
+    const categoryCount = new Map<string, number>();
+    
+    for (const motorcycle of this.motorcycles.values()) {
+      if (motorcycle.customParts && typeof motorcycle.customParts === 'object') {
+        const customParts = motorcycle.customParts as Record<string, string | null>;
+        for (const category in customParts) {
+          const value = customParts[category];
+          if (value && value.trim() !== '') {
+            categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
+          }
+        }
+      }
+    }
+
+    const jsonbCategories = Array.from(categoryCount.entries())
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+
+    return { fixedColumns, jsonbCategories };
   }
 
   // Shopify Products

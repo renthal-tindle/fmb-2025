@@ -1071,6 +1071,69 @@ export class DatabaseStorage implements IStorage {
     return max + 1;
   }
 
+  async getCategoryUsage(): Promise<{ fixedColumns: string[], jsonbCategories: { category: string, count: number }[] }> {
+    // List of fixed part category columns in the motorcycles table
+    const fixedColumns = [
+      'oe_handlebar',
+      'oe_fcw',
+      'oe_rcw',
+      'front_brakepads',
+      'rear_brakepads',
+      'handlebars_78',
+      'twinwall',
+      'fatbar',
+      'fatbar36',
+      'grips',
+      'cam',
+      'oe_barmount',
+      'barmount28',
+      'barmount36',
+      'fcwgroup',
+      'fcwconv',
+      'rcwconv',
+      'rcwgroup',
+      'rcwgroup_range',
+      'twinring',
+      'oe_chain',
+      'chainconv',
+      'r1_chain',
+      'r3_chain',
+      'r4_chain',
+      'rr4_chain',
+      'clipon',
+      'rcwcarrier',
+      'active_handlecompare',
+      'other_fcw'
+    ];
+
+    // Query to extract all unique keys from customParts JSONB and count usage
+    const jsonbUsageQuery = sql<{ category: string; count: number }>`
+      SELECT 
+        key as category,
+        COUNT(*) as count
+      FROM motorcycles,
+      LATERAL jsonb_each_text(custom_parts) AS kv(key, value)
+      WHERE custom_parts IS NOT NULL 
+        AND custom_parts != 'null'::jsonb
+        AND value IS NOT NULL
+        AND value != ''
+      GROUP BY key
+      ORDER BY COUNT(*) DESC, key ASC
+    `;
+
+    const jsonbResults = await db.execute(jsonbUsageQuery);
+    
+    const jsonbCategories = (jsonbResults as any[]).map((row: any) => ({
+      category: row.category,
+      count: typeof row.count === 'string' ? parseInt(row.count, 10) : row.count
+    }));
+
+    return {
+      fixedColumns,
+      jsonbCategories
+    };
+  }
+
   // ========== SKU-BASED HEALING FUNCTIONS ==========
   
   /**
