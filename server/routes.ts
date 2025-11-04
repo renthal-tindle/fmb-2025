@@ -2754,9 +2754,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'BIKEMODEL', 
           'CAPACITY',
           'FIRSTYEAR',
-          'LASTYEAR',
-          'BIKETYPE',
-          'ENGINETYPE'
+          'LASTYEAR'
         ];
         
         // Convert category values to uppercase headers for CSV
@@ -2768,8 +2766,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create sample data with empty part values (users fill these in)
         const emptyPartValues = new Array(partHeaders.length).fill('');
         const sampleData = [
-          '9999,HONDA,CR 500R,500,1985,2001,2,2-Stroke,' + emptyPartValues.join(','),
-          '9998,YAMAHA,YZ 250,250,2000,2023,2,2-Stroke,' + emptyPartValues.join(',')
+          '9999,HONDA,CR 500R,500,1985,2001,' + emptyPartValues.join(','),
+          '9998,YAMAHA,YZ 250,250,2000,2023,' + emptyPartValues.join(',')
         ];
 
         const csvContent = [csvHeaders.join(','), ...sampleData].join('\n');
@@ -2789,14 +2787,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'BIKEMODEL', 
         'CAPACITY',
         'FIRSTYEAR',
-        'LASTYEAR',
-        'BIKETYPE',
-        'ENGINETYPE'
+        'LASTYEAR'
       ];
 
       const sampleData = [
-        '9999,HONDA,CR 500R,500,1985,2001,2,2-Stroke',
-        '9998,YAMAHA,YZ 250,250,2000,2023,2,2-Stroke'
+        '9999,HONDA,CR 500R,500,1985,2001',
+        '9998,YAMAHA,YZ 250,250,2000,2023'
       ];
 
       const csvContent = [csvHeaders.join(','), ...sampleData].join('\n');
