@@ -44,6 +44,77 @@ const sqlConnection = postgres(process.env.DATABASE_URL!, {
 });
 const db = drizzle(sqlConnection);
 
+/**
+ * Extract tooth count from variant SKU or title
+ * Examples: "292--520-48GP" -> 48, "50 Tooth Sprocket" -> 50, "224U-520-51-GP" -> 51
+ */
+function extractToothCount(text: string | null | undefined): number | null {
+  if (!text) return null;
+  
+  // Match patterns like: -48GP, -50T, 51 teeth, (52), etc.
+  // Look for 2-digit numbers that represent tooth counts (typically 30-80 for sprockets)
+  const patterns = [
+    /-(\d{2})[A-Z]*$/i,           // Matches: 292--520-48GP, 224U-520-51-GP
+    /(\d{2})\s*[Tt]ooth/,         // Matches: "50 Tooth", "48tooth"
+    /(\d{2})\s*[Tt]/,             // Matches: "50T", "48t"
+    /\((\d{2})\)/,                 // Matches: "(52)"
+    /-(\d{2})-/,                   // Matches: -51- (middle position)
+  ];
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      const count = parseInt(match[1], 10);
+      // Reasonable range for motorcycle sprocket tooth counts
+      if (count >= 10 && count <= 100) {
+        return count;
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Parse range string like "49-51" or "48,50,52" into array of valid tooth counts
+ */
+function parseToothRange(rangeStr: string | null | undefined): number[] | null {
+  if (!rangeStr || rangeStr.trim() === '') return null;
+  
+  const trimmed = rangeStr.trim();
+  
+  // Handle range format: "49-51" -> [49, 50, 51]
+  if (trimmed.includes('-')) {
+    const parts = trimmed.split('-').map(p => parseInt(p.trim(), 10));
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      const [start, end] = parts;
+      const range: number[] = [];
+      for (let i = start; i <= end; i++) {
+        range.push(i);
+      }
+      return range;
+    }
+  }
+  
+  // Handle comma-separated format: "48,50,52" -> [48, 50, 52]
+  if (trimmed.includes(',')) {
+    const values = trimmed.split(',')
+      .map(v => parseInt(v.trim(), 10))
+      .filter(v => !isNaN(v));
+    if (values.length > 0) {
+      return values;
+    }
+  }
+  
+  // Handle single value: "50" -> [50]
+  const singleValue = parseInt(trimmed, 10);
+  if (!isNaN(singleValue)) {
+    return [singleValue];
+  }
+  
+  return null;
+}
+
 export class DatabaseStorage implements IStorage {
   // Motorcycles
   async getMotorcycles(): Promise<Motorcycle[]> {
@@ -586,11 +657,18 @@ export class DatabaseStorage implements IStorage {
       // Collect prefix match values for FCW/RCW groups when OE is empty
       const prefixMatchValues: string[] = [];
       
+      // Parse tooth count ranges for FCW/RCW filtering
+      const fcwToothRange = parseToothRange(motorcycle.fcwgroup_range);
+      const rcwToothRange = parseToothRange(motorcycle.rcwgroup_range);
+      
       // Check if fcwgroup is populated but oe_fcw is empty → add for prefix matching
       if (motorcycle.fcwgroup && motorcycle.fcwgroup.trim() !== '' && 
           (!motorcycle.oe_fcw || motorcycle.oe_fcw.trim() === '')) {
         prefixMatchValues.push(motorcycle.fcwgroup.trim());
         console.log(`🔧 FCW Group "${motorcycle.fcwgroup}" with no OE Front Sprocket → will match all variants with prefix`);
+        if (fcwToothRange) {
+          console.log(`   📏 FCW Range filter: ${motorcycle.fcwgroup_range} → [${fcwToothRange.join(', ')}] teeth`);
+        }
       }
       
       // Check if rcwgroup is populated but oe_rcw is empty → add for prefix matching
@@ -598,6 +676,9 @@ export class DatabaseStorage implements IStorage {
           (!motorcycle.oe_rcw || motorcycle.oe_rcw.trim() === '')) {
         prefixMatchValues.push(motorcycle.rcwgroup.trim());
         console.log(`🔧 RCW Group "${motorcycle.rcwgroup}" with no OE Rear Sprocket → will match all variants with prefix`);
+        if (rcwToothRange) {
+          console.log(`   📏 RCW Range filter: ${motorcycle.rcwgroup_range} → [${rcwToothRange.join(', ')}] teeth`);
+        }
       }
       
       // Define all the motorcycle part fields that can contain SKU values
@@ -696,8 +777,64 @@ export class DatabaseStorage implements IStorage {
         }
 
         if (isCompatible) {
-          compatibleProducts.push(product);
-          productMatchInfo.set(product, matchedVariantId);
+          // Apply tooth count range filtering if this product matched via FCW/RCW group
+          let filteredProduct = product;
+          
+          // Check if this product matched via fcwgroup (front sprocket)
+          const matchedViaFCW = motorcycle.fcwgroup && 
+            (product.title?.toLowerCase().trim() === motorcycle.fcwgroup.toLowerCase().trim() ||
+             product.variants?.some((v: any) => v.sku?.toLowerCase().trim().startsWith(motorcycle.fcwgroup.toLowerCase().trim())));
+          
+          // Check if this product matched via rcwgroup (rear sprocket)
+          const matchedViaRCW = motorcycle.rcwgroup && 
+            (product.title?.toLowerCase().trim() === motorcycle.rcwgroup.toLowerCase().trim() ||
+             product.variants?.some((v: any) => v.sku?.toLowerCase().trim().startsWith(motorcycle.rcwgroup.toLowerCase().trim())));
+          
+          // Apply FCW range filter
+          if (matchedViaFCW && fcwToothRange && product.variants) {
+            const originalCount = product.variants.length;
+            filteredProduct = {
+              ...product,
+              variants: product.variants.filter((variant: any) => {
+                const toothCount = extractToothCount(variant.sku) || extractToothCount(variant.title);
+                const inRange = toothCount !== null && fcwToothRange.includes(toothCount);
+                if (toothCount && !inRange) {
+                  console.log(`   ❌ Filtered out FCW variant ${variant.sku}: ${toothCount} teeth not in range [${fcwToothRange.join(', ')}]`);
+                }
+                return inRange;
+              })
+            };
+            if (filteredProduct.variants.length < originalCount) {
+              console.log(`   📊 FCW Range filtered: ${originalCount} → ${filteredProduct.variants.length} variants`);
+            }
+          }
+          
+          // Apply RCW range filter
+          if (matchedViaRCW && rcwToothRange && filteredProduct.variants) {
+            const originalCount = filteredProduct.variants.length;
+            filteredProduct = {
+              ...filteredProduct,
+              variants: filteredProduct.variants.filter((variant: any) => {
+                const toothCount = extractToothCount(variant.sku) || extractToothCount(variant.title);
+                const inRange = toothCount !== null && rcwToothRange.includes(toothCount);
+                if (toothCount && !inRange) {
+                  console.log(`   ❌ Filtered out RCW variant ${variant.sku}: ${toothCount} teeth not in range [${rcwToothRange.join(', ')}]`);
+                }
+                return inRange;
+              })
+            };
+            if (filteredProduct.variants.length < originalCount) {
+              console.log(`   📊 RCW Range filtered: ${originalCount} → ${filteredProduct.variants.length} variants`);
+            }
+          }
+          
+          // Only add product if it still has variants after filtering
+          if (!filteredProduct.variants || filteredProduct.variants.length > 0) {
+            compatibleProducts.push(filteredProduct);
+            productMatchInfo.set(filteredProduct, matchedVariantId);
+          } else {
+            console.log(`   ⚠️ Product "${product.title}" excluded: no variants remain after tooth count filtering`);
+          }
         }
       }
       
