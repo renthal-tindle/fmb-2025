@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { PartCategoryTags, PartSection } from "@shared/schema";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Link as LinkIcon, Info } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -135,6 +136,15 @@ function SortableCategory({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  // Define category relationships
+  const getLinkedCategory = (categoryValue: string) => {
+    if (categoryValue === 'oe_fcw') return { label: 'FCW Group', value: 'fcwgroup' };
+    if (categoryValue === 'oe_rcw') return { label: 'RCW Group', value: 'rcwgroup' };
+    return null;
+  };
+
+  const linkedCategory = getLinkedCategory(category.value);
+
   return (
     <div
       ref={setNodeRef}
@@ -143,6 +153,15 @@ function SortableCategory({
     >
       {editingCategory === category.value ? (
         <div className="space-y-4">
+          {linkedCategory && (
+            <Alert className="bg-blue-50 border-blue-200" data-testid={`alert-linked-${category.value}`}>
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-sm text-blue-800">
+                <strong>Note:</strong> This category requires <strong>{linkedCategory.label}</strong> to be set first on the motorcycle before it can be assigned.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label htmlFor={`label-${category.value}`} className="text-xs font-medium">Label</Label>
@@ -236,10 +255,20 @@ function SortableCategory({
             <span className="material-icons text-gray-400">drag_indicator</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h4 className="font-medium text-sm text-gray-900">{category.label}</h4>
               {category.isSaved && <Badge variant="outline" className="text-xs text-green-600 border-green-300">Saved</Badge>}
               {!category.isDefault && <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Custom</Badge>}
+              {linkedCategory && (
+                <Badge 
+                  variant="outline" 
+                  className="text-xs bg-blue-50 text-blue-700 border-blue-300 flex items-center gap-1"
+                  data-testid={`badge-linked-${category.value}`}
+                >
+                  <LinkIcon className="h-3 w-3" />
+                  Linked to {linkedCategory.label}
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-gray-500 mb-2">{category.value}</p>
             <div className="flex flex-wrap gap-1">
