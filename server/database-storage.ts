@@ -487,6 +487,17 @@ export class DatabaseStorage implements IStorage {
           }
         }
         
+        // Collect prefix match values for FCW/RCW groups when OE is empty
+        const prefixMatchValues: string[] = [];
+        if (motorcycle.fcwgroup && motorcycle.fcwgroup.trim() !== '' && 
+            (!motorcycle.oe_fcw || motorcycle.oe_fcw.trim() === '')) {
+          prefixMatchValues.push(motorcycle.fcwgroup.trim());
+        }
+        if (motorcycle.rcwgroup && motorcycle.rcwgroup.trim() !== '' && 
+            (!motorcycle.oe_rcw || motorcycle.oe_rcw.trim() === '')) {
+          prefixMatchValues.push(motorcycle.rcwgroup.trim());
+        }
+        
         // Count compatible products for this motorcycle
         let count = 0;
         for (const product of allProducts) {
@@ -498,12 +509,28 @@ export class DatabaseStorage implements IStorage {
           )) {
             isCompatible = true;
           }
+          
+          // Check if product title matches any prefix value (for group products without OE)
+          if (!isCompatible && prefixMatchValues.some(prefix => 
+            product.title && product.title.toLowerCase().trim() === prefix.toLowerCase().trim()
+          )) {
+            isCompatible = true;
+          }
 
           // If not matched by main SKU, check variant SKUs
           if (!isCompatible && product.variants) {
             for (const variant of product.variants) {
+              // Exact SKU match
               if (variant.sku && motorcyclePartValues.some(partValue => 
                 variant.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
+              )) {
+                isCompatible = true;
+                break;
+              }
+              
+              // Prefix match for FCW/RCW groups (when OE is empty, show all variants)
+              if (!isCompatible && variant.sku && prefixMatchValues.some(prefix => 
+                variant.sku.toLowerCase().trim().startsWith(prefix.toLowerCase().trim())
               )) {
                 isCompatible = true;
                 break;
@@ -556,6 +583,23 @@ export class DatabaseStorage implements IStorage {
       // Collect ALL motorcycle part values for SKU matching (not just OE fields)
       const motorcyclePartValues = [];
       
+      // Collect prefix match values for FCW/RCW groups when OE is empty
+      const prefixMatchValues: string[] = [];
+      
+      // Check if fcwgroup is populated but oe_fcw is empty → add for prefix matching
+      if (motorcycle.fcwgroup && motorcycle.fcwgroup.trim() !== '' && 
+          (!motorcycle.oe_fcw || motorcycle.oe_fcw.trim() === '')) {
+        prefixMatchValues.push(motorcycle.fcwgroup.trim());
+        console.log(`🔧 FCW Group "${motorcycle.fcwgroup}" with no OE Front Sprocket → will match all variants with prefix`);
+      }
+      
+      // Check if rcwgroup is populated but oe_rcw is empty → add for prefix matching
+      if (motorcycle.rcwgroup && motorcycle.rcwgroup.trim() !== '' && 
+          (!motorcycle.oe_rcw || motorcycle.oe_rcw.trim() === '')) {
+        prefixMatchValues.push(motorcycle.rcwgroup.trim());
+        console.log(`🔧 RCW Group "${motorcycle.rcwgroup}" with no OE Rear Sprocket → will match all variants with prefix`);
+      }
+      
       // Define all the motorcycle part fields that can contain SKU values
       const partFieldsToCheck = [
         // Original Equipment fields
@@ -596,6 +640,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       console.log(`🔍 Motorcycle ${motorcycleRecid} part values for SKU matching:`, motorcyclePartValues);
+      console.log(`🔍 Motorcycle ${motorcycleRecid} prefix match values:`, prefixMatchValues);
       console.log(`📋 Motorcycle ${motorcycleRecid} record:`, JSON.stringify(motorcycle, null, 2));
       
       let compatibleProducts: any[] = [];
@@ -616,15 +661,35 @@ export class DatabaseStorage implements IStorage {
           // If main product SKU matches, use first variant ID
           matchedVariantId = product.variants?.[0]?.id?.toString() || null;
         }
+        
+        // Check if product title matches any prefix value (for group products without OE)
+        if (!isCompatible && prefixMatchValues.some(prefix => 
+          product.title && product.title.toLowerCase().trim() === prefix.toLowerCase().trim()
+        )) {
+          isCompatible = true;
+          matchedVariantId = null; // All variants match
+          console.log(`✅ Product title match: "${product.title}" matches FCW/RCW group → returning all variants`);
+        }
 
         // If not matched by main SKU, check variant SKUs
         if (!isCompatible && product.variants) {
           for (const variant of product.variants) {
+            // Exact SKU match
             if (variant.sku && motorcyclePartValues.some(partValue => 
               variant.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
             )) {
               isCompatible = true;
               matchedVariantId = variant.id?.toString() || null;
+              break;
+            }
+            
+            // Prefix match for FCW/RCW groups (when OE is empty, show all variants)
+            if (!isCompatible && variant.sku && prefixMatchValues.some(prefix => 
+              variant.sku.toLowerCase().trim().startsWith(prefix.toLowerCase().trim())
+            )) {
+              isCompatible = true;
+              matchedVariantId = variant.id?.toString() || null;
+              console.log(`✅ Prefix match: variant SKU "${variant.sku}" matches prefix "${prefixMatchValues.find(p => variant.sku.toLowerCase().trim().startsWith(p.toLowerCase().trim()))}"`);
               break;
             }
           }

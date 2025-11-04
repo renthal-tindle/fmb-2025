@@ -545,6 +545,23 @@ export class MemStorage implements IStorage {
     // Collect ALL motorcycle part values for SKU matching (not just OE fields)
     const motorcyclePartValues = [];
     
+    // Collect prefix match values for FCW/RCW groups when OE is empty
+    const prefixMatchValues: string[] = [];
+    
+    // Check if fcwgroup is populated but oe_fcw is empty → add for prefix matching
+    if (motorcycle.fcwgroup && motorcycle.fcwgroup.trim() !== '' && 
+        (!motorcycle.oe_fcw || motorcycle.oe_fcw.trim() === '')) {
+      prefixMatchValues.push(motorcycle.fcwgroup.trim());
+      console.log(`🔧 FCW Group "${motorcycle.fcwgroup}" with no OE Front Sprocket → will match all variants with prefix`);
+    }
+    
+    // Check if rcwgroup is populated but oe_rcw is empty → add for prefix matching
+    if (motorcycle.rcwgroup && motorcycle.rcwgroup.trim() !== '' && 
+        (!motorcycle.oe_rcw || motorcycle.oe_rcw.trim() === '')) {
+      prefixMatchValues.push(motorcycle.rcwgroup.trim());
+      console.log(`🔧 RCW Group "${motorcycle.rcwgroup}" with no OE Rear Sprocket → will match all variants with prefix`);
+    }
+    
     // Define all the motorcycle part fields that can contain SKU values
     const partFieldsToCheck = [
       // Original Equipment fields
@@ -574,6 +591,7 @@ export class MemStorage implements IStorage {
     }
     
     console.log(`🔍 Motorcycle ${motorcycleRecid} part values for SKU matching:`, motorcyclePartValues);
+    console.log(`🔍 Motorcycle ${motorcycleRecid} prefix match values:`, prefixMatchValues);
     console.log(`📋 Motorcycle ${motorcycleRecid} record:`, JSON.stringify(motorcycle, null, 2));
     
     let compatibleProducts: ShopifyProduct[] = [];
@@ -582,21 +600,39 @@ export class MemStorage implements IStorage {
     for (const product of Array.from(this.shopifyProducts.values())) {
       let isCompatible = false;
 
-      // Check if the main product SKU matches any motorcycle part value
+      // Check if the main product SKU matches any motorcycle part value (exact match)
       if (motorcyclePartValues.some(partValue => 
         product.sku && product.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
       )) {
         isCompatible = true;
+      }
+      
+      // Check if product title matches any prefix value (for group products without OE)
+      if (!isCompatible && prefixMatchValues.some(prefix => 
+        product.title && product.title.toLowerCase().trim() === prefix.toLowerCase().trim()
+      )) {
+        isCompatible = true;
+        console.log(`✅ Product title match: "${product.title}" matches FCW/RCW group → returning all variants`);
       }
 
       // If not matched by main SKU, check variant SKUs if available
       if (!isCompatible && product.variants) {
         const variants = typeof product.variants === 'string' ? JSON.parse(product.variants) : product.variants;
         for (const variant of variants) {
+          // Exact SKU match
           if (variant.sku && motorcyclePartValues.some(partValue => 
             variant.sku.toLowerCase().trim() === partValue.toLowerCase().trim()
           )) {
             isCompatible = true;
+            break;
+          }
+          
+          // Prefix match for FCW/RCW groups (when OE is empty, show all variants)
+          if (!isCompatible && variant.sku && prefixMatchValues.some(prefix => 
+            variant.sku.toLowerCase().trim().startsWith(prefix.toLowerCase().trim())
+          )) {
+            isCompatible = true;
+            console.log(`✅ Prefix match: variant SKU "${variant.sku}" matches prefix "${prefixMatchValues.find(p => variant.sku.toLowerCase().trim().startsWith(p.toLowerCase().trim()))}"`);
             break;
           }
         }
@@ -607,7 +643,7 @@ export class MemStorage implements IStorage {
       }
     }
     
-    console.log(`✅ Found ${compatibleProducts.length} compatible parts for motorcycle ${motorcycleRecid} using motorcycle database fields`);
+    console.log(`✅ Found ${compatibleProducts.length} compatible parts for motorcycle ${motorcycleRecid} using motorcycle database fields (${prefixMatchValues.length} prefix matches)`);
     return compatibleProducts;
   }
 
