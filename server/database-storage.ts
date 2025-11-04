@@ -878,6 +878,7 @@ export class DatabaseStorage implements IStorage {
         categoryLabel: partCategoryTags.categoryLabel,
         productTags: partCategoryTags.productTags,
         assignedSection: partCategoryTags.assignedSection,
+        displayMode: partCategoryTags.displayMode,
         sortOrder: partCategoryTags.sortOrder,
         createdAt: partCategoryTags.createdAt,
         updatedAt: partCategoryTags.updatedAt,
