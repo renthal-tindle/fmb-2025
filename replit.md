@@ -36,6 +36,7 @@ Preferred communication style: Simple, everyday language.
 - **Dynamic Category Management**: Admin panel for motorcycle categories and subcategories.
 - **Hybrid Category Strategy**: Core categories stored as fixed columns for performance; experimental categories use customParts JSONB for flexibility.
 - **Category Promotion Guide**: Interactive documentation in Settings tab showing how to promote categories from customParts JSONB to fixed columns, with copyable SQL and step-by-step migration instructions.
+- **Category Usage Overview**: Live dashboard showing all 30 fixed database columns and JSONB categories with usage counts, color-coded promotion status (green: ≥100 motorcycles, yellow: 10-99, gray: <10), helping admins decide when to promote experimental categories to fixed columns.
 - **Responsive Design**: Mobile-first approach.
 - **OE Match Highlighting**: Visual identification of Original Equipment parts.
 - **OE Parts Table**: Professional table displaying all OE parts with Category, Part Number, Description, Available Options count, and Add to Cart action. Responsive design transforms to stacked cards on mobile.
