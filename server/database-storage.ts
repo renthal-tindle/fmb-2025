@@ -175,7 +175,6 @@ export class DatabaseStorage implements IStorage {
     bikemake?: string; 
     firstyear?: number; 
     lastyear?: number; 
-    biketype?: number;
     bikeCategory?: string;
     bikeSubcategory?: string;
   }): Promise<Motorcycle[]> {
@@ -194,9 +193,6 @@ export class DatabaseStorage implements IStorage {
       // If user filters by lastyear, find bikes that were available in that year
       conditions.push(lte(motorcycles.firstyear, filters.lastyear));
       conditions.push(gte(motorcycles.lastyear, filters.lastyear));
-    }
-    if (filters.biketype) {
-      conditions.push(eq(motorcycles.biketype, filters.biketype));
     }
     if (filters.bikeCategory) {
       conditions.push(eq(motorcycles.bikeCategory, filters.bikeCategory));

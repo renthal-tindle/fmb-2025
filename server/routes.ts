@@ -1718,7 +1718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Motorcycles routes
   app.get("/api/motorcycles", async (req, res) => {
     try {
-      const { search, bikemake, firstyear, lastyear, biketype, bikeCategory, bikeSubcategory } = req.query;
+      const { search, bikemake, firstyear, lastyear, bikeCategory, bikeSubcategory } = req.query;
       
       let motorcycles;
       if (search) {
@@ -1736,12 +1736,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Log analytics error but don't fail the search
           console.error('Failed to track search analytics:', analyticsError);
         }
-      } else if (bikemake || firstyear || lastyear || biketype || bikeCategory || bikeSubcategory) {
+      } else if (bikemake || firstyear || lastyear || bikeCategory || bikeSubcategory) {
         motorcycles = await storage.filterMotorcycles({
           bikemake: bikemake as string,
           firstyear: firstyear ? parseInt(firstyear as string) : undefined,
           lastyear: lastyear ? parseInt(lastyear as string) : undefined,
-          biketype: biketype ? parseInt(biketype as string) : undefined,
           bikeCategory: bikeCategory as string,
           bikeSubcategory: bikeSubcategory as string,
         });
@@ -2603,7 +2602,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const motorcycles = data.map(row => ({
         recid: parseInt(row.RECID),
-        biketype: parseInt(row.BIKETYPE),
         bikemake: row.BIKEMAKE,
         bikemodel: row.BIKEMODEL,
         firstyear: parseInt(row.FIRSTYEAR),
@@ -2825,9 +2823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'BIKEMODEL', 
         'CAPACITY',
         'FIRSTYEAR',
-        'LASTYEAR',
-        'BIKETYPE',
-        'ENGINETYPE'
+        'LASTYEAR'
       ];
       
       // Convert category values to uppercase headers for CSV
@@ -2847,9 +2843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           motorcycle.bikemodel || '',
           motorcycle.capacity?.toString() || '',
           motorcycle.firstyear?.toString() || '',
-          motorcycle.lastyear?.toString() || '',
-          motorcycle.biketype?.toString() || '',
-          '' // enginetype not in schema
+          motorcycle.lastyear?.toString() || ''
         ];
         
         // Add part data for each category - get from motorcycle columns directly
@@ -3071,9 +3065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 bikemodel: row.BIKEMODEL.trim(),
                 capacity: row.CAPACITY ? parseInt(row.CAPACITY) : null,
                 firstyear: row.FIRSTYEAR ? parseInt(row.FIRSTYEAR) : null,
-                lastyear: row.LASTYEAR ? parseInt(row.LASTYEAR) : null,
-                biketype: row.BIKETYPE ? parseInt(row.BIKETYPE) : null,
-                enginetype: row.ENGINETYPE?.trim() || null
+                lastyear: row.LASTYEAR ? parseInt(row.LASTYEAR) : null
               };
 
               // Create motorcycle
@@ -3186,23 +3178,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               rowErrors.push({ field: 'BIKEMODEL', message: 'BIKEMODEL is required' });
             }
 
-            if (!row.BIKETYPE) {
-              rowErrors.push({ field: 'BIKETYPE', message: 'BIKETYPE is required' });
-            } else if (isNaN(parseInt(row.BIKETYPE))) {
-              rowErrors.push({ field: 'BIKETYPE', message: 'BIKETYPE must be a number' });
-            }
-
             // If validation passed, create the motorcycle object
             if (rowErrors.length === 0) {
               const motorcycleData = {
                 recid: assignedRecid,
-                biketype: parseInt(row.BIKETYPE),
                 bikemake: row.BIKEMAKE.trim(),
                 bikemodel: row.BIKEMODEL.trim(),
                 capacity: row.CAPACITY ? parseInt(row.CAPACITY) : null,
                 firstyear: row.FIRSTYEAR ? parseInt(row.FIRSTYEAR) : null,
-                lastyear: row.LASTYEAR ? parseInt(row.LASTYEAR) : null,
-                enginetype: row.ENGINETYPE?.trim() || null,
+                lastyear: row.LASTYEAR ? parseInt(row.LASTYEAR) : null
               };
 
               // Validate with Zod schema
@@ -4153,7 +4137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // App proxy route for motorcycles data (used by Theme App Extension)
   app.get("/api/proxy/api/motorcycles", appProxySecurityMiddleware, async (req, res) => {
     try {
-      const { search, bikemake, firstyear, lastyear, biketype, recid } = req.query;
+      const { search, bikemake, firstyear, lastyear, recid } = req.query;
       
       if (recid) {
         // Single motorcycle by recid
@@ -4164,13 +4148,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json([motorcycle]); // Return as array for consistency with frontend expectations
       } else {
         // Multiple motorcycles with filters
-        if (bikemake || firstyear || lastyear || biketype) {
+        if (bikemake || firstyear || lastyear) {
           // Use filterMotorcycles for filtering by specific criteria
           const results = await storage.filterMotorcycles({
             bikemake: bikemake as string,
             firstyear: firstyear ? parseInt(firstyear as string) : undefined,
-            lastyear: lastyear ? parseInt(lastyear as string) : undefined,
-            biketype: biketype ? parseInt(biketype as string) : undefined
+            lastyear: lastyear ? parseInt(lastyear as string) : undefined
           });
           res.json(results);
         } else if (search) {

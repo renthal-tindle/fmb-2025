@@ -64,7 +64,6 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
     ),
     defaultValues: {
       recid: motorcycle?.recid || undefined,
-      biketype: motorcycle?.biketype || 1,
       bikeCategory: motorcycle?.bikeCategory || null,
       bikeSubcategory: motorcycle?.bikeSubcategory || null,
       bikemake: motorcycle?.bikemake || "",
@@ -299,30 +298,6 @@ export default function MotorcycleForm({ motorcycle, onClose }: MotorcycleFormPr
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="biketype"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Legacy Type (for compatibility)</FormLabel>
-                  <Select value={field.value?.toString()} onValueChange={(value) => field.onChange(parseInt(value))}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-motorcycle-biketype">
-                        <SelectValue placeholder="Select bike type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="1">Street/Road</SelectItem>
-                      <SelectItem value="2">Dirt/Off-road</SelectItem>
-                      <SelectItem value="5">Dual Sport</SelectItem>
-                      <SelectItem value="6">ATV/Quad</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button 

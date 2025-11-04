@@ -28,7 +28,7 @@ export interface IStorage {
   updateMotorcycle(recid: number, motorcycle: Partial<InsertMotorcycle>): Promise<Motorcycle | undefined>;
   deleteMotorcycle(recid: number): Promise<boolean>;
   searchMotorcycles(query: string): Promise<Motorcycle[]>;
-  filterMotorcycles(filters: { bikemake?: string; firstyear?: number; lastyear?: number; biketype?: number }): Promise<Motorcycle[]>;
+  filterMotorcycles(filters: { bikemake?: string; firstyear?: number; lastyear?: number; bikeCategory?: string; bikeSubcategory?: string }): Promise<Motorcycle[]>;
   getDistinctMotorcycleMakes(): Promise<string[]>;
   getDistinctMotorcycleYears(): Promise<number[]>;
   getDistinctMotorcycleModelsByMake(make: string): Promise<string[]>;
@@ -131,7 +131,6 @@ export class MemStorage implements IStorage {
     const sampleMotorcycles: InsertMotorcycle[] = [
       {
         recid: 10001,
-        biketype: 1, // Street bike
         bikemake: "Honda",
         bikemodel: "CBR600RR",
         firstyear: 2023,
@@ -140,7 +139,6 @@ export class MemStorage implements IStorage {
       },
       {
         recid: 10002,
-        biketype: 1, // Street bike
         bikemake: "Yamaha",
         bikemodel: "MT-09",
         firstyear: 2023,
@@ -149,7 +147,6 @@ export class MemStorage implements IStorage {
       },
       {
         recid: 10003,
-        biketype: 1, // Street bike
         bikemake: "Kawasaki",
         bikemodel: "Ninja ZX-6R",
         firstyear: 2022,
@@ -279,14 +276,15 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async filterMotorcycles(filters: { bikemake?: string; firstyear?: number; lastyear?: number; biketype?: number }): Promise<Motorcycle[]> {
+  async filterMotorcycles(filters: { bikemake?: string; firstyear?: number; lastyear?: number; bikeCategory?: string; bikeSubcategory?: string }): Promise<Motorcycle[]> {
     return Array.from(this.motorcycles.values()).filter(motorcycle => {
       if (filters.bikemake && motorcycle.bikemake.toLowerCase() !== filters.bikemake.toLowerCase()) return false;
       // If user selects a year like 2021, find bikes that were available in 2021
       // This means: firstyear <= 2021 AND lastyear >= 2021  
       if (filters.firstyear && (motorcycle.firstyear > filters.firstyear || motorcycle.lastyear < filters.firstyear)) return false;
       if (filters.lastyear && (motorcycle.firstyear > filters.lastyear || motorcycle.lastyear < filters.lastyear)) return false;
-      if (filters.biketype && motorcycle.biketype !== filters.biketype) return false;
+      if (filters.bikeCategory && motorcycle.bikeCategory !== filters.bikeCategory) return false;
+      if (filters.bikeSubcategory && motorcycle.bikeSubcategory !== filters.bikeSubcategory) return false;
       return true;
     });
   }
