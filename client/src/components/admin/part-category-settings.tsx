@@ -486,12 +486,32 @@ export default function PartCategorySettings() {
         });
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      // Update the cache directly with the new values before invalidating
+      queryClient.setQueryData(["/api/part-category-tags"], (oldData: any[]) => {
+        if (!oldData) return oldData;
+        return oldData.map(cat => 
+          cat.categoryValue === (variables.originalValue || variables.categoryValue)
+            ? { ...cat, 
+                categoryValue: variables.categoryValue,
+                categoryLabel: variables.categoryLabel,
+                productTags: variables.productTags,
+                assignedSection: variables.assignedSection,
+                displayMode: variables.displayMode,
+                sortOrder: variables.sortOrder
+              }
+            : cat
+        );
+      });
+      
+      // Then invalidate to ensure fresh data from server
       queryClient.invalidateQueries({ queryKey: ["/api/part-category-tags"] });
+      
       setEditingCategory(null);
       setOriginalCategoryValue(null);
       setEditingTags("");
       setEditingSection("unassigned");
+      setEditingDisplayMode("products");
       setEditingLabel("");
       setEditingValue("");
       toast({
