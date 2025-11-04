@@ -163,6 +163,8 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
   const [editingValue, setEditingValue] = useState("");
   const [showVariantDropdown, setShowVariantDropdown] = useState(false);
   const [selectedProductForVariant, setSelectedProductForVariant] = useState("");
+  const [editingToothRange, setEditingToothRange] = useState<'fcwgroup_range' | 'rcwgroup_range' | null>(null);
+  const [toothRangeValue, setToothRangeValue] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -350,6 +352,47 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
     },
   });
 
+  // Mutation for updating tooth ranges
+  const updateToothRangeMutation = useMutation({
+    mutationFn: async ({ motorcycleId, rangeType, rangeValue }: {
+      motorcycleId: number;
+      rangeType: 'fcwgroup_range' | 'rcwgroup_range';
+      rangeValue: string;
+    }) => {
+      const response = await fetch(`/api/motorcycles/${motorcycleId}/tooth-range`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rangeType, rangeValue }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update tooth range');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/motorcycles`, variables.motorcycleId, `/parts`] });
+      const label = variables.rangeType === 'fcwgroup_range' ? 'Front Sprocket' : 'Rear Sprocket';
+      toast({
+        title: "Tooth range updated",
+        description: variables.rangeValue 
+          ? `Set ${label} tooth range to ${variables.rangeValue}`
+          : `Cleared ${label} tooth range filter`,
+      });
+      setEditingToothRange(null);
+      setToothRangeValue("");
+    },
+    onError: (error) => {
+      toast({
+        title: "Error updating tooth range",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const assignProduct = (partCategory: string, productVariant: string) => {
     if (!currentMotorcycle) return;
 
@@ -396,6 +439,26 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
   const cancelEditing = () => {
     setEditingCategory(null);
     setEditingValue("");
+  };
+
+  const startEditingToothRange = (rangeType: 'fcwgroup_range' | 'rcwgroup_range', currentValue: string | null) => {
+    setEditingToothRange(rangeType);
+    setToothRangeValue(currentValue || "");
+  };
+
+  const saveToothRange = () => {
+    if (!currentMotorcycle || !editingToothRange) return;
+    
+    updateToothRangeMutation.mutate({
+      motorcycleId: currentMotorcycle.recid,
+      rangeType: editingToothRange,
+      rangeValue: toothRangeValue.trim(),
+    });
+  };
+
+  const cancelToothRangeEditing = () => {
+    setEditingToothRange(null);
+    setToothRangeValue("");
   };
 
   return (
@@ -887,18 +950,61 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                               {assignedPart}
                             </div>
                             
-                            {/* Show tooth range helper for FCW Group and RCW Group */}
+                            {/* Show tooth range editor for FCW Group and RCW Group */}
                             {(isFCWGroup || isRCWGroup) && (
                               <div className="text-xs bg-blue-50 p-2 rounded border border-blue-200">
                                 <div className="font-medium text-gray-700 mb-1">
-                                  🦷 Tooth Range Filter {motorcycleParts[isFCWGroup ? 'fcwgroup_range' : 'rcwgroup_range'] ? '(Active)' : '(Optional)'}
+                                  🦷 Tooth Range Filter
                                 </div>
-                                <div className="text-gray-600">
-                                  {motorcycleParts[isFCWGroup ? 'fcwgroup_range' : 'rcwgroup_range'] || 'No range set - all variants shown'}
-                                </div>
-                                <div className="text-gray-500 mt-1 italic">
-                                  Set via CSV import (e.g., "49-51" or "48,50,52")
-                                </div>
+                                
+                                {editingToothRange === (isFCWGroup ? 'fcwgroup_range' : 'rcwgroup_range') ? (
+                                  <div className="space-y-2">
+                                    <Input
+                                      type="text"
+                                      value={toothRangeValue}
+                                      onChange={(e) => setToothRangeValue(e.target.value)}
+                                      placeholder="e.g., 49-51 or 48,50,52"
+                                      className="text-xs h-7"
+                                      data-testid={`input-tooth-range-${category.value}`}
+                                    />
+                                    <div className="flex gap-1">
+                                      <Button
+                                        size="sm"
+                                        onClick={saveToothRange}
+                                        disabled={updateToothRangeMutation.isPending}
+                                        className="text-xs px-2 py-1 h-6 flex-1"
+                                        data-testid={`button-save-tooth-range-${category.value}`}
+                                      >
+                                        {updateToothRangeMutation.isPending ? "Saving..." : "Save"}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={cancelToothRangeEditing}
+                                        className="text-xs px-2 py-1 h-6 flex-1"
+                                        data-testid={`button-cancel-tooth-range-${category.value}`}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div
+                                      className="text-gray-700 font-medium cursor-pointer hover:bg-blue-100 p-1 rounded"
+                                      onClick={() => startEditingToothRange(
+                                        isFCWGroup ? 'fcwgroup_range' : 'rcwgroup_range',
+                                        motorcycleParts[isFCWGroup ? 'fcwgroup_range' : 'rcwgroup_range']
+                                      )}
+                                      data-testid={`text-tooth-range-${category.value}`}
+                                    >
+                                      {motorcycleParts[isFCWGroup ? 'fcwgroup_range' : 'rcwgroup_range'] || 'No range set - all variants shown'}
+                                    </div>
+                                    <div className="text-gray-500 mt-1 italic">
+                                      Click to edit (e.g., "49-51" or "48,50,52")
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             )}
                           </>

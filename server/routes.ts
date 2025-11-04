@@ -1879,6 +1879,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update tooth range for FCW/RCW groups
+  app.patch("/api/motorcycles/:recid/tooth-range", async (req, res) => {
+    try {
+      const recid = parseInt(req.params.recid);
+      const { rangeType, rangeValue } = req.body;
+      
+      if (!rangeType || !['fcwgroup_range', 'rcwgroup_range'].includes(rangeType)) {
+        return res.status(400).json({ message: "Invalid range type. Must be 'fcwgroup_range' or 'rcwgroup_range'" });
+      }
+      
+      // Validate range format if provided
+      if (rangeValue && rangeValue.trim()) {
+        const rangePattern = /^(\d+)-(\d+)$|^(\d+)(,\d+)*$/;
+        if (!rangePattern.test(rangeValue.trim())) {
+          return res.status(400).json({ 
+            message: "Invalid range format. Use '49-51' for range or '48,50,52' for specific values" 
+          });
+        }
+      }
+      
+      const updateData = {
+        [rangeType]: rangeValue && rangeValue.trim() ? rangeValue.trim() : null
+      };
+      
+      const motorcycle = await storage.updateMotorcycle(recid, updateData);
+      if (!motorcycle) {
+        return res.status(404).json({ message: "Motorcycle not found" });
+      }
+      
+      res.json(motorcycle);
+    } catch (error) {
+      console.error("Error updating tooth range:", error);
+      res.status(500).json({ message: "Failed to update tooth range" });
+    }
+  });
+
   // Part Assignment routes
   app.patch("/api/motorcycles/:recid/parts", async (req, res) => {
     try {
@@ -1893,7 +1929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hardcodedColumns = [
         'oe_handlebar', 'oe_fcw', 'oe_rcw', 'front_brakepads', 'rear_brakepads',
         'handlebars_78', 'twinwall', 'fatbar', 'fatbar36', 'grips', 'cam',
-        'oe_barmount', 'barmount28', 'barmount36', 'fcwgroup', 'fcwconv',
+        'oe_barmount', 'barmount28', 'barmount36', 'fcwgroup', 'fcwgroup_range', 'fcwconv',
         'rcwconv', 'rcwgroup', 'rcwgroup_range', 'twinring', 'oe_chain',
         'chainconv', 'r1_chain', 'r3_chain', 'r4_chain', 'rr4_chain',
         'clipon', 'rcwcarrier', 'active_handlecompare', 'other_fcw'
