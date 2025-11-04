@@ -30,6 +30,7 @@ export const motorcycles = pgTable("motorcycles", {
   barmount28: text("barmount28"),
   barmount36: text("barmount36"),
   fcwgroup: text("fcwgroup"),
+  fcwgroup_range: text("fcwgroup_range"),
   fcwconv: text("fcwconv"),
   rcwconv: text("rcwconv"),
   rcwgroup: text("rcwgroup"),
