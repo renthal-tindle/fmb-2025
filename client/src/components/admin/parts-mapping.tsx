@@ -878,13 +878,30 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                     ) : (
                       <div className="space-y-2">
                         {assignedPart ? (
-                          <div
-                            className="text-lg font-semibold text-green-700 cursor-pointer hover:text-green-800"
-                            onClick={() => startEditing(category.value, assignedPart)}
-                            data-testid={`text-assigned-${category.value}`}
-                          >
-                            {assignedPart}
-                          </div>
+                          <>
+                            <div
+                              className="text-lg font-semibold text-green-700 cursor-pointer hover:text-green-800"
+                              onClick={() => startEditing(category.value, assignedPart)}
+                              data-testid={`text-assigned-${category.value}`}
+                            >
+                              {assignedPart}
+                            </div>
+                            
+                            {/* Show tooth range helper for FCW Group and RCW Group */}
+                            {(isFCWGroup || isRCWGroup) && (
+                              <div className="text-xs bg-blue-50 p-2 rounded border border-blue-200">
+                                <div className="font-medium text-gray-700 mb-1">
+                                  🦷 Tooth Range Filter {motorcycleParts[isFCWGroup ? 'fcwgroup_range' : 'rcwgroup_range'] ? '(Active)' : '(Optional)'}
+                                </div>
+                                <div className="text-gray-600">
+                                  {motorcycleParts[isFCWGroup ? 'fcwgroup_range' : 'rcwgroup_range'] || 'No range set - all variants shown'}
+                                </div>
+                                <div className="text-gray-500 mt-1 italic">
+                                  Set via CSV import (e.g., "49-51" or "48,50,52")
+                                </div>
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <div
                             className="text-sm text-blue-600 cursor-pointer hover:text-blue-700 hover:bg-blue-50 py-3 border-2 border-dashed border-blue-300 rounded text-center transition-all"
