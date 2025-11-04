@@ -954,7 +954,7 @@ export default function PartsMapping({ selectedMotorcycle }: PartsMappingProps) 
                             {(isFCWGroup || isRCWGroup) && (
                               <div className="text-xs bg-blue-50 p-2 rounded border border-blue-200">
                                 <div className="font-medium text-gray-700 mb-1">
-                                  🦷 Tooth Range Filter
+                                  🦷 {isFCWGroup ? 'Front' : 'Rear'} Sprocket Tooth Range Filter
                                 </div>
                                 
                                 {editingToothRange === (isFCWGroup ? 'fcwgroup_range' : 'rcwgroup_range') ? (
