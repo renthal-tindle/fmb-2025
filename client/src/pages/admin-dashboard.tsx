@@ -14,7 +14,6 @@ import { CSVImport } from "@/components/admin/csv-import";
 import PartCategorySettings from "@/components/admin/part-category-settings";
 import { PartsInventory } from "@/components/admin/parts-inventory";
 import { TopSearchesAnalytics } from "@/components/admin/top-searches-analytics";
-import SystemModeToggle from "@/components/admin/system-mode-toggle";
 import CategoryPromotionGuide from "@/components/admin/category-promotion-guide";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MotorcycleCategoryManagement from "@/components/admin/motorcycle-category-management";
@@ -749,7 +748,7 @@ export default function AdminDashboard() {
               </div>
               
               <Tabs defaultValue="motorcycles" className="w-full">
-                <TabsList className="grid w-full max-w-3xl grid-cols-4">
+                <TabsList className="grid w-full max-w-2xl grid-cols-3">
                   <TabsTrigger value="motorcycles" data-testid="tab-motorcycle-settings">
                     <span className="material-icons text-sm mr-2">two_wheeler</span>
                     Motorcycle Settings
@@ -757,10 +756,6 @@ export default function AdminDashboard() {
                   <TabsTrigger value="parts" data-testid="tab-parts-mapping">
                     <span className="material-icons text-sm mr-2">category</span>
                     Parts Mapping
-                  </TabsTrigger>
-                  <TabsTrigger value="system" data-testid="tab-system-mode">
-                    <span className="material-icons text-sm mr-2">settings_applications</span>
-                    System Mode
                   </TabsTrigger>
                   <TabsTrigger value="promotion" data-testid="tab-category-promotion">
                     <span className="material-icons text-sm mr-2">upgrade</span>
@@ -774,10 +769,6 @@ export default function AdminDashboard() {
                 
                 <TabsContent value="parts" className="mt-6 space-y-6">
                   <PartCategorySettings />
-                </TabsContent>
-
-                <TabsContent value="system" className="mt-6 space-y-6">
-                  <SystemModeToggle />
                 </TabsContent>
 
                 <TabsContent value="promotion" className="mt-6 space-y-6">
