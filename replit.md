@@ -36,6 +36,7 @@ Preferred communication style: Simple, everyday language.
 - **Compatibility Management**: Link parts to motorcycle models.
 - **Dynamic Category Management**: Admin panel for motorcycle categories and subcategories.
 - **Parallel Testing Mode**: Toggle between Legacy (fixed columns) and Extended (JSONB dynamic categories) modes for safe testing without affecting production data.
+- **Category Promotion Guide**: Interactive documentation in Settings tab showing how to promote categories from customParts JSONB to fixed columns, with copyable SQL and step-by-step migration instructions.
 - **Responsive Design**: Mobile-first approach.
 - **OE Match Highlighting**: Visual identification of Original Equipment parts.
 - **OE Parts Table**: Professional table displaying all OE parts with Category, Part Number, Description, Available Options count, and Add to Cart action. Responsive design transforms to stacked cards on mobile.
@@ -49,6 +50,7 @@ Preferred communication style: Simple, everyday language.
 - **Feature Specifications**: Supports complex product matching logic including prefix matching for SKUs, dynamic UI updates for reordering, and robust CSV import capabilities with optional RECID assignment and concurrency control.
 - **Category Label Management**: Section headers dynamically fetch and display category labels from parts mapping configuration (via `/api/part-category-tags`), ensuring headers reflect admin-configured names (e.g., "Handlebars", "Front Sprocket") rather than product-specific labels (e.g., "OE Handlebar"). Falls back to product labels if mapping is unavailable.
 - **Parallel Testing Architecture**: Implements safe testing environment with motorcycles_extended table featuring JSONB dynamic_parts column. Sync utility preserves testing data during updates, allowing validation of new dynamic category system without risking production data. Admin toggle enables instant mode switching between Legacy and Extended modes.
+- **Hybrid Category Strategy**: Recommends starting new part categories in customParts JSONB field for flexibility, then promoting to fixed columns when heavily used (100+ motorcycles). Category Promotion Guide in admin Settings provides complete migration workflow with safety checks and copyable commands.
 
 ## External Dependencies
 
