@@ -26,7 +26,8 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database**: PostgreSQL with Neon serverless database.
 - **Schema Management**: Drizzle Kit for migrations.
-- **Tables**: Motorcycles (with ~30 fixed columns + customParts JSONB), Shopify products, Part mappings, Import history, Motorcycle category configuration, System settings.
+- **Tables**: Motorcycles (with ~30 fixed columns + customParts JSONB), Part mappings, Import history, Motorcycle category configuration, System settings.
+- **Product Data**: All Shopify products are fetched live from Shopify API - no local caching.
 
 ### Key Features
 - **Dual Interface**: Admin dashboard and customer catalog views.
