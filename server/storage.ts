@@ -98,7 +98,6 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private motorcycles: Map<number, Motorcycle>;
-  private shopifyProducts: Map<string, ShopifyProduct>;
   private partMappings: Map<string, PartMapping>;
   private importHistory: Map<string, ImportHistory>;
   private partCategoryTags: Map<string, PartCategoryTags>;
@@ -107,7 +106,6 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.motorcycles = new Map();
-    this.shopifyProducts = new Map();
     this.partMappings = new Map();
     this.importHistory = new Map();
     this.partCategoryTags = new Map();
@@ -444,48 +442,6 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
 
     return { fixedColumns, jsonbCategories };
-  }
-
-  // Shopify Products
-  async getShopifyProducts(): Promise<ShopifyProduct[]> {
-    return Array.from(this.shopifyProducts.values());
-  }
-
-  async getShopifyProduct(id: string): Promise<ShopifyProduct | undefined> {
-    return this.shopifyProducts.get(id);
-  }
-
-  async createShopifyProduct(product: InsertShopifyProduct): Promise<ShopifyProduct> {
-    const shopifyProduct: ShopifyProduct = {
-      ...product,
-      description: product.description || null,
-      sku: product.sku || null,
-      imageUrl: product.imageUrl || null,
-      category: product.category || null,
-      tags: product.tags || null,
-      variants: product.variants || null
-    };
-    this.shopifyProducts.set(product.id, shopifyProduct);
-    return shopifyProduct;
-  }
-
-  async updateShopifyProduct(id: string, updates: Partial<InsertShopifyProduct>): Promise<ShopifyProduct | undefined> {
-    const existing = this.shopifyProducts.get(id);
-    if (!existing) return undefined;
-    
-    const updated = { ...existing, ...updates };
-    this.shopifyProducts.set(id, updated);
-    return updated;
-  }
-
-  async searchShopifyProducts(query: string): Promise<ShopifyProduct[]> {
-    const searchTerm = query.toLowerCase();
-    return Array.from(this.shopifyProducts.values()).filter(
-      product =>
-        product.title.toLowerCase().includes(searchTerm) ||
-        (product.description && product.description.toLowerCase().includes(searchTerm)) ||
-        (product.sku && product.sku.toLowerCase().includes(searchTerm))
-    );
   }
 
   // Part Mappings

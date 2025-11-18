@@ -4,7 +4,6 @@ import { eq, like, ilike, and, or, gte, lte, sql, asc } from "drizzle-orm";
 import {
   motorcycles,
   systemSettings,
-  shopifyProducts,
   partMappings,
   importHistory,
   partCategoryTags,
@@ -16,9 +15,8 @@ import {
   type InsertMotorcycle,
   type SystemSetting,
   type InsertSystemSetting,
-  type ShopifyProduct,
   type ShopifyProductWithCategory,
-  type InsertShopifyProduct,
+  type ShopifyProductWithVariants,
   type PartMapping,
   type InsertPartMapping,
   type ImportHistory,
@@ -411,78 +409,6 @@ export class DatabaseStorage implements IStorage {
     }
 
     return await db.select().from(motorcycles).where(and(...conditions));
-  }
-
-  // Shopify Products - Fetches live data from Shopify API
-  async getShopifyProducts(): Promise<ShopifyProduct[]> {
-    try {
-      // Get the current Shopify session
-      const session = getCurrentSession();
-      if (!session) {
-        console.warn('No Shopify session available for getShopifyProducts - returning empty array');
-        return [];
-      }
-      
-      // Fetch live product data from Shopify API
-      const shopifyResponse = await fetchShopifyProducts(session);
-      
-      // Transform Shopify API response to match our expected format
-      const products: ShopifyProduct[] = shopifyResponse.products?.map((product: any) => ({
-        id: product.id.toString(),
-        title: product.title,
-        description: product.body_html || null,
-        price: product.variants?.[0]?.price || '0.00',
-        sku: product.variants?.[0]?.sku || null,
-        imageUrl: product.images?.[0]?.src || null,
-        category: product.product_type || null,
-        tags: product.tags || '', // Shopify returns tags as comma-separated string
-        variants: JSON.stringify(product.variants || [])
-      })) || [];
-      
-      console.log(`✅ LIVE DATA: Fetched ${products.length} products from Shopify`);
-      return products;
-      
-    } catch (error) {
-      console.error('Failed to fetch live Shopify products:', error);
-      // Return empty array instead of throwing to prevent complete failure
-      return [];
-    }
-  }
-
-  async getShopifyProduct(id: string): Promise<ShopifyProduct | undefined> {
-    const result = await db.select().from(shopifyProducts).where(eq(shopifyProducts.id, id));
-    if (result[0]) {
-      return {
-        ...result[0],
-        variants: result[0].variants ? JSON.parse(result[0].variants) : null
-      };
-    }
-    return result[0];
-  }
-
-  async createShopifyProduct(product: InsertShopifyProduct): Promise<ShopifyProduct> {
-    const result = await db.insert(shopifyProducts).values(product).returning();
-    return result[0];
-  }
-
-  async updateShopifyProduct(id: string, updates: Partial<InsertShopifyProduct>): Promise<ShopifyProduct | undefined> {
-    const result = await db.update(shopifyProducts)
-      .set(updates)
-      .where(eq(shopifyProducts.id, id))
-      .returning();
-    return result[0];
-  }
-
-  async searchShopifyProducts(query: string): Promise<ShopifyProduct[]> {
-    const searchTerm = `%${query.toLowerCase()}%`;
-    const products = await db.select().from(shopifyProducts).where(
-      like(shopifyProducts.title, searchTerm)
-    );
-    // Parse variants JSON field back into objects
-    return products.map(product => ({
-      ...product,
-      variants: product.variants ? JSON.parse(product.variants) : null
-    }));
   }
 
   // Part Mappings
