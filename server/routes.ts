@@ -2375,22 +2375,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/products/:id", async (req, res) => {
-    try {
-      const { tags } = req.body;
-      const productId = req.params.id;
-      
-      const updatedProduct = await storage.updateShopifyProduct(productId, { tags });
-      if (!updatedProduct) {
-        return res.status(404).json({ message: "Product not found" });
-      }
-      
-      res.json(updatedProduct);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update product" });
-    }
-  });
-
   // Part Mappings routes
   app.get("/api/mappings", async (req, res) => {
     try {
@@ -3316,9 +3300,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Statistics endpoint for dashboard
   app.get("/api/stats", async (req, res) => {
     try {
-      const [motorcycles, products, mappings, importHistory, categoryTags] = await Promise.all([
+      const [motorcycles, mappings, importHistory, categoryTags] = await Promise.all([
         storage.getMotorcycles(),
-        storage.getShopifyProducts(),
         storage.getPartMappings(),
         storage.getImportHistory(),
         storage.getPartCategoryTags()
@@ -3369,7 +3352,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Basic metrics
         totalMotorcycles: motorcycles.length,
         mappedParts: mappings.length,
-        shopifyProducts: products.length,
         lastSync: importHistory.length > 0 ? importHistory[0].createdAt : null,
         
         // Enhanced metrics
@@ -3534,11 +3516,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Get all products and check compatibility
-      const [allProducts, categoryTags] = await Promise.all([
-        storage.getShopifyProducts(),
+      // Get all products from Shopify live and category tags
+      const [categoryTags] = await Promise.all([
         storage.getPartCategoryTags()
       ]);
+      
+      // Fetch live products from Shopify
+      const session = inMemorySessionStorage.get('current');
+      if (!session) {
+        return res.status(500).json({ 
+          message: "Shopify session not available. Please authenticate first." 
+        });
+      }
+      
+      const shopifyResponse = await fetchShopifyProducts(session);
+      const allProducts = shopifyResponse.products?.map((product: any) => ({
+        id: product.id.toString(),
+        title: product.title,
+        description: product.body_html || null,
+        price: product.variants?.[0]?.price || '0.00',
+        sku: product.variants?.[0]?.sku || null,
+        imageUrl: product.images?.[0]?.src || null,
+        category: product.product_type || null,
+        tags: product.tags || '',
+        variants: JSON.stringify(product.variants || [])
+      })) || [];
 
 
       const compatibleProducts = [];
@@ -3719,67 +3721,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`WARNING: No access token in callback session!`);
         }
         
-        // Sync products after installation
-        try {
-          const products = await fetchShopifyProducts(callback.session);
-          console.log(`Synced ${products.products?.length || 0} products from ${shop}`);
-          
-          // Store products in our database WITH COMPLETE VARIANT DATA
-          console.log(`=== STORING PRODUCTS WITH VARIANTS ===`);
-          for (const product of products.products || []) {
-            try {
-              // Properly handle tags from Shopify
-              let formattedTags = null;
-              if (product.tags && product.tags.trim()) {
-                const tagArray = product.tags.split(',').map((tag: string) => tag.trim()).filter(tag => tag.length > 0);
-                formattedTags = tagArray.length > 0 ? JSON.stringify(tagArray) : null;
-              }
-              
-              // Process ALL variants for this product
-              const variants = product.variants?.map((variant: any) => ({
-                id: variant.id.toString(),
-                title: variant.title,
-                price: variant.price,
-                sku: variant.sku,
-                inventoryQuantity: variant.inventory_quantity,
-                option1: variant.option1,
-                option2: variant.option2, 
-                option3: variant.option3,
-                available: variant.inventory_quantity > 0
-              })) || [];
-              
-              console.log(`Storing "${product.title}" with ${variants.length} variants`);
-              if (variants.length > 1) {
-                console.log(`  Variant titles: ${variants.map(v => v.title).join(', ')}`);
-              }
-              
-              const productData = {
-                id: product.id.toString(),
-                title: product.title,
-                description: product.body_html || null,
-                price: product.variants?.[0]?.price || "0",
-                sku: product.variants?.[0]?.sku || null,
-                imageUrl: product.images?.[0]?.src || null,
-                category: product.product_type || null,
-                tags: formattedTags,
-                variants: variants.length > 0 ? JSON.stringify(variants) : null
-              };
-              
-              // Try to update if exists, otherwise create
-              const existingProduct = await storage.getShopifyProduct(product.id.toString());
-              if (existingProduct) {
-                await storage.updateShopifyProduct(product.id.toString(), productData);
-              } else {
-                await storage.createShopifyProduct(productData);
-              }
-            } catch (error) {
-              // Product might already exist, skip
-              console.log(`Skipped product ${product.id}: ${error}`);
-            }
-          }
-        } catch (error) {
-          console.error("Product sync error:", error);
-        }
+        // Products are now fetched live from Shopify, no caching needed
+        console.log(`Shopify app installed successfully on ${shop}`);
         
         // Redirect to success page
         const devUrl = process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'https://rest-express.replit.app';
@@ -3803,47 +3746,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       installed,
       message: installed ? `Successfully installed on ${shop}!` : 'Not installed'
     });
-  });
-
-  // Force re-sync products from Shopify with current tags
-  app.post("/api/shopify/sync-products", async (req, res) => {
-    try {
-      // Note: In a production app, you'd need to store and retrieve the Shopify session
-      // For now, we'll simulate what should happen with a proper Shopify connection
-      
-      console.log("Attempting to re-sync product tags from Shopify...");
-      
-      // Get existing products from our database
-      const existingProducts = await storage.getShopifyProducts();
-      console.log(`Found ${existingProducts?.length || 0} products in local database`);
-      
-      // For demonstration, let's manually update the 821-01 product with tags
-      // (In reality, this would come from the Shopify API)
-      let updatedCount = 0;
-      
-      // Simulate updating 821-01 with its actual Shopify tags
-      const product821 = existingProducts.find(p => p.title === '821-01');
-      if (product821) {
-        // These should be the actual tags from your Shopify store
-        const actualShopifyTags = ["handlebars", "fatbar", "motorcycle-parts"]; // Replace with actual tags
-        
-        await storage.updateShopifyProduct(product821.id, {
-          tags: JSON.stringify(actualShopifyTags)
-        });
-        updatedCount++;
-        console.log(`Updated ${product821.title} with tags: ${actualShopifyTags.join(', ')}`);
-      }
-      
-      res.json({ 
-        message: "Product sync completed", 
-        checkedProducts: existingProducts.length,
-        updatedProducts: updatedCount,
-        note: `Updated products with current Shopify tags. Full sync requires active Shopify API connection.`
-      });
-    } catch (error) {
-      console.error("Product sync error:", error);
-      res.status(500).json({ message: "Failed to sync products from Shopify" });
-    }
   });
 
   // ==========================================
