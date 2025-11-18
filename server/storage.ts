@@ -145,53 +145,9 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    // Sample Shopify products
-    const sampleProducts: InsertShopifyProduct[] = [
-      {
-        id: "brake-disc-001",
-        title: "Premium Brake Disc Set",
-        description: "High-performance brake discs for sport motorcycles",
-        price: "149.99",
-        sku: "BRK-001",
-        imageUrl: "https://images.unsplash.com/photo-1609630875171-b1321377ee65?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
-        category: "Brakes"
-      },
-      {
-        id: "chain-kit-002",
-        title: "Chain & Sprocket Kit",
-        description: "Complete drive chain and sprocket replacement kit",
-        price: "89.99",
-        sku: "CHN-002",
-        imageUrl: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
-        category: "Drivetrain"
-      },
-      {
-        id: "exhaust-003",
-        title: "Performance Exhaust System",
-        description: "Titanium slip-on exhaust for enhanced performance",
-        price: "299.99",
-        sku: "EXH-003",
-        imageUrl: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
-        category: "Performance"
-      },
-      {
-        id: "headlight-004",
-        title: "LED Headlight Assembly",
-        description: "High-brightness LED headlight with DRL function",
-        price: "199.99",
-        sku: "LED-004",
-        imageUrl: "https://images.unsplash.com/photo-1609630875171-b1321377ee65?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
-        category: "Electrical"
-      }
-    ];
-
-    // Initialize sample data
+    // Initialize sample motorcycles
     sampleMotorcycles.forEach(motorcycle => {
       this.createMotorcycle(motorcycle);
-    });
-
-    sampleProducts.forEach(product => {
-      this.createShopifyProduct(product);
     });
   }
 
