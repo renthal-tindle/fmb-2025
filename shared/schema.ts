@@ -49,18 +49,6 @@ export const motorcycles = pgTable("motorcycles", {
   customParts: jsonb("custom_parts"), // Store dynamically created categories as {"category_value": "product_variant"}
 });
 
-export const shopifyProducts = pgTable("xx_shopify_products", {
-  id: varchar("id").primaryKey(),
-  title: text("title").notNull(),
-  description: text("description"),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  sku: text("sku"),
-  imageUrl: text("image_url"),
-  category: text("category"),
-  tags: text("tags"), // JSON array as text for product tags
-  variants: text("variants"), // JSON array of product variants
-});
-
 export const partMappings = pgTable("part_mappings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   shopifyProductId: varchar("shopify_product_id").notNull(), // Shopify product ID - fetched live from API
@@ -165,8 +153,6 @@ export const systemSettings = pgTable("system_settings", {
 
 export const insertMotorcycleSchema = createInsertSchema(motorcycles);
 
-export const insertShopifyProductSchema = createInsertSchema(shopifyProducts);
-
 export const insertPartMappingSchema = createInsertSchema(partMappings).omit({
   id: true,
 });
@@ -209,10 +195,7 @@ export type PartSection = typeof partSections.$inferSelect;
 export type InsertPartSection = z.infer<typeof insertPartSectionSchema>;
 export type Motorcycle = typeof motorcycles.$inferSelect;
 
-export type InsertShopifyProduct = z.infer<typeof insertShopifyProductSchema>;
-export type ShopifyProduct = typeof shopifyProducts.$inferSelect;
-
-// Extended types for live Shopify data with variants
+// Types for live Shopify data with variants (fetched from API, not cached in database)
 export type ShopifyProductVariant = {
   id: string;
   title: string;
@@ -225,13 +208,20 @@ export type ShopifyProductVariant = {
   available: boolean;
 };
 
-export type ShopifyProductWithVariants = ShopifyProduct & {
+export type ShopifyProductWithVariants = {
+  id: string;
+  title: string;
+  description?: string;
+  price: string;
+  sku?: string;
+  imageUrl?: string;
+  category?: string;
+  tags?: string;
   variants?: ShopifyProductVariant[];
 };
 
 // Extended types for Shopify products with admin category information
-export type ShopifyProductWithCategory = ShopifyProduct & {
-  variants?: ShopifyProductVariant[];
+export type ShopifyProductWithCategory = ShopifyProductWithVariants & {
   adminCategory?: string; // The assignedSection from partCategoryTags (handlebars, frontSprocket, rearSprockets, etc.)
   adminCategoryLabel?: string; // The categoryLabel from partCategoryTags for display
 };
