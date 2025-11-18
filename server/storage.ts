@@ -5,8 +5,7 @@ import {
   type InsertMotorcycleExtended,
   type SystemSetting,
   type InsertSystemSetting,
-  type ShopifyProduct,
-  type InsertShopifyProduct,
+  type ShopifyProductWithVariants,
   type PartMapping,
   type InsertPartMapping,
   type ImportHistory,
@@ -38,13 +37,6 @@ export interface IStorage {
   getNextMotorcycleRecid(): Promise<number>;
   getCategoryUsage(): Promise<{ fixedColumns: string[], jsonbCategories: { category: string, count: number }[] }>;
 
-  // Shopify Products
-  getShopifyProducts(): Promise<ShopifyProduct[]>;
-  getShopifyProduct(id: string): Promise<ShopifyProduct | undefined>;
-  createShopifyProduct(product: InsertShopifyProduct): Promise<ShopifyProduct>;
-  updateShopifyProduct(id: string, updates: Partial<InsertShopifyProduct>): Promise<ShopifyProduct | undefined>;
-  searchShopifyProducts(query: string): Promise<ShopifyProduct[]>;
-
   // Part Mappings
   getPartMappings(): Promise<PartMapping[]>;
   getPartMappingsByMotorcycle(motorcycleRecid: number): Promise<PartMapping[]>;
@@ -52,8 +44,8 @@ export interface IStorage {
   createPartMapping(mapping: InsertPartMapping): Promise<PartMapping>;
   deletePartMapping(id: string): Promise<boolean>;
 
-  // Compatible Parts
-  getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProduct[]>;
+  // Compatible Parts (fetches live from Shopify API, not from database)
+  getCompatibleParts(motorcycleRecid: number): Promise<ShopifyProductWithVariants[]>;
 
   // Import History
   getImportHistory(): Promise<ImportHistory[]>;
